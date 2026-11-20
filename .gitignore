@@ -39,3 +39,4 @@ expo-env.d.ts
 
 # icon tracing intermediates
 tools/trace/specs/*.out.json
+__pycache__/

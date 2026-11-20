@@ -7,8 +7,14 @@
       "name": "glass-expand",
       "type": "registry:component",
       "title": "Glass Expand",
-      "description": "Frosted pill; the active tab grows into a glass capsule that shows its label.",
-      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
+      "description": "Near-white glass pill with icon-only tabs; a flat grey capsule glides behind the active icon (Liquid Glass on iOS 26).",
+      "dependencies": [
+        "tabcn",
+        "expo-blur",
+        "expo-glass-effect",
+        "expo-haptics",
+        "react-native-svg"
+      ],
       "files": [
         {
           "path": "registry/designs/glass-expand/glass-expand.tsx",
@@ -45,7 +51,7 @@
       "name": "chip-rail",
       "type": "registry:component",
       "title": "Chip Rail",
-      "description": "Dark rail with an avatar and text-only chips that scroll sideways.",
+      "description": "Dark docked bar with an avatar and text-only chips that scroll sideways.",
       "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
@@ -97,7 +103,7 @@
       "name": "pill-plus",
       "type": "registry:component",
       "title": "Pill + Plus",
-      "description": "White icon-only pill with an avatar tab and a separate plus button.",
+      "description": "White icon-only capsule with an avatar tab and a grey plus action at its end.",
       "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
@@ -135,8 +141,8 @@
       "name": "outline-dark",
       "type": "registry:component",
       "title": "Outline Dark",
-      "description": "Black bar with outline icons; the active icon brightens.",
-      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
+      "description": "Docked, icon-only black bar from Blank Spaces: grey outline glyphs, the active one crossfades to a white filled glyph.",
+      "dependencies": ["tabcn", "react-native-svg", "expo-haptics"],
       "files": [
         {
           "path": "registry/designs/outline-dark/outline-dark.tsx",
@@ -254,8 +260,8 @@
     {
       "name": "light-icons",
       "type": "registry:component",
-      "title": "Light Icons",
-      "description": "Light grey bar, icons only; the active icon switches to its filled version.",
+      "title": "Dark Icons",
+      "description": "Icons straight on a near-black screen, no labels; grey outlines turn white, and the record tab is drawn larger.",
       "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
@@ -293,8 +299,14 @@
       "name": "sliding-capsule",
       "type": "registry:component",
       "title": "Sliding Capsule",
-      "description": "White floating pill with icons and labels; a grey capsule slides to the active tab.",
-      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
+      "description": "Wise's near-white glass pill (Liquid Glass on iOS 26) with green outline icons and labels; a grey capsule glides to the active tab.",
+      "dependencies": [
+        "tabcn",
+        "expo-blur",
+        "expo-glass-effect",
+        "expo-haptics",
+        "react-native-svg"
+      ],
       "files": [
         {
           "path": "registry/designs/sliding-capsule/sliding-capsule.tsx",
@@ -312,8 +324,14 @@
       "name": "labeled-plus",
       "type": "registry:component",
       "title": "Labeled + Plus",
-      "description": "Labelled pill with a sliding capsule beside a separate plus button that runs an action.",
-      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
+      "description": "iOS 26-style glass pill with labelled tabs and a gliding grey capsule, beside a round glass plus button that runs an action (Liquid Glass, blur fallback).",
+      "dependencies": [
+        "tabcn",
+        "expo-blur",
+        "expo-glass-effect",
+        "expo-haptics",
+        "react-native-svg"
+      ],
       "files": [
         {
           "path": "registry/designs/labeled-plus/labeled-plus.tsx",
@@ -375,7 +393,7 @@
       "name": "mono-type",
       "type": "registry:component",
       "title": "Mono Type",
-      "description": "White bar with line icons and uppercase monospace labels; the active tab takes the accent colour.",
+      "description": "White docked bar under a rough hand-inked black rule, with outline icons and uppercase monospace labels; the active tab only turns magenta.",
       "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {

@@ -1,5 +1,7 @@
 /**
- * Icons for the Mono Type design, traced from reference image 20.
+ * Icons for the Mono Type design: CHANI's outline glyphs (Home, Grow, Charts, Transits,
+ * Audio), traced from reference image 20 and checked against the app's own tab bar.
+ * They stay outline when active; only the colour changes.
  * Pass them as `tabBarIcon` in your screen options.
  */
 import Svg, { Path } from 'react-native-svg';
