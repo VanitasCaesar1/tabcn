@@ -1,7 +1,7 @@
 /**
  * Solid Dark: a black bar with icons only. Each tab crossfades from its outline
  * icon to its filled one.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';

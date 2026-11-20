@@ -1,7 +1,7 @@
 /**
  * Dark Capsule: a dark bar with icons only; an outlined capsule slides behind
  * the active tab.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';

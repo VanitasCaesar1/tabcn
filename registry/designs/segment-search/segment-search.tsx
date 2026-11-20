@@ -1,7 +1,7 @@
 /**
  * Segment + Search: a gradient segment control of text tabs with a glass
  * capsule that slides between them, next to a separate round search button.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';

@@ -1,7 +1,7 @@
 /**
  * Pill + Plus: a raised white pill of icon-only tabs beside a matching round
  * plus button. The active icon turns dark and lifts; the others stay grey.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';

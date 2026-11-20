@@ -1,7 +1,7 @@
 /**
  * Mono Type: a white bar with line icons and uppercase monospace labels; the
  * active tab takes the accent colour and its label letter-spacing widens.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { Platform, StyleSheet, View } from 'react-native';

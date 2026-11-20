@@ -2,7 +2,7 @@
  * Glass Expand: a frosted lavender pill of icon-only tabs. The active tab grows
  * into a glass capsule that reveals its label. The capsule glides and resizes on
  * one eased curve, and the label fades in once it has room.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet } from 'react-native';

@@ -1,7 +1,7 @@
 /**
  * Top Notch: a rounded card with icons and labels; a short pill slides along
  * the top edge to the active tab, and icon and label colours crossfade.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';

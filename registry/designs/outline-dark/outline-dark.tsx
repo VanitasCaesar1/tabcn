@@ -1,7 +1,7 @@
 /**
  * Outline Dark: a black bar with outline icons. The active icon brightens and
  * lifts slightly; the others dim.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';

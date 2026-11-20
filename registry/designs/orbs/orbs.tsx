@@ -2,7 +2,7 @@
  * Orbs: separate floating circles instead of a bar. Each inactive tab is its
  * icon art (a round sticker); the active one grows into a larger white orb. Badges are
  * glossy red balls.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet } from 'react-native';

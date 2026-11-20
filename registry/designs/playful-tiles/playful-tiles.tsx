@@ -1,7 +1,7 @@
 /**
  * Playful Tiles: a white bar with a colour per tab; a bordered tile slides to
  * the active tab and its icon bounces.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';

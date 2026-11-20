@@ -1,7 +1,7 @@
 /**
  * Soft Pill: a white pill with icons and labels. The active tab's grey capsule
  * fades and swells in place (it doesn't slide), and the label turns bold.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, Text } from 'react-native';

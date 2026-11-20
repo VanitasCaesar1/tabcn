@@ -1,7 +1,7 @@
 /**
  * Light Icons: a light grey bar with icons only. The active icon switches to
  * its filled version with a small spring pop.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';

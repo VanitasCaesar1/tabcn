@@ -1,7 +1,7 @@
 /**
  * Sticker Tiles: a teal bar of sticker icons with bold labels. The active tab
  * sits on a light tile that slides between tabs; badges are red dots.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, Text, View } from 'react-native';

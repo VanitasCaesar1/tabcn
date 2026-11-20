@@ -1,6 +1,6 @@
 /**
  * Sliding Capsule: a white floating pill with icons and labels; a grey capsule
- * slides to the active tab. Built on tabcn: https://github.com/OWNER/tabcn
+ * slides to the active tab. Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, Text, View } from 'react-native';

@@ -2,7 +2,7 @@
  * Frosted Media: a see-through pill that blurs whatever is behind it, with
  * white icons and labels; a raised glass capsule slides to the active tab.
  * Uses iOS liquid glass where available, blur everywhere else.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';

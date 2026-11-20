@@ -1,7 +1,7 @@
 /**
  * Gradient Stickers: a cream pill with a two-tone glow along its top edge and
  * sticker icons. A soft tinted capsule glides to the active sticker.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';

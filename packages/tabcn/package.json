@@ -15,7 +15,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OWNER/tabcn.git",
+    "url": "git+https://github.com/VanitasCaesar1/tabcn.git",
     "directory": "packages/tabcn"
   },
   "sideEffects": false,
@@ -117,7 +117,8 @@
     ],
     "moduleNameMapper": {
       "^react-native-reanimated$": "<rootDir>/jest/reanimated.js",
-      "^react-native-reanimated/mock$": "<rootDir>/jest/reanimated-impl.js"
+      "^react-native-reanimated/mock$": "<rootDir>/jest/reanimated-impl.js",
+      "^tabcn$": "<rootDir>/src/index.ts"
     }
   }
 }

@@ -1,7 +1,7 @@
 /**
  * Center CTA: a dark bar with a wide text button in the middle and image tabs
  * on either side. Inactive tabs dim; the active one brightens and lifts.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, Text, View } from 'react-native';

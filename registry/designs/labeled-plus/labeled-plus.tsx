@@ -1,7 +1,7 @@
 /**
  * Labeled + Plus: a labelled pill with a sliding capsule, next to a separate
  * round plus button that runs an action instead of switching tabs.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, Text, View } from 'react-native';

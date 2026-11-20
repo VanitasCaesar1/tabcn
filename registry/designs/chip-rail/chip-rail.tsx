@@ -1,7 +1,7 @@
 /**
  * Chip Rail: a black rail with a leading avatar and text-only chips that scroll
  * sideways. A lavender chip slides to the active tab; the rail scrolls it into view.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { type ComponentRef, type ReactNode, useEffect, useRef } from 'react';

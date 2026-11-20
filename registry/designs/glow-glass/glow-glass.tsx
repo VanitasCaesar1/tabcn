@@ -2,7 +2,7 @@
  * Glow Glass: a dark glass pill with icons and labels. A warm glow sits behind
  * the active tab inside a glass capsule, and both slide together. A separate
  * round button with its own label runs an action.
- * Built on tabcn: https://github.com/OWNER/tabcn
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';

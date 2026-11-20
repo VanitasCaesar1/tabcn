@@ -37,6 +37,15 @@ const Easing = {
   inOut: (f) => f,
 };
 
+// Layout animation builders (FadeIn.duration(200).delay(60), LinearTransition.springify()...):
+// every method returns the same chainable builder.
+function builder() {
+  const b = new Proxy(function layoutAnimation() {}, {
+    get: (_t, key) => (key === 'then' ? undefined : () => b),
+  });
+  return b;
+}
+
 module.exports = {
   __esModule: true,
   default: {
@@ -56,13 +65,14 @@ module.exports = {
   withSpring: (to) => to,
   withTiming: (to) => to,
   withDelay: (_d, a) => a,
+  withSequence: (...steps) => steps[steps.length - 1],
   interpolate: (v, input, output) =>
     output[0] + ((v - input[0]) / (input[1] - input[0])) * (output[1] - output[0]),
   interpolateColor: (_v, _i, output) => output[0],
   runOnJS: (fn) => fn,
-  FadeIn: { duration: () => ({}) },
-  FadeOut: { duration: () => ({}) },
-  ZoomIn: {},
-  ZoomOut: {},
-  LinearTransition: {},
+  FadeIn: builder(),
+  FadeOut: builder(),
+  ZoomIn: builder(),
+  ZoomOut: builder(),
+  LinearTransition: builder(),
 };
