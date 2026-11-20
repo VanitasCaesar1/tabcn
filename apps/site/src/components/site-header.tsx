@@ -8,6 +8,7 @@ import { HeaderSearch } from './header-search';
 import { MobileNav } from './mobile-nav';
 import { SidebarNav } from './sidebar';
 import { ThemeToggle } from './theme-toggle';
+import { XIcon } from './x-icon';
 
 // Sticks to the top of the page column, with a hairline under it matching the sidebar's brand
 // row, so the two read as one frame. (From ui lab, https://lab.xevrion.dev, MIT.)
@@ -57,6 +58,15 @@ export function SiteHeader({ title }: { title?: string }) {
             {/* Starts at the count saved at deploy, then updates live. */}
             <StarCount repo={repo.repo} saved={repo.stars} />
           </span>
+        </a>
+        <a
+          href={`https://x.com/${site.x}`}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`@${site.x} on X`}
+          className="hidden size-9 items-center justify-center rounded-full text-foreground outline-hidden transition-[scale,background-color] duration-150 ease-out hover:bg-surface focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:scale-[0.96] sm:flex"
+        >
+          <XIcon />
         </a>
         <span aria-hidden className="mx-1 hidden h-5 w-px bg-border sm:block" />
         <ThemeToggle />
