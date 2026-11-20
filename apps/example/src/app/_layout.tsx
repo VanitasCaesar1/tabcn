@@ -1,18 +1,17 @@
+import { Outfit_700Bold, Outfit_800ExtraBold, useFonts } from '@expo-google-fonts/outfit';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useColorScheme } from 'react-native';
 
 export default function RootLayout() {
   const scheme = useColorScheme();
+  // Fonts used by the demos (designs take a `fontFamily` prop; they don't load fonts).
+  const [fontsLoaded] = useFonts({ Outfit_700Bold, Outfit_800ExtraBold });
+  if (!fontsLoaded) return null;
   return (
     <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="index" options={{ title: 'tabcn' }} />
-        <Stack.Screen
-          name="designs/[id]"
-          // One screen instance per design, so each nested tab navigator keeps its own `id`.
-          getId={({ params }) => (params as { id?: string } | undefined)?.id}
-          options={{ title: '', headerBackTitle: 'Back' }}
-        />
+        <Stack.Screen name="designs/[id]" options={{ title: '', headerBackTitle: 'Back' }} />
       </Stack>
     </ThemeProvider>
   );

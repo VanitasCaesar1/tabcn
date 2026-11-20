@@ -30,6 +30,8 @@ import { TopNotch } from '@registry/top-notch/top-notch';
 import { createContext, type ReactElement, type ReactNode, use } from 'react';
 import type { TabIconProps } from 'tabcn';
 
+import type { PatternSpec } from '@/pattern';
+
 export interface DemoContext {
   onActionPress: () => void;
 }
@@ -49,6 +51,8 @@ export interface Demo {
   background: string;
   /** Light text on the demo screens. */
   dark?: boolean;
+  /** Background pattern from the reference image. */
+  pattern?: PatternSpec;
 }
 
 /** Built designs, keyed by catalog id. */
@@ -120,8 +124,9 @@ export const demos: Record<string, Demo> = {
     ],
   },
   'top-notch': {
-    render: () => <TopNotch />,
-    background: '#5b46e0',
+    render: () => <TopNotch fontFamily="Outfit_800ExtraBold" />,
+    background: '#5a49dc',
+    pattern: { kind: 'rings', color: 'rgba(255,255,255,0.045)', gap: 34 },
     dark: true,
     tabs: [
       { label: 'Today', icon: TopNotchIcons.TodayIcon },

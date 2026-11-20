@@ -1,6 +1,6 @@
 /**
- * Top Notch: a rounded card with icons and labels; a short bar slides along the
- * top edge to the active tab, and colours crossfade.
+ * Top Notch: a rounded card with icons and labels; a short pill slides along
+ * the top edge to the active tab, and icon and label colours crossfade.
  * Built on tabcn: https://github.com/OWNER/tabcn
  */
 import * as Haptics from 'expo-haptics';
@@ -18,8 +18,8 @@ import {
 
 const defaultColors = {
   background: '#f6f4ff',
-  active: '#4f3fd9',
-  inactive: '#b4aaf0',
+  active: '#533ddf',
+  inactive: '#b0a5ef',
   badge: '#ff3b30',
 };
 
@@ -27,10 +27,19 @@ export type TopNotchColors = typeof defaultColors;
 
 export interface TopNotchProps {
   colors?: Partial<TopNotchColors>;
+  /** Label font, e.g. a heavy geometric sans. Default: system font, weight 800. */
+  fontFamily?: string;
+  /** Icon box size in points. Default 40. */
+  iconSize?: number;
   haptics?: boolean;
 }
 
-export function TopNotch({ colors: custom, haptics = true }: TopNotchProps) {
+export function TopNotch({
+  colors: custom,
+  fontFamily,
+  iconSize = 40,
+  haptics = true,
+}: TopNotchProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
   return (
@@ -38,26 +47,46 @@ export function TopNotch({ colors: custom, haptics = true }: TopNotchProps) {
       <TabList style={[styles.card, { backgroundColor: colors.background }]}>
         <Notch color={colors.active} />
         {tabs.map((tab) => (
-          <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
+          <Tab
+            key={tab.key}
+            tab={tab}
+            colors={colors}
+            fontFamily={fontFamily}
+            iconSize={iconSize}
+            haptics={haptics}
+          />
         ))}
       </TabList>
     </TabBarRoot>
   );
 }
 
+const NOTCH_WIDTH = 47;
+
 function Notch({ color }: { color: string }) {
   const { x, width, ready } = useTabIndicator();
   const style = useAnimatedStyle(() => ({
     opacity: ready.value ? 1 : 0,
-    width: width.value * 0.62,
-    transform: [{ translateX: x.value + width.value * 0.19 }],
+    transform: [{ translateX: x.value + (width.value - NOTCH_WIDTH) / 2 }],
   }));
   return (
     <Animated.View pointerEvents="none" style={[styles.notch, { backgroundColor: color }, style]} />
   );
 }
 
-function Tab({ tab, colors, haptics }: { tab: TabItem; colors: TopNotchColors; haptics: boolean }) {
+function Tab({
+  tab,
+  colors,
+  fontFamily,
+  iconSize,
+  haptics,
+}: {
+  tab: TabItem;
+  colors: TopNotchColors;
+  fontFamily?: string;
+  iconSize: number;
+  haptics: boolean;
+}) {
   const progress = useFocusProgress(tab);
   const label = useAnimatedStyle(() => ({
     color: interpolateColor(progress.value, [0, 1], [colors.inactive, colors.active]),
@@ -70,18 +99,21 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: TopNotchColors; h
       style={styles.tab}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      <View style={styles.iconBox}>
+      <View style={{ width: iconSize, height: iconSize }}>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, inactiveIcon]}>
-          {tab.renderIcon?.({ focused: false, color: colors.inactive, size: 28 })}
+          {tab.renderIcon?.({ focused: false, color: colors.inactive, size: iconSize })}
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, activeIcon]}>
-          {tab.renderIcon?.({ focused: true, color: colors.active, size: 28 })}
+          {tab.renderIcon?.({ focused: true, color: colors.active, size: iconSize })}
         </Animated.View>
         {tab.badge != null ? (
           <View style={[styles.badge, { backgroundColor: colors.badge }]} />
         ) : null}
       </View>
-      <Animated.Text numberOfLines={1} style={[styles.label, label]}>
+      <Animated.Text
+        numberOfLines={1}
+        style={[styles.label, fontFamily ? { fontFamily } : styles.systemWeight, label]}
+      >
         {tab.label}
       </Animated.Text>
     </TabButton>
@@ -91,21 +123,22 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: TopNotchColors; h
 const styles = StyleSheet.create({
   outer: { alignSelf: 'stretch', paddingHorizontal: 16 },
   card: {
-    borderRadius: 22,
-    paddingVertical: 12,
-    boxShadow: '0 10px 30px rgba(60, 40, 160, 0.16)',
+    height: 82,
+    borderRadius: 19,
+    paddingHorizontal: 6,
+    boxShadow: '0 8px 24px rgba(30, 20, 120, 0.18)',
   },
   notch: {
     position: 'absolute',
     top: 0,
     left: 0,
+    width: NOTCH_WIDTH,
     height: 5,
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 4,
+    borderRadius: 3,
   },
-  tab: { flex: 1, alignItems: 'center', gap: 4, paddingTop: 6 },
-  iconBox: { width: 32, height: 32 },
+  tab: { flex: 1, alignItems: 'center', paddingTop: 14, gap: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 13, fontWeight: '700' },
-  badge: { position: 'absolute', top: 0, right: -2, width: 9, height: 9, borderRadius: 5 },
+  label: { fontSize: 11.5, lineHeight: 15 },
+  systemWeight: { fontWeight: '800' },
+  badge: { position: 'absolute', top: 2, right: 0, width: 9, height: 9, borderRadius: 5 },
 });
