@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun scripts/build-registry.ts && next dev",
-    "build": "bun scripts/build-registry.ts && next build",
+    "dev": "bun scripts/fetch-repo.ts && bun scripts/build-registry.ts && next dev",
+    "build": "bun scripts/fetch-repo.ts && bun scripts/build-registry.ts && next build",
     "registry": "bun scripts/build-registry.ts",
     "typecheck": "tsc --noEmit"
   },

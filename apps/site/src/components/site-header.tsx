@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { designs, summary } from '@/lib/designs';
+import repo from '@/lib/repo.json';
 import { site } from '@/lib/site';
 import { GitHubIcon } from './github-icon';
+import { StarCount } from './github-stars';
 import { HeaderSearch } from './header-search';
 import { MobileNav } from './mobile-nav';
 import { SidebarNav } from './sidebar';
@@ -43,11 +45,18 @@ export function SiteHeader({ title }: { title?: string }) {
           href={site.repo}
           target="_blank"
           rel="noreferrer"
-          aria-label="tabcn on GitHub"
-          className="flex h-9 items-center gap-2 rounded-full px-3 font-medium text-[13px] text-foreground outline-hidden transition-[scale,background-color] duration-150 ease-out hover:bg-surface focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:scale-[0.96] max-sm:w-9 max-sm:justify-center max-sm:px-0"
+          aria-label="Star tabcn on GitHub"
+          className="group/gh flex h-9 items-center gap-2 rounded-full border border-border px-3 font-medium text-[13px] text-foreground outline-hidden transition-[scale,background-color] duration-150 ease-out hover:bg-surface focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:scale-[0.96]"
         >
           <GitHubIcon />
-          <span className="hidden sm:inline">GitHub</span>
+          <span className="hidden sm:inline">Star</span>
+          <span className="flex items-center gap-1 text-muted tabular-nums transition-[color] duration-150 ease-out group-hover/gh:text-foreground">
+            <svg viewBox="0 0 16 16" aria-hidden className="size-3.5" fill="currentColor">
+              <path d="M8 1.6l1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.4l-3.8 2 .7-4.3-3.1-3 4.3-.6L8 1.6Z" />
+            </svg>
+            {/* Starts at the count saved at deploy, then updates live. */}
+            <StarCount repo={repo.repo} saved={repo.stars} />
+          </span>
         </a>
         <span aria-hidden className="mx-1 hidden h-5 w-px bg-border sm:block" />
         <ThemeToggle />
