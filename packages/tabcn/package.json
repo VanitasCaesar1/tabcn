@@ -1,0 +1,81 @@
+{
+  "name": "tabcn",
+  "version": "0.0.0",
+  "description": "Animated, copy-and-own tab bars for React Native and Expo.",
+  "license": "MIT",
+  "keywords": [
+    "react-native",
+    "expo",
+    "expo-router",
+    "react-navigation",
+    "tab-bar",
+    "tabbar",
+    "bottom-tabs",
+    "reanimated"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OWNER/tabcn.git",
+    "directory": "packages/tabcn"
+  },
+  "sideEffects": false,
+  "source": "./src/index.ts",
+  "main": "./lib/module/index.js",
+  "types": "./lib/typescript/src/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./lib/typescript/src/index.d.ts",
+      "default": "./lib/module/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "lib",
+    "!**/__tests__",
+    "!**/*.test.*"
+  ],
+  "scripts": {
+    "build": "bob build",
+    "typecheck": "tsc --noEmit",
+    "prepack": "bob build"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-native": ">=0.81",
+    "react-native-reanimated": ">=4",
+    "react-native-safe-area-context": ">=5"
+  },
+  "devDependencies": {
+    "@types/react": "~19.3.0",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-builder-bob": "^0.44.1",
+    "react-native-reanimated": "4.7.1",
+    "react-native-safe-area-context": "~5.11.1",
+    "react-native-worklets": "0.13.0",
+    "typescript": "~6.0.3"
+  },
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "typescript",
+        {
+          "project": "tsconfig.build.json"
+        }
+      ]
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

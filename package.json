@@ -1,0 +1,30 @@
+{
+  "name": "tabcn-monorepo",
+  "private": true,
+  "packageManager": "bun@1.4.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "example": "bun run --cwd apps/example start",
+    "ios": "bun run --cwd apps/example ios",
+    "android": "bun run --cwd apps/example android",
+    "build": "bun run --cwd packages/tabcn build",
+    "typecheck": "bun --filter '*' typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "check": "bun run lint && bun run typecheck && bun run build",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "bun run build && changeset publish"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.8",
+    "@changesets/cli": "^3.0.3",
+    "typescript": "~6.0.3"
+  }
+}

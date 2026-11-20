@@ -1,0 +1,38 @@
+# dependencies
+node_modules/
+
+# build output
+packages/*/lib/
+dist/
+*.tsbuildinfo
+
+# Expo / Metro
+.expo/
+.metro-health-check*
+web-build/
+
+# Native folders are generated (Continuous Native Generation)
+apps/*/ios/
+apps/*/android/
+
+# Reference screenshots of other apps' tab bars: kept locally, never published
+references/*
+!references/README.md
+
+# env and secrets
+.env
+.env*.local
+*.pem
+*.p8
+*.p12
+*.key
+*.jks
+*.mobileprovision
+
+# misc
+.DS_Store
+npm-debug.*
+.egm/
+
+# Expo generated types
+expo-env.d.ts
