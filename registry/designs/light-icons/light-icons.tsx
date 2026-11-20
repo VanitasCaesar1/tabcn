@@ -2,15 +2,29 @@
  * Light Icons: the Amble app's tab bar. Five icons straight on the near-black
  * screen: no labels, no surface of its own, no border, shadow, blur or
  * indicator. Docked and flush with the bottom, five equal columns across the
- * full width. Idle tabs are grey outline glyphs; the active tab crossfades to
- * its white glyph (filled for chat and profile, heavier for search). The record
+ * full width. Idle tabs are grey glyphs; the active tab crossfades to its white
+ * glyph (filled for chat and profile, heavier for search: the app's stills show
+ * only one active glyph, so these pairs are this design's choice). The record
  * tab is an ordinary tab drawn larger than the rest, and dimmer when idle.
+ *
+ * Motion: nothing in the bar moves. A tab change is a 200 ms crossfade of the
+ * glyph (tabcnTiming), with no scale or press dim; the badge dot fades in and
+ * out. Reduce motion makes both instant. The bar never minimizes on scroll.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
-import { TabBarRoot, TabButton, type TabItem, TabList, useFocusProgress, useTabBar } from 'tabcn';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import {
+  TabBarRoot,
+  TabButton,
+  type TabItem,
+  TabList,
+  tabcnTiming,
+  useFocusProgress,
+  useTabBar,
+} from 'tabcn';
 
 const defaultColors = {
   /** The screen colour: the bar has no surface of its own. Measured #0e0e0c. */
@@ -56,6 +70,16 @@ function Tab({
   const progress = useFocusProgress(tab);
   const idle = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
   const active = useAnimatedStyle(() => ({ opacity: progress.value }));
+
+  // The badge dot fades in and out (opacity only, no scale pop). It stays mounted so it can
+  // fade out; reduce motion makes it instant (tabcnTiming).
+  const hasBadge = tab.badge != null;
+  const badgeOpacity = useSharedValue(hasBadge ? 1 : 0);
+  useEffect(() => {
+    badgeOpacity.value = withTiming(hasBadge ? 1 : 0, tabcnTiming);
+  }, [hasBadge, badgeOpacity]);
+  const badge = useAnimatedStyle(() => ({ opacity: badgeOpacity.value }));
+
   return (
     <TabButton
       tab={tab}
@@ -69,14 +93,14 @@ function Tab({
         <Animated.View style={[StyleSheet.absoluteFill, active]}>
           {tab.renderIcon?.({ focused: true, color: colors.active, size: ICON })}
         </Animated.View>
-        {tab.badge != null ? (
-          <View
-            style={[
-              styles.badge,
-              { backgroundColor: colors.badge, borderColor: colors.background },
-            ]}
-          />
-        ) : null}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.badge,
+            { backgroundColor: colors.badge, borderColor: colors.background },
+            badge,
+          ]}
+        />
       </View>
     </TabButton>
   );

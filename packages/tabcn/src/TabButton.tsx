@@ -15,7 +15,8 @@ export interface TabButtonProps
 
 /**
  * A tab. Handles press and long press, the `tab` role and selected state, and
- * reports its position so `TabIndicator` can move to it.
+ * reports its position so `TabIndicator` can move to it. Its default accessibility label
+ * includes the tab's `badge` (`Inbox, 12, tab, 2 of 5` on iOS).
  */
 export function TabButton({ tab, children, onLayout, scale = 1, ...rest }: TabButtonProps) {
   const { tabs } = useTabBar();
@@ -35,9 +36,12 @@ export function TabButton({ tab, children, onLayout, scale = 1, ...rest }: TabBu
     });
   };
 
+  // The badge is read with the label: a badge drawn inside the button can't be reached.
+  const badge = tab.badge === undefined ? '' : String(tab.badge).trim();
+  const named = badge ? `${tab.label}, ${badge}` : tab.label;
   const accessibilityLabel =
     tab.accessibilityLabel ??
-    (Platform.OS === 'ios' ? `${tab.label}, tab, ${tab.index + 1} of ${tabs.length}` : tab.label);
+    (Platform.OS === 'ios' ? `${named}, tab, ${tab.index + 1} of ${tabs.length}` : named);
 
   return (
     <PressableScale

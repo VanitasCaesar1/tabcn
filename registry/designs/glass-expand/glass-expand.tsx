@@ -3,7 +3,8 @@
  * screen, with icon-only tabs and no labels. The active tab sits in a flat grey-lavender
  * capsule; the inactive icons are spaced evenly to the right of it. All icons are the same
  * near-black in both states, so the capsule is the only active cue. When the tab changes, the
- * capsule glides to its new place and the icons ease into theirs, with no bounce.
+ * capsule glides to its new place and every icon glides to its own, all on one critically
+ * damped spring: no bounce, no jump, no squeeze. With Reduce Motion on, they move at once.
  *
  * The pill is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS, and a
  * translucent tint on Android (no blur there). Force one with `material`. Outside Liquid Glass
@@ -13,10 +14,15 @@
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-import { Fragment } from 'react';
-import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { Easing, LinearTransition, ReduceMotion } from 'react-native-reanimated';
-import { TabBarRoot, TabButton, TabIndicator, type TabItem, TabList, useTabBar } from 'tabcn';
+import { Fragment, useEffect, useRef } from 'react';
+import { I18nManager, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated, {
+  type SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import { TabBarRoot, TabButton, type TabItem, TabList, tabcnSpring, useTabBar } from 'tabcn';
 
 const defaultColors = {
   /**
@@ -70,10 +76,63 @@ const BOTTOM = 22;
 /** Keeps the pill clear of the screen's sides on narrow phones. */
 const MIN_MARGIN = 16;
 
-/** Icons and the capsule ease into their new places on one curve; no spring, no bounce. */
-const layout = LinearTransition.duration(340)
-  .easing(Easing.out(Easing.cubic))
-  .reduceMotion(ReduceMotion.System);
+/** Where each tab and the capsule sit for one active tab: left edges and widths, in points. */
+interface Slots {
+  tabs: { left: number; width: number; center: number }[];
+  /** Left edge of the capsule, or null with no active tab. */
+  capsule: number | null;
+}
+
+/**
+ * Lays the row out the way the app does: the capsule keeps 6 pt from the pill's end when it is
+ * the first or last tab, and every other gap (between icons, and an icon to the pill's end) is
+ * the same flexible width. Computed rather than measured, so the capsule and the icons get
+ * their final places on the very render that changes the tab.
+ */
+function computeSlots(width: number, count: number, active: number): Slots {
+  const isEdge = (spacer: number) =>
+    (spacer === 0 && active === 0) || (spacer === count && active === count - 1);
+  let fixed = 0;
+  let gaps = 0;
+  for (let i = 0; i < count; i++) fixed += i === active ? CAPSULE_WIDTH : ICON;
+  for (let spacer = 0; spacer <= count; spacer++) {
+    if (isEdge(spacer)) fixed += INSET;
+    else gaps += 1;
+  }
+  const gap = gaps > 0 ? Math.max(0, (width - fixed) / gaps) : 0;
+  const tabs: Slots['tabs'] = [];
+  let x = 0;
+  let capsule: number | null = null;
+  for (let i = 0; i < count; i++) {
+    x += isEdge(i) ? INSET : gap;
+    const w = i === active ? CAPSULE_WIDTH : ICON;
+    // The row reads right to left in RTL, as a flex row would.
+    const left = I18nManager.isRTL ? width - x - w : x;
+    tabs.push({ left, width: w, center: left + w / 2 });
+    if (i === active) capsule = left;
+    x += w;
+  }
+  return { tabs, capsule };
+}
+
+/**
+ * A position that jumps into place on first render and glides on tabcnSpring (critically
+ * damped, overshoot clamped, instant with Reduce Motion) when the active tab changes. Every
+ * moving part uses it, so the capsule and the icons start on the same frame and arrive together.
+ */
+function useGlide(target: number, activeIndex: number): SharedValue<number> {
+  const value = useSharedValue(target);
+  const shown = useRef(activeIndex);
+  useEffect(() => {
+    const from = shown.current;
+    shown.current = activeIndex;
+    value.value =
+      from !== activeIndex && from >= 0 && activeIndex >= 0
+        ? withSpring(target, tabcnSpring)
+        : target;
+  }, [target, activeIndex, value]);
+  return value;
+}
 
 function resolveMaterial(material: GlassExpandMaterial): Exclude<GlassExpandMaterial, 'auto'> {
   if (material !== 'auto') return material;
@@ -88,13 +147,13 @@ export function GlassExpand({
 }: GlassExpandProps) {
   const colors = { ...defaultColors, ...custom };
   const surface = resolveMaterial(material);
-  const { tabs, insets } = useTabBar();
+  const { tabs, insets, activeIndex } = useTabBar();
   const window = useWindowDimensions();
   const width = Math.min(PILL_WIDTH, window.width - insets.left - insets.right - MIN_MARGIN * 2);
   // The app's pill sits 22 pt above the screen edge, partly over the home indicator's inset.
   // Elsewhere (no inset, Android navigation bars) it keeps clear of the system area.
   const bottom = Math.max(BOTTOM, Platform.OS === 'ios' ? insets.bottom - 12 : insets.bottom + 8);
-  const last = tabs.length - 1;
+  const slots = computeSlots(width, tabs.length, activeIndex);
   return (
     <TabBarRoot placement="floating" offset={bottom - insets.bottom}>
       <View style={[styles.pill, { width }]}>
@@ -129,45 +188,86 @@ export function GlassExpand({
           />
         )}
         <TabList style={styles.list}>
-          <TabIndicator
-            style={[
-              styles.capsule,
-              { backgroundColor: colors.capsule, borderColor: colors.capsuleBorder },
-            ]}
-          />
-          {/* The capsule keeps 6 pt from the pill's end; an icon at the end gets a full gap. */}
-          <View style={tabs[0]?.focused ? styles.edge : styles.gap} />
-          {tabs.map((tab) => (
-            <Fragment key={tab.key}>
-              <Tab tab={tab} colors={colors} haptics={haptics} />
-              <View style={tab.index === last && tab.focused ? styles.edge : styles.gap} />
-            </Fragment>
-          ))}
+          <Capsule left={slots.capsule} activeIndex={activeIndex} colors={colors} />
+          {tabs.map((tab) => {
+            const slot = slots.tabs[tab.index];
+            if (!slot) return null;
+            return (
+              <Tab
+                key={tab.key}
+                tab={tab}
+                slot={slot}
+                activeIndex={activeIndex}
+                colors={colors}
+                haptics={haptics}
+              />
+            );
+          })}
         </TabList>
       </View>
     </TabBarRoot>
   );
 }
 
+/** The flat capsule: a fixed 94 x 70 pt that only slides, so it never squeezes mid-move. */
+function Capsule({
+  left,
+  activeIndex,
+  colors,
+}: {
+  left: number | null;
+  activeIndex: number;
+  colors: GlassExpandColors;
+}) {
+  const x = useGlide(left ?? 0, activeIndex);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+  if (left === null) return null;
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.capsule,
+        { backgroundColor: colors.capsule, borderColor: colors.capsuleBorder },
+        style,
+      ]}
+    />
+  );
+}
+
+/**
+ * The button is the touch target and takes its new place at once (it draws nothing). The icon
+ * is drawn beside it, not inside it, and glides from its old centre to its new one, so the
+ * button's change of width can't snap it sideways.
+ */
 function Tab({
   tab,
+  slot,
+  activeIndex,
   colors,
   haptics,
 }: {
   tab: TabItem;
+  slot: Slots['tabs'][number];
+  activeIndex: number;
   colors: GlassExpandColors;
   haptics: boolean;
 }) {
+  const center = useGlide(slot.center, activeIndex);
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: center.value - ICON / 2 }],
+  }));
   return (
-    <TabButton
-      tab={tab}
-      layout={layout}
-      hitSlop={HIT_SLOP}
-      style={[styles.tab, tab.focused && styles.tabFocused]}
-      onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
-    >
-      {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: ICON })}
-    </TabButton>
+    <Fragment>
+      <TabButton
+        tab={tab}
+        hitSlop={HIT_SLOP}
+        style={[styles.tab, { left: slot.left, width: slot.width }]}
+        onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
+      />
+      <Animated.View pointerEvents="none" style={[styles.icon, iconStyle]}>
+        {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: ICON })}
+      </Animated.View>
+    </Fragment>
   );
 }
 
@@ -186,9 +286,23 @@ const styles = StyleSheet.create({
     boxShadow: 'inset 1px 1.5px 3px rgba(60, 50, 140, 0.07)',
   },
   list: { alignItems: 'center', height: CAPSULE_HEIGHT },
-  capsule: { borderRadius: 999, borderWidth: 1 },
-  tab: { width: ICON, height: CAPSULE_HEIGHT, alignItems: 'center', justifyContent: 'center' },
-  tabFocused: { width: CAPSULE_WIDTH },
-  gap: { flex: 1 },
-  edge: { width: INSET },
+  capsule: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: CAPSULE_WIDTH,
+    height: CAPSULE_HEIGHT,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  tab: { position: 'absolute', top: 0, height: CAPSULE_HEIGHT },
+  icon: {
+    position: 'absolute',
+    left: 0,
+    top: (CAPSULE_HEIGHT - ICON) / 2,
+    width: ICON,
+    height: ICON,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

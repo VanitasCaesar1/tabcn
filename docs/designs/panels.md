@@ -1,7 +1,20 @@
 # tabcn panels
 
 -   **Author:** VanitasCaesar1 (drafted with Claude)
--   **Status:** Approved (2026-11-20)
+-   **Status:** Approved (2026-11-20); foundation part implemented
+-   **Implementation notes (2026-11-20):**
+    -   The provider is `TabBarProvider` (renamed in [`motion-and-rail.md`](motion-and-rail.md), which shares it for minimize on scroll).
+    -   Panel content renders inside the tab bar, so it reads the contexts around the navigator, not those around the screen that declared it (React context follows where an element renders, not where it was created). The provider lives above both, so panel controls work from anywhere.
+    -   Each panel draws in its own window that clips at its bottom edge, so a hidden panel taller than the bar never shows below a floating bar. The bar itself is not clipped.
+    -   `overlap` is internal: 16 pt for floating bars, 0 for docked bars (their top edge is straight, and their background is the root's own, which a panel must not draw over).
+    -   Anchors are measured against the `TabBarRoot` view the provider publishes, because `usePanelAnchor` is called in the design component, above `TabBarRoot`.
+    -   Under a provider, the design's children sit in a wrapper that is always a box: it copies the root's content-layout style and takes over the root's padding (safe area and the design's own), so the root's padding box, which a design's absolutely positioned backgrounds fill, stays the same size whether or not an override shows. The whole design content fades, including any material it draws itself, so an override draws its own surface. The fading-out override stays mounted (the same instance) until its fade ends.
+    -   A panel lives while its `<TabPanel>` is mounted. Tab screens stay mounted after their first visit, so a panel declared in a screen stays after switching tabs; hiding it on blur is the screen's job (`useFocusEffect` + `useTabPanel(id).hide`). When several mounted `<TabPanel>`s share an id (the same screen pushed twice), the latest one's content shows and the panel is released when the last one unmounts; a development warning names the id.
+    -   While a panel is open, `TabBarRoot`'s root view is `accessibilityViewIsModal` (it is a sibling of the navigator's screens), and the tabs, the override and the other panels are hidden from screen readers. Focus moves to the panel (`sendAccessibilityEvent(…, 'focus')` on its content) once the open spring has finished. Android back closes it only while the tab navigator is focused, so a screen pushed over the tabs pops first. Not built yet: hiding the screens from TalkBack (Android has no `accessibilityViewIsModal`), an announcement of the open state, and hiding the part of a peeking panel's content that is clipped out of its window.
+    -   Anchors re-measure whenever `TabBarRoot` or the bar lays out, because an anchor's own `onLayout` does not fire when an ancestor moves (a re-centred floating pill, a rotation).
+    -   `tabcnSpring` clamps overshoot: a retarget mid-flight (open, then peek) keeps the velocity already heading for the new target, which would carry a critically damped spring past it.
+    -   `PanelDragArea` uses the `Gesture.Pan()` builder, which works with gesture handler 2 and 3. It settles between the panel's resting state and open. Coordinating with a scroll view inside the panel (drag only at its top) is not built yet.
+    -   Not built yet: tapping outside an open panel to close it (needs a scrim outside the bar's bounds), and an Android device check of touches on panel content outside `TabBarRoot`'s bounds.
 -   **Date:** 2026-11-20
 
 ---
@@ -58,7 +71,7 @@ The proposed solution is a panel building block in `tabcn` that handles placemen
 
 ### CUJ 1: Mini player while browsing tabs
 
--   **Given**: An app uses a tabcn bar (any placement) with a `TabPanelsProvider` around its tabs navigator, and the mini player design is installed.
+-   **Given**: An app uses a tabcn bar (any placement) with a `TabBarProvider` around its tabs navigator, and the mini player design is installed.
 -   **When**: The user starts a track; app code calls `peek()` on the player panel. Later the user drags the strip up, switches tabs, then drags it down.
 -   **Then**: The strip slides out from behind the bar's top edge, matching the bar's width; lists on every tab gain bottom padding equal to bar + strip, so their last row stays visible. Dragging up opens the full player over the screen; dragging down returns it to the peek. Switching tabs keeps the strip. With "reduce motion" on, each change is instant.
 
@@ -87,7 +100,7 @@ The design has four parts: a **provider** that holds panel state, a **panel laye
 ```text
  App layout (Expo Router or React Navigation)
  ┌──────────────────────────────────────────────────────────────────┐
- │ <TabPanelsProvider>            holds: panels{id → content, opts, │
+ │ <TabBarProvider>            holds: panels{id → content, opts, │
  │   <Tabs tabBar={tabBar(<Bar/>)}>     state}, anchors{name→frame},│
  │     screens …                        override element            │
  │       useTabPanel('player').peek()  ─── writes state ───┐        │
@@ -105,7 +118,7 @@ The design has four parts: a **provider** that holds panel state, a **panel laye
 
 ### Provider and state
 
-`TabPanelsProvider` is a React context placed around the tabs navigator (in Expo Router, around `<Tabs>` in the tabs `_layout.tsx`). Both the screens and the tab bar render inside it, whichever navigator is used, so it works with both without touching the adapters. Without a provider, the panel APIs are inert and `TabBarRoot` renders exactly as today (CUJ 4).
+`TabBarProvider` is a React context placed around the tabs navigator (in Expo Router, around `<Tabs>` in the tabs `_layout.tsx`). Both the screens and the tab bar render inside it, whichever navigator is used, so it works with both without touching the adapters. Without a provider, the panel APIs are inert and `TabBarRoot` renders exactly as today (CUJ 4).
 
 It stores, per panel id: the latest content element, options (anchor, peek height), and the target state (`hidden | peek | open`). It also stores anchor frames and the current override element.
 
@@ -113,7 +126,7 @@ It stores, per panel id: the latest content element, options (anchor, peek heigh
 
 -   **`<TabPanel id anchor peekHeight>{content}</TabPanel>`** can be placed anywhere under the provider: in a screen, or once in the layout for a global panel like a player. It renders nothing where it is written; it hands its children to the provider, which draws them in the panel layer. This is a small built-in portal: no portal library, and the content keeps the context of where it was declared because React elements are passed, not re-created.
 -   **`useTabPanel(id)`** returns `{ state, peek(), open(), hide(), toggle() }`. Any component under the provider can call it. `state` is React state (for rendering) mirrored in a shared value (for animations).
--   **Lifetime:** when the declaring `<TabPanel>` unmounts, its panel animates to hidden and is removed. Declaring it in the layout keeps it across tabs; declaring it in a screen ties it to that screen.
+-   **Lifetime:** when the declaring `<TabPanel>` unmounts, its panel animates to hidden and is removed. Declaring it in the layout keeps it across tabs; declaring it in a screen ties it to that screen's mount (see the implementation notes: tab screens stay mounted).
 
 Rejected for this: an imperative global (`TabPanels.open(...)`); see Alternatives.
 
@@ -230,7 +243,7 @@ Each ships like the existing designs: a registry entry (so `npx shadcn add` inst
 #### Foundation package (`packages/tabcn`)
 
 1.  **`packages/tabcn/src/panels.tsx` (Create)**: the provider and public panel API.
-    -   `TabPanelsProvider({ children })`: context holding `panels: Map<id, { content: ReactNode, anchor: PanelAnchor, peekHeight: number, state: PanelState }>`, `anchors: Map<name, Frame>`, `barFrame`, `override: ReactNode | null`, and an `openId` (the single open panel).
+    -   `TabBarProvider({ children })`: context holding `panels: Map<id, { content: ReactNode, anchor: PanelAnchor, peekHeight: number, state: PanelState }>`, `anchors: Map<name, Frame>`, `barFrame`, `override: ReactNode | null`, and an `openId` (the single open panel).
     -   `type PanelState = 'hidden' | 'peek' | 'open'`; `type PanelAnchor = 'bar' | { name: string }` (a union, so a `{ tab: index }` anchor can be added later without breaking anything).
     -   `TabPanel({ id, anchor = 'bar', peekHeight = 0, initialState = 'hidden', children })`: registers/updates its content on render, removes it on unmount (animating to hidden first). Renders `null` in place.
     -   `useTabPanel(id): { state, peek(), open(), hide(), toggle() }`: `open()` returns any other open panel to its last resting state (`peek` if it has a peek height, else `hidden`).
@@ -256,7 +269,7 @@ Each ships like the existing designs: a registry entry (so `npx shadcn add` inst
 
 7.  **`packages/tabcn/src/gestures.tsx` (Create)**: new entry `tabcn/gestures`. `PanelDragArea({ panel: id, children })`: a `GestureDetector` with a vertical `Gesture.Pan()` (`activeOffsetY: [-8, 8]`, `failOffsetX: [-16, 16]`) that drives the panel's `progress` and calls `settle(velocityY)` on end: nearest state, or the next state in the flick direction when `|velocityY| > 800`.
 
-8.  **`packages/tabcn/src/index.ts` (Modify)**: export `TabPanelsProvider`, `TabPanel`, `useTabPanel`, `usePanelAnchor` and the types `PanelState`, `PanelAnchor`, `TabPanelProps`, `TabPanelControls`.
+8.  **`packages/tabcn/src/index.ts` (Modify)**: export `TabBarProvider`, `TabPanel`, `useTabPanel`, `usePanelAnchor` and the types `PanelState`, `PanelAnchor`, `TabPanelProps`, `TabPanelControls`.
 
 9. **`packages/tabcn/package.json` (Modify)**
    -   `exports["./gestures"]` with the same three conditions as the other entries.
@@ -277,7 +290,7 @@ Each ships like the existing designs: a registry entry (so `npx shadcn add` inst
 
 12. **`packages/tabcn/src/__tests__/fixtures.tsx` (Modify)**: helpers to fire layout events on the root, list and anchors.
 
-13. **`.changeset/panels.md` (Create)**: minor bump for `tabcn`: "Panels: TabPanelsProvider, TabPanel, useTabPanel, usePanelAnchor, useTabBarOverride, and tabcn/gestures."
+13. **`.changeset/panels.md` (Create)**: minor bump for `tabcn`: "Panels: TabBarProvider, TabPanel, useTabPanel, usePanelAnchor, useTabBarOverride, and tabcn/gestures."
 
 #### Designs (`registry/`)
 
@@ -293,7 +306,7 @@ Each ships like the existing designs: a registry entry (so `npx shadcn add` inst
 
 19. **`scripts/check-registry.ts` (Modify)**: allow panel items (catalog `kind: 'panel'`) in the registry/catalog/demos agreement check; `react-native-gesture-handler` and the `tabcn/gestures` import are allowed only when listed.
 
-20. **`packages/tabcn/src/__tests__/designs.test.tsx` (Modify)**: wrap renders in `TabPanelsProvider`; for panel items, render the panel with a test bar and assert it registers and shows on `peek()`/`open()` instead of counting tabs.
+20. **`packages/tabcn/src/__tests__/designs.test.tsx` (Modify)**: wrap renders in `TabBarProvider`; for panel items, render the panel with a test bar and assert it registers and shows on `peek()`/`open()` instead of counting tabs.
 
 #### Example app (`apps/example`)
 
@@ -303,11 +316,11 @@ Each ships like the existing designs: a registry entry (so `npx shadcn add` inst
 
 23. **`apps/example/src/app/_layout.tsx` (Modify)**: wrap the app in `GestureHandlerRootView` (required by gesture handler).
 
-24. **`apps/example/src/app/designs/[id]/_layout.tsx` (Modify)**: wrap `<Tabs>` in `TabPanelsProvider`; for panel demos, render the paired bar and the panel.
+24. **`apps/example/src/app/designs/[id]/_layout.tsx` (Modify)**: wrap `<Tabs>` in `TabBarProvider`; for panel demos, render the paired bar and the panel.
 
 25. **`apps/example/src/demo-screen.tsx` (Modify)**: for panel demos, buttons to peek/open/hide, and on one tab a `useTabBarOverride(<ContextTray …/>)` with a close button that returns to the first tab.
 
-26. **`apps/example/src/app/react-navigation.tsx` (Modify)**: wrap the navigator in `TabPanelsProvider` and add the mini player, so panels are exercised under `@react-navigation/bottom-tabs` too.
+26. **`apps/example/src/app/react-navigation.tsx` (Modify)**: wrap the navigator in `TabBarProvider` and add the mini player, so panels are exercised under `@react-navigation/bottom-tabs` too.
 
 #### Site, README and docs
 

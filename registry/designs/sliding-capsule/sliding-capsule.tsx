@@ -14,8 +14,17 @@ import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { Platform, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { TabBarRoot, TabButton, TabIndicator, type TabItem, TabList, useTabBar } from 'tabcn';
+import Animated, { Easing, FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
+import {
+  BadgeCount,
+  TabBarRoot,
+  TabButton,
+  TabIndicator,
+  type TabItem,
+  TabList,
+  tabcnTiming,
+  useTabBar,
+} from 'tabcn';
 
 const defaultColors = {
   /** The bar's fill where there's no Liquid Glass: measured #f0f0f0 at the top to #fefefe at the bottom. */
@@ -61,6 +70,12 @@ const ICON = 24;
 /** Top-to-bottom sheen over any fill colour, as on the app's bar and capsule. */
 const BAR_SHEEN = 'linear-gradient(rgba(0, 0, 0, 0.03), rgba(255, 255, 255, 0.75))';
 const CAPSULE_SHEEN = 'linear-gradient(rgba(0, 0, 0, 0.02), rgba(255, 255, 255, 0.2))';
+
+/** Badges fade in and out on tabcn's timing (200 ms ease-out); instant with reduce motion. */
+const FADE_MS = tabcnTiming.duration ?? 200;
+const FADE_EASING = tabcnTiming.easing ?? Easing.bezier(0.25, 0.1, 0.25, 1);
+const badgeIn = FadeIn.duration(FADE_MS).easing(FADE_EASING).reduceMotion(ReduceMotion.System);
+const badgeOut = FadeOut.duration(FADE_MS).easing(FADE_EASING).reduceMotion(ReduceMotion.System);
 
 function resolveMaterial(
   material: SlidingCapsuleMaterial,
@@ -149,11 +164,17 @@ function Tab({
         {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: ICON })}
         {tab.badge != null ? (
           <Animated.View
-            entering={FadeIn.duration(160)}
-            exiting={FadeOut.duration(120)}
+            entering={badgeIn}
+            exiting={badgeOut}
             style={[styles.badge, { backgroundColor: colors.badge }]}
           >
-            <Text style={styles.badgeText}>{tab.badge}</Text>
+            {typeof tab.badge === 'number' ? (
+              <BadgeCount value={tab.badge} textStyle={styles.badgeText} />
+            ) : (
+              <Text numberOfLines={1} style={styles.badgeText}>
+                {tab.badge}
+              </Text>
+            )}
           </Animated.View>
         ) : null}
       </View>

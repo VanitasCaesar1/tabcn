@@ -1,19 +1,28 @@
 /**
  * Chip Rail: a black docked bar with a leading avatar and text-only chips that scroll
  * sideways. A lavender chip slides to the active tab; the rail scrolls it into view.
+ * Motion: the chip slides and resizes on tabcnSpring, and each chip's surface and label
+ * crossfade on the same spring so a dark label never sits on the bare rail. Nothing scales.
+ * With reduce motion on, everything (the rail scroll too) is instant.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { type ComponentRef, type ReactNode, useEffect, useRef } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { interpolateColor, useAnimatedStyle } from 'react-native-reanimated';
+import Animated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import {
   TabBarRoot,
   TabButton,
   TabIndicator,
   type TabItem,
   TabList,
-  useFocusProgress,
+  tabcnSpring,
   useTabBar,
 } from 'tabcn';
 
@@ -39,12 +48,21 @@ export function ChipRail({ leading, colors: custom, haptics = true }: ChipRailPr
   const colors = { ...defaultColors, ...custom };
   const { tabs, activeIndex } = useTabBar();
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
-  const offsets = useRef<Record<number, number>>({});
+  const chips = useRef<Record<number, { x: number; width: number }>>({});
+  const rail = useRef({ offset: 0, viewport: 0, content: 0 });
+  const reduceMotion = useReducedMotion();
 
+  // Keep the active chip in view. Skip when it is already fully visible, and clamp to the
+  // last valid offset so the rail never overscrolls and rubber-bands back.
   useEffect(() => {
-    const x = offsets.current[activeIndex];
-    if (x != null) scroll.current?.scrollTo({ x: Math.max(0, x - 60), animated: true });
-  }, [activeIndex]);
+    const chip = chips.current[activeIndex];
+    const { offset, viewport, content } = rail.current;
+    if (!chip || viewport <= 0) return;
+    if (chip.x >= offset && chip.x + chip.width <= offset + viewport) return;
+    const max = Math.max(0, content - viewport);
+    const x = Math.min(Math.max(0, chip.x - 60), max);
+    scroll.current?.scrollTo({ x, animated: !reduceMotion });
+  }, [activeIndex, reduceMotion]);
 
   return (
     <TabBarRoot placement="docked" style={{ backgroundColor: colors.background }}>
@@ -55,6 +73,16 @@ export function ChipRail({ leading, colors: custom, haptics = true }: ChipRailPr
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scroll}
+          scrollEventThrottle={16}
+          onScroll={(e) => {
+            rail.current.offset = e.nativeEvent.contentOffset.x;
+          }}
+          onLayout={(e) => {
+            rail.current.viewport = e.nativeEvent.layout.width;
+          }}
+          onContentSizeChange={(width) => {
+            rail.current.content = width;
+          }}
         >
           <TabList style={styles.list}>
             <TabIndicator style={[styles.chip, { backgroundColor: colors.active }]} />
@@ -64,8 +92,8 @@ export function ChipRail({ leading, colors: custom, haptics = true }: ChipRailPr
                 tab={tab}
                 colors={colors}
                 haptics={haptics}
-                onX={(x) => {
-                  offsets.current[tab.index] = x;
+                onFrame={(x, width) => {
+                  chips.current[tab.index] = { x, width };
                 }}
               />
             ))}
@@ -80,14 +108,19 @@ function Chip({
   tab,
   colors,
   haptics,
-  onX,
+  onFrame,
 }: {
   tab: TabItem;
   colors: ChipRailColors;
   haptics: boolean;
-  onX: (x: number) => void;
+  onFrame: (x: number, width: number) => void;
 }) {
-  const progress = useFocusProgress(tab);
+  // Same spring as the lavender chip, so the surface and label change in step with it.
+  // Critically damped with overshoot clamped: progress never passes 0 or 1.
+  const progress = useSharedValue(tab.focused ? 1 : 0);
+  useEffect(() => {
+    progress.value = withSpring(tab.focused ? 1 : 0, tabcnSpring);
+  }, [tab.focused, progress]);
   const surface = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
   const label = useAnimatedStyle(() => ({
     color: interpolateColor(progress.value, [0, 1], [colors.text, colors.activeText]),
@@ -96,7 +129,7 @@ function Chip({
     <TabButton
       tab={tab}
       style={styles.chip}
-      onLayout={(e) => onX(e.nativeEvent.layout.x)}
+      onLayout={(e) => onFrame(e.nativeEvent.layout.x, e.nativeEvent.layout.width)}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <Animated.View

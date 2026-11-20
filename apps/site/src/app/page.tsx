@@ -9,8 +9,11 @@ import { SiteHeader } from '@/components/site-header';
 import { categories, designs, getDesign, ordered, usageSnippet } from '@/lib/designs';
 import { registryUrl } from '@/lib/site';
 
-// The reel above the grid, newest first.
-const fresh = designs.slice(-6).reverse();
+// The reel above the grid: the newest designs that have a recording, newest first.
+const fresh = designs
+  .filter((d) => d.video)
+  .slice(-6)
+  .reverse();
 const example = getDesign('sliding-capsule') ?? designs[0];
 
 const card = (d: (typeof designs)[number]) => ({

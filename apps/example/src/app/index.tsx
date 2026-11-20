@@ -56,8 +56,9 @@ export default function Gallery() {
               ]}
             >
               <View style={styles.row}>
+                {/* Designs from outside the reference set (ref 0) have no number. */}
                 <Text style={[styles.ref, { color: colors.muted }]}>
-                  {String(item.ref).padStart(2, '0')}
+                  {item.ref > 0 ? String(item.ref).padStart(2, '0') : ''}
                 </Text>
                 <View style={styles.body}>
                   <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>

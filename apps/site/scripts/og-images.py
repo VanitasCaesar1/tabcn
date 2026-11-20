@@ -38,7 +38,10 @@ def font(weight, size):
 def catalog():
     """id -> (title, layout label), read from the example app's catalog."""
     src = open(os.path.join(ROOT, 'apps/example/src/catalog.ts')).read()
-    labels = dict(re.findall(r"'([a-z-]+)': '([^']+)'", src[src.index('LAYOUT_LABELS'):]))
+    start = src.index('LAYOUT_LABELS')
+    block = src[start:src.index('};', start)]
+    # Keys are quoted ('docked-bar') or bare (panel).
+    labels = dict(re.findall(r"'?([a-z-]+)'?: '([^']+)'", block))
     out = {}
     for m in re.finditer(r"id: '([a-z-]+)',[\s\S]*?title: '([^']+)',[\s\S]*?layout: '([a-z-]+)'", src):
         out[m.group(1)] = (m.group(2), labels.get(m.group(3), ''))

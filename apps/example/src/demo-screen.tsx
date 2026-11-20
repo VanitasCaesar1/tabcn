@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,6 +26,8 @@ export function DemoScreen({ index }: { index: number }) {
   const title = demo?.tabs[index]?.label ?? '';
   const text = demo?.dark ? '#ffffff' : '#111114';
   const chip = demo?.dark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.06)';
+  const Extra = demo?.extra;
+  const navigation = useNavigation();
 
   return (
     <View style={[styles.screen, { backgroundColor: demo?.background }]}>
@@ -65,6 +67,17 @@ export function DemoScreen({ index }: { index: number }) {
           </Pressable>
         ) : null}
       </View>
+      {/* A panel demo's controls, or a list to scroll. */}
+      {Extra ? (
+        <Extra
+          index={index}
+          text={text}
+          chip={chip}
+          adapter="expo-router"
+          barHeight={barHeight}
+          goToFirstTab={() => navigation.navigate('index' as never)}
+        />
+      ) : null}
     </View>
   );
 }

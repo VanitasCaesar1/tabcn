@@ -1,7 +1,11 @@
 /**
  * Glow Glass: a dark glass pill with icons and labels. A warm glow sits behind
  * the active tab inside a glass capsule, and both slide together. A separate
- * round button with its own label runs an action.
+ * round button with its own label runs an action; it is marked with
+ * `usePanelAnchor('action')`, so a `TabPanel` can open from it.
+ *
+ * Motion: the capsule and glow slide on tabcnSpring (no overshoot), icons and labels
+ * crossfade in colour. Presses give haptics only, with no scale or lift.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
@@ -16,6 +20,7 @@ import {
   type TabItem,
   TabList,
   useFocusProgress,
+  usePanelAnchor,
   useTabBar,
   useTabIndicator,
 } from 'tabcn';
@@ -54,6 +59,7 @@ export function GlowGlass({
 }: GlowGlassProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
+  const anchor = usePanelAnchor('action');
   return (
     <TabBarRoot placement="floating" style={styles.row}>
       <View
@@ -68,6 +74,9 @@ export function GlowGlass({
         </TabList>
       </View>
       <PressableScale
+        {...anchor}
+        // No press scale: haptics are the only press feedback, as on the pill's tabs.
+        scale={1}
         accessibilityLabel={actionLabel}
         onPress={onActionPress}
         onPressIn={

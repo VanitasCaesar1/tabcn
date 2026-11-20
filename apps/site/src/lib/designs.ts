@@ -3,17 +3,21 @@
 // only: it reads the file system while the static export renders.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { catalog, LAYOUT_LABELS, type Layout } from '../../../example/src/catalog';
+import { catalog, type DesignKind, LAYOUT_LABELS, type Layout } from '../../../example/src/catalog';
 import registry from '../../../../registry/registry.json';
 import { asset } from './base-path';
+import { absoluteUrl } from './site';
 
 const root = join(process.cwd(), '../..');
 const publicDir = join(process.cwd(), 'public');
 
 export interface Design {
   id: string;
+  /** Reference image number, or 0 for a design from outside the reference set. */
   ref: number;
   title: string;
+  /** A tab bar (passed to `tabBar()`), or a panel drawn behind one (needs `TabBarProvider`). */
+  kind: DesignKind;
   description: string;
   layout: Layout;
   layoutLabel: string;
@@ -27,6 +31,8 @@ export interface Design {
   /** basePath-aware URLs, or null while the recording is missing. */
   video: string | null;
   poster: string | null;
+  /** Absolute URL of the link-preview image: its own, or the site's while it's missing. */
+  ogImage: string;
   /** basePath-aware URLs of the tab bar stills, one per tab state, in order. */
   stills: string[];
   /** How many tabs the example app's demo shows, or null if it can't be read. */
@@ -40,6 +46,12 @@ export interface DesignSummary {
   description: string;
   layout: Layout;
   layoutLabel: string;
+}
+
+function ogImage(id: string) {
+  return existsSync(join(publicDir, 'og', `${id}.jpg`))
+    ? absoluteUrl(`/og/${id}.jpg`)
+    : absoluteUrl('/og.jpg');
 }
 
 function media(file: string) {
@@ -96,6 +108,7 @@ function load(): Design[] {
       id: entry.id,
       ref: entry.ref,
       title: entry.title,
+      kind: entry.kind,
       description: item.description,
       layout: entry.layout,
       layoutLabel: LAYOUT_LABELS[entry.layout],
@@ -105,6 +118,7 @@ function load(): Design[] {
       iconsFile: iconsEntry ? iconsEntry.target.replace(/\.tsx$/, '') : null,
       video: media(`${entry.id}.mp4`),
       poster: media(`${entry.id}.jpg`),
+      ogImage: ogImage(entry.id),
       stills: stills(entry.id),
       tabs: tabCount(entry.id),
     };
@@ -143,8 +157,148 @@ export function summary({ id, title, description, layout, layoutLabel }: Design)
   return { id, title, description, layout, layoutLabel };
 }
 
+/** The tab bar each panel's page shows it with (the pairing in the example app). */
+const PANEL_USAGE: Record<string, { bar: string; barId: string; lines: string[]; imports: string[] }> =
+  {
+    'mini-player': {
+      bar: 'SoftPill',
+      barId: 'soft-pill',
+      imports: ["import { MiniPlayer } from '@/components/tabcn/mini-player';"],
+      lines: [
+        '      {/* Dragging needs <GestureHandlerRootView style={{ flex: 1 }}> around the',
+        '          app, in app/_layout.tsx (react-native-gesture-handler). */}',
+        '      {/* Declared once beside <Tabs>, so it stays across tabs. Show it with',
+        "          useTabPanel('player').peek() when a track starts. */}",
+        '      <MiniPlayer track={track} playing={playing} onPlayPause={toggle} onNext={next} />',
+      ],
+    },
+    'quick-create': {
+      bar: 'LabeledPlus',
+      barId: 'labeled-plus',
+      imports: [
+        "import { QuickCreate, useQuickCreate } from '@/components/tabcn/quick-create';",
+        "import { MicIcon, TextIcon } from '@/components/tabcn/quick-create-icons';",
+      ],
+      lines: [
+        '      {/* Slides up from the bar’s + button (its usePanelAnchor(\'action\')). */}',
+        '      <QuickCreate',
+        '        actions={[',
+        "          { label: 'Voice', icon: MicIcon, onPress: startRecording },",
+        "          { label: 'Text', icon: TextIcon, onPress: newScript },",
+        '        ]}',
+        '      />',
+      ],
+    },
+  };
+
 /** The Expo Router layout a user writes to use this design. */
 export function usageSnippet(d: Design) {
+  if (d.kind === 'panel') return panelSnippet(d);
+  if (d.id === 'side-rail') return railSnippet(d);
+  return barSnippet(d);
+}
+
+/**
+ * Panels need a `TabBarProvider` around the navigator. Mini Player and Quick Create are
+ * declared beside `<Tabs>`; Context Tray is set by a screen with `useTabBarOverride`.
+ */
+function panelSnippet(d: Design) {
+  if (d.id === 'context-tray') {
+    return `${[
+      '// app/(tabs)/_layout.tsx: the provider lets screens drive the bar',
+      "import { Tabs } from 'expo-router/js-tabs';",
+      "import { TabBarProvider } from 'tabcn';",
+      "import { tabBar } from 'tabcn/expo-router';",
+      "import { GlassExpand } from '@/components/tabcn/glass-expand';",
+      '',
+      'export default function TabLayout() {',
+      '  return (',
+      '    <TabBarProvider>',
+      '      <Tabs tabBar={tabBar(<GlassExpand />)} screenOptions={{ headerShown: false }} />',
+      '    </TabBarProvider>',
+      '  );',
+      '}',
+      '',
+      '// app/(tabs)/plan.tsx: the tray shows in the bar’s place while this screen is focused',
+      "import { router } from 'expo-router';",
+      "import { useTabBarOverride } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'",
+      "import { ContextTray } from '@/components/tabcn/context-tray';",
+      '',
+      'export default function PlanScreen() {',
+      '  useTabBarOverride(',
+      '    <ContextTray label="Today’s plan" progress={0.42} onClose={() => router.navigate(\'/\')} />,',
+      '  );',
+      '  // …',
+      '}',
+    ].join('\n')}\n`;
+  }
+  const usage = PANEL_USAGE[d.id];
+  const bar = usage?.bar ?? 'MyTabBar';
+  const barProps = d.id === 'quick-create' ? ' onActionPress={toggleCreate}' : '';
+  const lines = [
+    "import { Tabs } from 'expo-router/js-tabs';",
+    "import { TabBarProvider } from 'tabcn';",
+    "import { tabBar } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'",
+    `import { ${bar} } from '@/components/tabcn/${usage?.barId ?? 'my-tab-bar'}';`,
+    ...(usage?.imports ?? []),
+    '',
+    ...(d.id === 'quick-create'
+      ? [
+          '// The bar, with its + button toggling the menu (any bar that marks its button with',
+          "// usePanelAnchor('action') works).",
+          'function Bar() {',
+          '  const toggleCreate = useQuickCreate();',
+          `  return <${bar}${barProps} />;`,
+          '}',
+          '',
+        ]
+      : []),
+    'export default function TabLayout() {',
+    '  return (',
+    '    // Panels need the provider around the tabs navigator.',
+    '    <TabBarProvider>',
+    `      <Tabs tabBar={tabBar(<${d.id === 'quick-create' ? 'Bar' : bar} />)} screenOptions={{ headerShown: false }} />`,
+    ...(usage?.lines ?? []),
+    '    </TabBarProvider>',
+    '  );',
+    '}',
+  ];
+  return `${lines.join('\n')}\n`;
+}
+
+/** Side Rail: a rail on wide windows (`tabBarPosition: 'left'`), a bottom bar on phones. */
+function railSnippet(d: Design) {
+  const [first, second] = d.icons;
+  const lines = [
+    "import { Tabs } from 'expo-router/js-tabs';",
+    "import { useWindowDimensions } from 'react-native';",
+    "import { tabBar } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'",
+    `import { ${d.component} } from '@/components/tabcn/${d.id}';`,
+    ...(first && second && d.iconsFile
+      ? [`import { ${first}, ${second} } from '@/${d.iconsFile}';`]
+      : []),
+    '',
+    'export default function TabLayout() {',
+    '  const { width } = useWindowDimensions();',
+    '  return (',
+    '    <Tabs',
+    `      tabBar={tabBar(<${d.component} />)}`,
+    "      screenOptions={{ headerShown: false, tabBarPosition: width >= 600 ? 'left' : 'bottom' }}",
+    '    >',
+    first
+      ? `      <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ${first} }} />`
+      : `      <Tabs.Screen name="index" options={{ title: 'Home' }} />`,
+    second
+      ? `      <Tabs.Screen name="starred" options={{ title: 'Starred', tabBarIcon: ${second} }} />`
+      : `      <Tabs.Screen name="starred" options={{ title: 'Starred' }} />`,
+    '    </Tabs>',
+    '  );',
+    '}',
+  ];
+  return `${lines.join('\n')}\n`;
+}
+
+function barSnippet(d: Design) {
   const [first, second] = d.icons.length >= 2 ? d.icons : [];
   const props = d.hasAction ? ` onActionPress={() => router.push('/new')}` : '';
   const lines = [

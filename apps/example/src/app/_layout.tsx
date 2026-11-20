@@ -5,6 +5,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // Keep the splash up until the demo fonts load. The navigator itself must mount right
 // away: returning null here would drop the deep link the app was opened with.
@@ -23,11 +24,14 @@ export default function RootLayout() {
     if (fontsLoaded) SplashScreen.hideAsync();
   }, [fontsLoaded]);
   return (
-    <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="index" options={{ title: 'tabcn' }} />
-        <Stack.Screen name="designs/[id]" options={{ title: '', headerBackTitle: 'Back' }} />
-      </Stack>
-    </ThemeProvider>
+    // Panel dragging ('tabcn/gestures') needs gesture handler's root view around the app.
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="index" options={{ title: 'tabcn' }} />
+          <Stack.Screen name="designs/[id]" options={{ title: '', headerBackTitle: 'Back' }} />
+        </Stack>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

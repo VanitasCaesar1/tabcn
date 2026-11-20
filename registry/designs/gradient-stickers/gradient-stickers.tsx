@@ -6,7 +6,16 @@
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
-import { TabBarRoot, TabButton, TabIndicator, type TabItem, TabList, useTabBar } from 'tabcn';
+import Animated, { Easing, FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
+import {
+  TabBarRoot,
+  TabButton,
+  TabIndicator,
+  type TabItem,
+  TabList,
+  tabcnTiming,
+  useTabBar,
+} from 'tabcn';
 
 const defaultColors = {
   background: '#fef0c3',
@@ -70,10 +79,29 @@ function Tab({ tab, badge, haptics }: { tab: TabItem; badge: string; haptics: bo
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       {tab.renderIcon?.({ focused: tab.focused, color: '#000000', size: ICON })}
-      {tab.badge != null ? <View style={[styles.badge, { backgroundColor: badge }]} /> : null}
+      {tab.badge != null ? (
+        <Animated.View
+          entering={badgeIn}
+          exiting={badgeOut}
+          style={[styles.badge, { backgroundColor: badge }]}
+        />
+      ) : null}
     </TabButton>
   );
 }
+
+// Motion: only the capsule moves, sliding and resizing on the foundation's default tabcnSpring
+// (critically damped, no overshoot). Stickers look the same on every tab, and a press gives a
+// haptic, not a scale. The glow, rim and shadow never change. The badge dot fades in and out on
+// tabcnTiming, with no pop; with "reduce motion" on, everything happens instantly.
+const BADGE_FADE_MS = tabcnTiming.duration ?? 200;
+const BADGE_EASING = tabcnTiming.easing ?? Easing.linear;
+const badgeIn = FadeIn.duration(BADGE_FADE_MS)
+  .easing(BADGE_EASING)
+  .reduceMotion(ReduceMotion.System);
+const badgeOut = FadeOut.duration(BADGE_FADE_MS)
+  .easing(BADGE_EASING)
+  .reduceMotion(ReduceMotion.System);
 
 /** The traced stickers' 40-unit box, in points, at the reference's scale. */
 const ICON = 35.5;

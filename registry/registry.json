@@ -122,7 +122,7 @@
       "name": "solid-dark",
       "type": "registry:component",
       "title": "Solid Dark",
-      "description": "Black bar, icons only; each icon crossfades from outline to filled and a dot follows the active tab.",
+      "description": "Black bar, icons only; the active tab's filled icon fades in over its outline, with no indicator.",
       "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
@@ -160,7 +160,7 @@
       "name": "orbs",
       "type": "registry:component",
       "title": "Orbs",
-      "description": "Separate frosted glass orbs (Liquid Glass on iOS 26) with curved lettering; the active one is larger.",
+      "description": "Separate frosted glass orbs (Liquid Glass on iOS 26) with curved lettering; the centre orb is larger, and the active orb's glass brightens as its rim turns solid white.",
       "dependencies": [
         "tabcn",
         "expo-blur",
@@ -204,7 +204,7 @@
       "name": "soft-pill",
       "type": "registry:component",
       "title": "Soft Pill",
-      "description": "Light pill with icons and labels; a grey capsule marks the active tab.",
+      "description": "Light pill with icons and labels; a grey capsule glides to the active tab.",
       "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
@@ -405,6 +405,116 @@
           "path": "registry/designs/mono-type/icons.tsx",
           "type": "registry:component",
           "target": "components/tabcn/mono-type-icons.tsx"
+        }
+      ]
+    },
+    {
+      "name": "split-search",
+      "type": "registry:component",
+      "title": "Split Search",
+      "description": "iOS 26 Liquid Glass pill of labelled tabs with Search as its own round glass tab; a grey capsule glides to the active tab, and on scroll the pill shrinks to the active icon (tap it to expand).",
+      "dependencies": [
+        "tabcn",
+        "expo-blur",
+        "expo-glass-effect",
+        "expo-haptics",
+        "react-native-svg"
+      ],
+      "files": [
+        {
+          "path": "registry/designs/split-search/split-search.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/split-search.tsx"
+        },
+        {
+          "path": "registry/designs/split-search/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/split-search-icons.tsx"
+        }
+      ]
+    },
+    {
+      "name": "material-pill",
+      "type": "registry:component",
+      "title": "Material Pill",
+      "description": "Android Material 3 navigation bar (Google Home): a flat docked bar with labels always shown; a 56x32 pill grows sideways out of the active icon's centre while its icon fills in. Light and dark (Google Clock) schemes.",
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/material-pill/material-pill.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/material-pill.tsx"
+        },
+        {
+          "path": "registry/designs/material-pill/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/material-pill-icons.tsx"
+        }
+      ]
+    },
+    {
+      "name": "side-rail",
+      "type": "registry:component",
+      "title": "Side Rail",
+      "description": "Material 3 navigation rail on tablets (a docked bottom bar on phones): labelled icons on a pale blue-grey surface, with a light-blue pill that glides to the active icon as it turns filled.",
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/side-rail/side-rail.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/side-rail.tsx"
+        },
+        {
+          "path": "registry/designs/side-rail/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/side-rail-icons.tsx"
+        }
+      ]
+    },
+    {
+      "name": "mini-player",
+      "type": "registry:component",
+      "title": "Mini Player",
+      "description": "Panel: a dark glass now-playing strip that peeks out from behind a floating tab bar and drags or taps open into a large-artwork player with progress and previous/play/next. Needs a TabBarProvider.",
+      "dependencies": ["tabcn", "react-native-gesture-handler", "react-native-svg", "expo-haptics"],
+      "files": [
+        {
+          "path": "registry/designs/mini-player/mini-player.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/mini-player.tsx"
+        }
+      ]
+    },
+    {
+      "name": "context-tray",
+      "type": "registry:component",
+      "title": "Context Tray",
+      "description": "Panel: a screen's own controls in the tab bar's place, a progress pill with a label and a thin bar and a round close button, crossfading in over the tabs (useTabBarOverride). Needs a TabBarProvider.",
+      "dependencies": ["tabcn", "expo-haptics"],
+      "files": [
+        {
+          "path": "registry/designs/context-tray/context-tray.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/context-tray.tsx"
+        }
+      ]
+    },
+    {
+      "name": "quick-create",
+      "type": "registry:component",
+      "title": "Quick Create",
+      "description": "Panel: a create menu that slides up from behind the bar's + button, a column of icon-and-label actions as wide as the button; choosing one runs it and closes the menu. Needs a TabBarProvider and a bar that marks its button with usePanelAnchor('action').",
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/quick-create/quick-create.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/quick-create.tsx"
+        },
+        {
+          "path": "registry/designs/quick-create/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/quick-create-icons.tsx"
         }
       ]
     }

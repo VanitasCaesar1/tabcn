@@ -1,10 +1,11 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { TabBarProvider } from 'tabcn';
 import { tabBar } from 'tabcn/expo-router';
 
 import { findDesign, LAYOUT_LABELS } from '@/catalog';
-import { CurrentDemoProvider, demos, TAB_ROUTES } from '@/demos';
+import { CurrentDemoProvider, demos, RAIL_MIN_WIDTH, TAB_ROUTES } from '@/demos';
 import { useColors } from '@/use-colors';
 
 export default function DesignLayout() {
@@ -12,6 +13,7 @@ export default function DesignLayout() {
   const design = findDesign(id);
   const demo = demos[id];
   const colors = useColors();
+  const { width } = useWindowDimensions();
 
   if (!design || !demo) {
     return (
@@ -35,34 +37,45 @@ export default function DesignLayout() {
   const bar = demo.render({
     onActionPress: () => Alert.alert('Action', 'The action button ran its callback.'),
   });
+  // Side Rail: a rail on the left on wide windows (iPad, landscape), a bottom bar otherwise.
+  const tabBarPosition = demo.railWhenWide && width >= RAIL_MIN_WIDTH ? 'left' : 'bottom';
 
   return (
     <CurrentDemoProvider value={demo}>
       <Stack.Screen options={{ title: design.title }} />
-      <Tabs
-        tabBar={tabBar(bar)}
-        screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: demo.background } }}
-      >
-        {TAB_ROUTES.map((name, i) => {
-          const tab = demo.tabs[i];
-          return (
-            <Tabs.Screen
-              key={name}
-              name={name}
-              options={
-                tab
-                  ? {
-                      title: tab.label,
-                      tabBarBadge: tab.badge,
-                      tabBarIcon: ({ focused, color, size }) =>
-                        tab.icon({ focused, color: String(color), size }),
-                    }
-                  : { href: null }
-              }
-            />
-          );
-        })}
-      </Tabs>
+      {/* Lets screens drive the bar: panels, the override slot, minimize on scroll. */}
+      <TabBarProvider>
+        <Tabs
+          tabBar={tabBar(bar)}
+          screenOptions={{
+            headerShown: false,
+            tabBarPosition,
+            sceneStyle: { backgroundColor: demo.background },
+          }}
+        >
+          {TAB_ROUTES.map((name, i) => {
+            const tab = demo.tabs[i];
+            return (
+              <Tabs.Screen
+                key={name}
+                name={name}
+                options={
+                  tab
+                    ? {
+                        title: tab.label,
+                        tabBarBadge: tab.badge,
+                        tabBarIcon: ({ focused, color, size }) =>
+                          tab.icon({ focused, color: String(color), size }),
+                      }
+                    : { href: null }
+                }
+              />
+            );
+          })}
+        </Tabs>
+        {/* A panel demo's panel, declared once here so it stays across tabs. */}
+        {demo.panel?.()}
+      </TabBarProvider>
     </CurrentDemoProvider>
   );
 }
