@@ -83,7 +83,7 @@ export function GlowGlass({
 
 /** Glass capsule with a glow at the icon's position; follows the active tab. */
 function Capsule({ colors }: { colors: GlowGlassColors }) {
-  const { style } = useTabIndicator({ inset: 6 });
+  const { style } = useTabIndicator({ inset: { x: 0, y: 5 } });
   return (
     <Animated.View
       pointerEvents="none"
@@ -96,7 +96,7 @@ function Capsule({ colors }: { colors: GlowGlassColors }) {
       <View
         style={[
           styles.glow,
-          { backgroundColor: colors.glow, boxShadow: `0 0 20px 12px ${colors.glow}66` },
+          { backgroundColor: colors.glow, boxShadow: `0 0 24px 18px ${colors.glow}55` },
         ]}
       />
     </Animated.View>
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   pill: { height: HEIGHT, borderRadius: 999, borderWidth: 1, overflow: 'hidden' },
   list: { flex: 1, alignItems: 'stretch', paddingHorizontal: 2 },
   capsule: { borderRadius: 999, borderWidth: 1, overflow: 'hidden', alignItems: 'center' },
-  glow: { marginTop: 6, width: 30, height: 30, borderRadius: 15, opacity: 0.55 },
+  glow: { marginTop: 4, width: 34, height: 34, borderRadius: 17, opacity: 0.32 },
   tab: {
     width: 65,
     alignItems: 'center',

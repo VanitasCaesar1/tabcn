@@ -17,7 +17,7 @@ import Animated, {
 import { TabBarRoot, TabButton, type TabItem, TabList, useFocusProgress, useTabBar } from 'tabcn';
 
 const defaultColors = {
-  background: '#efeff3',
+  background: '#f3f2f7',
   active: '#111114',
   inactive: '#8e8e95',
   badge: '#ff3b30',

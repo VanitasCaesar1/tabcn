@@ -49,7 +49,7 @@ export function FrostedMedia({
       <View style={[styles.pill, { borderColor: colors.border }]}>
         {glass ? (
           <GlassView
-            glassEffectStyle="clear"
+            glassEffectStyle="regular"
             tintColor={colors.tint}
             style={StyleSheet.absoluteFill}
           />

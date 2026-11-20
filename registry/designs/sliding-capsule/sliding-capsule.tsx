@@ -8,7 +8,7 @@ import Animated, { ZoomIn, ZoomOut } from 'react-native-reanimated';
 import { TabBarRoot, TabButton, TabIndicator, type TabItem, TabList, useTabBar } from 'tabcn';
 
 const defaultColors = {
-  background: '#ffffff',
+  background: '#f9fbf6',
   capsule: '#ececee',
   foreground: '#111114',
   badge: '#ff3b30',

@@ -9,7 +9,7 @@ import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated
 import { TabBarRoot, TabButton, type TabItem, TabList, useFocusProgress, useTabBar } from 'tabcn';
 
 const defaultColors = {
-  background: '#0b0b0d',
+  background: '#131313',
   active: '#ffffff',
   inactive: 'rgba(255, 255, 255, 0.55)',
   badge: '#ff453a',

@@ -39,7 +39,7 @@ export function DarkCapsule({ colors: custom, haptics = true }: DarkCapsuleProps
     <TabBarRoot placement="floating" style={styles.outer}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
         <TabIndicator
-          inset={{ x: 4, y: 9 }}
+          inset={{ x: 11, y: 12.5 }}
           style={[
             styles.capsule,
             { backgroundColor: colors.capsule, borderColor: colors.capsuleBorder },

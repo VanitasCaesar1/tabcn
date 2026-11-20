@@ -19,8 +19,7 @@ import {
 
 const defaultColors = {
   gradient: ['#ffd49a', '#fff3be', '#fff0b0', '#e3f19a'] as const,
-  highlight: 'rgba(255, 255, 255, 0.28)',
-  bubble: 'rgba(214, 178, 104, 0.32)',
+  bubble: 'rgba(196, 160, 96, 0.38)',
   badge: '#ff4b4b',
 };
 
@@ -43,10 +42,6 @@ export function GradientStickers({ colors: custom, haptics = true }: GradientSti
           end={{ x: 1, y: 0.5 }}
           style={styles.pill}
         >
-          <View
-            pointerEvents="none"
-            style={[styles.shine, { backgroundColor: colors.highlight }]}
-          />
           <TabList style={styles.list}>
             <TabIndicator
               inset={{ x: 8, y: 6 }}
@@ -78,7 +73,7 @@ function Tab({ tab, badge, haptics }: { tab: TabItem; badge: string; haptics: bo
       onPressIn={haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) : undefined}
     >
       <Animated.View style={sticker}>
-        {tab.renderIcon?.({ focused: tab.focused, color: '#000000', size: 36 })}
+        {tab.renderIcon?.({ focused: tab.focused, color: '#000000', size: 40 })}
       </Animated.View>
       {tab.badge != null ? <View style={[styles.badge, { backgroundColor: badge }]} /> : null}
     </TabButton>
@@ -95,7 +90,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.65)',
   },
-  shine: { position: 'absolute', left: 24, right: 24, top: 3, height: 10, borderRadius: 999 },
   list: { alignItems: 'stretch' },
   bubble: { borderRadius: 999 },
   tab: { flex: 1, height: 50.5, alignItems: 'center', justifyContent: 'center' },

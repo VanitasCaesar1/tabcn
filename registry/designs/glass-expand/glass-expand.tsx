@@ -18,7 +18,7 @@ import {
 
 const defaultColors = {
   background: 'rgba(196, 189, 255, 0.94)',
-  border: 'rgba(255, 255, 255, 0.75)',
+  border: 'rgba(255, 255, 255, 0.5)',
   capsule: 'rgba(150, 138, 235, 0.38)',
   capsuleBorder: 'rgba(255, 255, 255, 0.7)',
   foreground: '#0d0d12',
@@ -94,7 +94,7 @@ function Tab({
 const styles = StyleSheet.create({
   pill: {
     borderRadius: 999,
-    borderWidth: 1.5,
+    borderWidth: 1,
     padding: 5,
     boxShadow: '0 10px 30px rgba(20, 10, 120, 0.35)',
   },

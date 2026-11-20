@@ -2,6 +2,7 @@ import { Link } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { catalog, LAYOUT_LABELS } from '@/catalog';
+import { demos, designHref } from '@/demos';
 import { useColors } from '@/use-colors';
 
 export default function Gallery() {
@@ -19,7 +20,14 @@ export default function Gallery() {
       }
       ItemSeparatorComponent={() => <View style={styles.gap} />}
       renderItem={({ item }) => (
-        <Link href={{ pathname: '/designs/[id]', params: { id: item.id } }} asChild>
+        <Link
+          href={
+            demos[item.id]
+              ? designHref(item.id)
+              : { pathname: '/designs/[id]', params: { id: item.id } }
+          }
+          asChild
+        >
           <Pressable
             style={({ pressed }) => [
               styles.row,

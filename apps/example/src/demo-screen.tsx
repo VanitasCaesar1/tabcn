@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { catalog } from '@/catalog';
-import { demos, useCurrentDemo } from '@/demos';
+import { demos, designHref, useCurrentDemo } from '@/demos';
 import { Pattern } from '@/pattern';
 
 /**
@@ -17,8 +17,10 @@ export function DemoScreen({ index }: { index: number }) {
   const demo = useCurrentDemo();
   const id = Object.keys(demos).find((key) => demos[key] === demo);
   const barHeight = useBottomTabBarHeight();
-  const { height } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  // useBottomTabBarHeight() covers the bar plus the gap below it; the bar's centre sits half a bar above that gap.
+  const barCenterY = height - barHeight + (demo?.barHeight ?? 58) / 2;
   const built = catalog.filter((d) => demos[d.id]);
   const next = built[(built.findIndex((d) => d.id === id) + 1) % built.length];
   const title = demo?.tabs[index]?.label ?? '';
@@ -27,7 +29,22 @@ export function DemoScreen({ index }: { index: number }) {
 
   return (
     <View style={[styles.screen, { backgroundColor: demo?.background }]}>
-      {demo?.pattern ? <Pattern spec={demo.pattern} centerY={height - barHeight / 2 - 60} /> : null}
+      {demo?.pattern ? <Pattern spec={demo.pattern} centerY={barCenterY} /> : null}
+      {demo?.blobs?.map((b) => (
+        <View
+          key={`${b.dx},${b.dy}`}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: width / 2 + b.dx - b.r,
+            top: barCenterY + b.dy - b.r,
+            width: b.r * 2,
+            height: b.r * 2,
+            borderRadius: b.r,
+            backgroundColor: b.color,
+          }}
+        />
+      ))}
       {/* The stack header is transparent on iOS 26, so clear it by hand. */}
       <View style={[styles.header, { paddingTop: insets.top + 64 }]}>
         <Text style={[styles.title, { color: text }]}>{title}</Text>
@@ -40,7 +57,7 @@ export function DemoScreen({ index }: { index: number }) {
               // Keep one design screen on the stack: Expo Router's tab navigation
               // resolves a tab's params against the first matching [id] screen.
               router.dismissTo('/');
-              router.push({ pathname: '/designs/[id]', params: { id: next.id } });
+              router.push(designHref(next.id));
             }}
             style={[styles.next, { backgroundColor: chip }]}
           >

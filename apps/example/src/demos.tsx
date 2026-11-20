@@ -27,6 +27,7 @@ import * as SolidDarkIcons from '@registry/solid-dark/icons';
 import { SolidDark } from '@registry/solid-dark/solid-dark';
 import * as TopNotchIcons from '@registry/top-notch/icons';
 import { TopNotch } from '@registry/top-notch/top-notch';
+import type { Href } from 'expo-router';
 import { createContext, type ReactElement, type ReactNode, use } from 'react';
 import type { TabIconProps } from 'tabcn';
 
@@ -53,13 +54,22 @@ export interface Demo {
   dark?: boolean;
   /** Background pattern from the reference image. */
   pattern?: PatternSpec;
+  /** Tab selected in the reference image. Default 0. */
+  initialTab?: number;
+  /** Bar height in points, used to centre patterns on the bar. */
+  barHeight?: number;
+  /** Coloured shapes behind the bar (relative to its centre) for glass designs to blur. */
+  blobs?: { dx: number; dy: number; r: number; color: string }[];
 }
 
 /** Built designs, keyed by catalog id. */
 export const demos: Record<string, Demo> = {
   'glass-expand': {
     render: () => <GlassExpand />,
-    background: '#2f1fe8',
+    background: '#3324f1',
+    pattern: { kind: 'rings', color: '#4133f9', gap: 9.6, stroke: 0.8 },
+    initialTab: 2,
+    barHeight: 69,
     dark: true,
     tabs: [
       { label: 'Run', icon: GlassExpandIcons.SneakerIcon },
@@ -69,7 +79,9 @@ export const demos: Record<string, Demo> = {
   },
   'segment-search': {
     render: ({ onActionPress }) => <SegmentSearch onActionPress={onActionPress} />,
-    background: '#eef5fc',
+    background: '#edf6fd',
+    pattern: { kind: 'rings', color: '#d9e5f0', gap: 9.6, stroke: 0.6 },
+    barHeight: 58,
     tabs: [
       { label: 'Home', icon: () => null },
       { label: 'Pools', icon: () => null },
@@ -77,7 +89,10 @@ export const demos: Record<string, Demo> = {
   },
   'soft-pill': {
     render: () => <SoftPill />,
-    background: '#e8e2da',
+    background: '#e5dfd4',
+    pattern: { kind: 'stripes', light: '#f4efe7', dark: '#e1dace', gap: 8 },
+    initialTab: 2,
+    barHeight: 58.5,
     tabs: [
       { label: 'Home', icon: SoftPillIcons.HomeIcon },
       { label: 'Ideas', icon: SoftPillIcons.IdeasIcon },
@@ -88,7 +103,10 @@ export const demos: Record<string, Demo> = {
   },
   'gradient-stickers': {
     render: () => <GradientStickers />,
-    background: '#dff1e8',
+    background: '#ddf1e6',
+    pattern: { kind: 'dots', color: '#cbe6d8', gap: 24, r: 1.7, stagger: true },
+    initialTab: 4,
+    barHeight: 58.5,
     tabs: [
       { label: 'Home', icon: GradientStickersIcons.HouseIcon },
       { label: 'Map', icon: GradientStickersIcons.MapIcon },
@@ -99,7 +117,16 @@ export const demos: Record<string, Demo> = {
   },
   'frosted-media': {
     render: () => <FrostedMedia />,
-    background: '#1d140f',
+    background: '#120f0d',
+    pattern: { kind: 'rays', color: '#1b1714', count: 28 },
+    initialTab: 2,
+    barHeight: 58,
+    blobs: [
+      { dx: -95, dy: 0, r: 26, color: '#a3836a' },
+      { dx: -40, dy: 6, r: 24, color: '#5b6a7c' },
+      { dx: 20, dy: -6, r: 22, color: '#c28d6a' },
+      { dx: 80, dy: 4, r: 26, color: '#d8b8a4' },
+    ],
     dark: true,
     tabs: [
       { label: 'Home', icon: FrostedMediaIcons.BlobIcon },
@@ -114,7 +141,10 @@ export const demos: Record<string, Demo> = {
         actionIcon={<GlowGlassIcons.SpendIcon focused={false} color="#9a9aa6" size={28} />}
       />
     ),
-    background: '#2a1a10',
+    background: '#1f1810',
+    pattern: { kind: 'wood', light: '#2a1d12', dark: '#1b130f' },
+    barHeight: 58.5,
+    blobs: [{ dx: 30, dy: 0, r: 20, color: '#2b3f9e' }],
     dark: true,
     tabs: [
       { label: 'Home', icon: GlowGlassIcons.HomeIcon },
@@ -125,8 +155,9 @@ export const demos: Record<string, Demo> = {
   },
   'top-notch': {
     render: () => <TopNotch fontFamily="Outfit_800ExtraBold" />,
-    background: '#5a49dc',
-    pattern: { kind: 'rings', color: 'rgba(255,255,255,0.045)', gap: 34 },
+    background: '#594adb',
+    pattern: { kind: 'rings', color: '#6152e1', gap: 34, stroke: 15 },
+    barHeight: 75,
     dark: true,
     tabs: [
       { label: 'Today', icon: TopNotchIcons.TodayIcon },
@@ -138,7 +169,9 @@ export const demos: Record<string, Demo> = {
   },
   'solid-dark': {
     render: () => <SolidDark />,
-    background: '#e6e8ec',
+    background: '#e8e9ed',
+    pattern: { kind: 'plus', color: '#d2d3d8', gap: 12.2, size: 2.6, stroke: 0.7 },
+    barHeight: 45,
     tabs: [
       { label: 'Home', icon: SolidDarkIcons.HomeIcon },
       { label: 'Messages', icon: SolidDarkIcons.ChatIcon },
@@ -149,7 +182,9 @@ export const demos: Record<string, Demo> = {
   },
   'outline-dark': {
     render: () => <OutlineDark />,
-    background: '#efefef',
+    background: '#f1f1ef',
+    pattern: { kind: 'dots', color: '#d9d9d7', gap: 9.6, r: 0.55 },
+    barHeight: 46,
     tabs: [
       { label: 'Apps', icon: OutlineDarkIcons.AppsIcon },
       { label: 'Vault', icon: OutlineDarkIcons.LockIcon },
@@ -159,7 +194,10 @@ export const demos: Record<string, Demo> = {
   },
   'dark-capsule': {
     render: () => <DarkCapsule />,
-    background: '#ebe6df',
+    background: '#ece7e1',
+    pattern: { kind: 'waveform', color: '#ddd6cc', gap: 4.6, width: 1.3 },
+    initialTab: 3,
+    barHeight: 62,
     tabs: [
       { label: 'Videos', icon: DarkCapsuleIcons.VideoIcon },
       { label: 'Search', icon: DarkCapsuleIcons.SearchIcon },
@@ -170,7 +208,10 @@ export const demos: Record<string, Demo> = {
   },
   'light-icons': {
     render: () => <LightIcons />,
-    background: '#cde84a',
+    background: '#cdeb3e',
+    pattern: { kind: 'contours', color: '#bfdd30' },
+    initialTab: 3,
+    barHeight: 55,
     tabs: [
       { label: 'Hooks', icon: LightIconsIcons.HookIcon },
       { label: 'Search', icon: LightIconsIcons.SearchIcon },
@@ -181,7 +222,9 @@ export const demos: Record<string, Demo> = {
   },
   'playful-tiles': {
     render: () => <PlayfulTiles />,
-    background: '#58cc02',
+    background: '#57cc02',
+    pattern: { kind: 'dots', color: '#4fbd00', gap: 26, r: 2.6, stagger: true },
+    barHeight: 66,
     dark: true,
     tabs: [
       { label: 'Home', icon: PlayfulTilesIcons.BirdhouseIcon },
@@ -194,7 +237,9 @@ export const demos: Record<string, Demo> = {
   },
   'sliding-capsule': {
     render: () => <SlidingCapsule />,
-    background: '#1f3a0c',
+    background: '#173300',
+    pattern: { kind: 'plus', color: '#25450f', gap: 12, size: 3, stroke: 0.9 },
+    barHeight: 58.5,
     dark: true,
     tabs: [
       { label: 'Home', icon: SlidingCapsuleIcons.HomeIcon },
@@ -206,6 +251,8 @@ export const demos: Record<string, Demo> = {
   'labeled-plus': {
     render: ({ onActionPress }) => <LabeledPlus onActionPress={onActionPress} />,
     background: '#0e0e0e',
+    pattern: { kind: 'waves', color: '#1c1c1c', gap: 9.6, amp: 1.2, wavelength: 18 },
+    barHeight: 58.5,
     dark: true,
     tabs: [
       { label: 'Home', icon: LabeledPlusIcons.HomeIcon },
@@ -216,7 +263,9 @@ export const demos: Record<string, Demo> = {
   },
   'mono-type': {
     render: () => <MonoType />,
-    background: '#2a0f2a',
+    background: '#2d0f2b',
+    pattern: { kind: 'dottedRings', color: '#4a2547', gap: 48, dot: 1.4 },
+    barHeight: 54,
     dark: true,
     tabs: [
       { label: 'Home', icon: MonoTypeIcons.HouseIcon },
@@ -238,4 +287,10 @@ export const CurrentDemoProvider = CurrentDemo;
 
 export function useCurrentDemo(): Demo | undefined {
   return use(CurrentDemo);
+}
+
+/** Link to a design, opened on the tab the reference image shows as selected. */
+export function designHref(id: string): Href {
+  const route = TAB_ROUTES[demos[id]?.initialTab ?? 0];
+  return (route === 'index' ? `/designs/${id}` : `/designs/${id}/${route}`) as Href;
 }

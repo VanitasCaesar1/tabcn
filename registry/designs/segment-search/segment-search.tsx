@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 56 },
   halo: { padding: 6, borderRadius: 999 },
   roundHalo: { padding: 6 },
-  pill: { height: HEIGHT, borderRadius: 999, boxShadow: '0 6px 18px rgba(80, 140, 230, 0.3)' },
+  pill: { height: HEIGHT, borderRadius: 999, boxShadow: '0 8px 16px rgba(50, 100, 170, 0.35)' },
   list: { flex: 1, alignItems: 'stretch', paddingHorizontal: 0 },
   capsule: { borderRadius: 999, borderWidth: 1.5 },
   tab: { justifyContent: 'center', alignItems: 'center', width: 91 },
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     borderRadius: HEIGHT / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 6px 18px rgba(80, 140, 230, 0.3)',
+    boxShadow: '0 8px 16px rgba(50, 100, 170, 0.35)',
   },
   magnifier: { width: 24, height: 24 },
   lens: {

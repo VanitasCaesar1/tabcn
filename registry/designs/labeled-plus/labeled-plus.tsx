@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   badge: {
     position: 'absolute',
@@ -145,8 +145,8 @@ const styles = StyleSheet.create({
   },
   plusBar: {
     position: 'absolute',
-    width: 22,
-    height: 2.5,
+    width: 19,
+    height: 1.8,
     borderRadius: 2,
   },
   plusBarVertical: {
