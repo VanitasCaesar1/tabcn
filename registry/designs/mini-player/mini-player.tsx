@@ -77,9 +77,13 @@ export interface MiniPlayerOpenProps {
 export interface MiniPlayerProps {
   /** Panel id for `useTabPanel(id)`. Default `'player'`. */
   id?: string;
+  /** The track shown: title, artist, and optionally artwork and length. */
   track: MiniPlayerTrack;
+  /** Shows the pause glyph while true and the play glyph while false. */
   playing: boolean;
+  /** Runs when the play/pause button is pressed. */
   onPlayPause: () => void;
+  /** Runs when the next button is pressed. */
   onNext: () => void;
   /** Shown dimmed and disabled when missing. */
   onPrevious?: () => void;

@@ -1,5 +1,5 @@
-import type { screen } from '@testing-library/react-native';
-import { StyleSheet, Text } from 'react-native';
+import { act, type screen } from '@testing-library/react-native';
+import { AccessibilityInfo, StyleSheet, Text } from 'react-native';
 
 import {
   TabBarRoot,
@@ -86,3 +86,27 @@ export function closest(
 
 export const flatStyle = (element: HostElement | null) =>
   (StyleSheet.flatten(element?.props.style as never) ?? {}) as Record<string, unknown>;
+
+/**
+ * Turns a screen reader on (or off) from the start, for everything that asks
+ * `AccessibilityInfo`, and lets a test change it later. Call `restore()` at the end.
+ */
+export function mockScreenReader(on: boolean) {
+  const listeners = new Set<(on: boolean) => void>();
+  const original = {
+    isScreenReaderEnabled: AccessibilityInfo.isScreenReaderEnabled,
+    addEventListener: AccessibilityInfo.addEventListener,
+  };
+  AccessibilityInfo.isScreenReaderEnabled = () => Promise.resolve(on);
+  AccessibilityInfo.addEventListener = ((event: string, callback: (on: boolean) => void) => {
+    if (event === 'screenReaderChanged') listeners.add(callback);
+    return { remove: () => listeners.delete(callback) };
+  }) as never;
+  return {
+    change: (next: boolean) =>
+      act(async () => {
+        for (const listener of listeners) listener(next);
+      }),
+    restore: () => Object.assign(AccessibilityInfo, original),
+  };
+}

@@ -2,9 +2,12 @@ import { useFocusEffect, useNavigation } from 'expo-router';
 import { BottomTabBarHeightCallbackContext, type BottomTabBarProps } from 'expo-router/js-tabs';
 import { type ReactElement, type ReactNode, use, useCallback, useMemo, useState } from 'react';
 
+import { SafeAreaFrameContext } from 'react-native-safe-area-context';
+
 import { useAdapterBridge } from './adapter-bridge';
 import { buildTabBarState, type TabOptionsLike } from './build-state';
 import { useOverrideSlot } from './override';
+import { ScreenFrameContext } from './screen-frame';
 import { TabBarStateProvider } from './state';
 
 const noop = () => {};
@@ -37,9 +40,17 @@ function ExpoRouterTabBar({ nav, children }: { nav: BottomTabBarProps; children:
     () => (typeof navigation.isFocused === 'function' ? navigation.isFocused() : true),
     [navigation],
   );
-  useAdapterBridge(state, isFocused);
+  useAdapterBridge(state, isFocused, navigation);
 
-  return <TabBarStateProvider value={value}>{children}</TabBarStateProvider>;
+  // Sheets size themselves from the screen's frame, which the navigator's safe-area
+  // provider measures.
+  const frame = use(SafeAreaFrameContext);
+
+  return (
+    <ScreenFrameContext value={frame}>
+      <TabBarStateProvider value={value}>{children}</TabBarStateProvider>
+    </ScreenFrameContext>
+  );
 }
 
 /**

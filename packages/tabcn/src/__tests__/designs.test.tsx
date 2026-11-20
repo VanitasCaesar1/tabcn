@@ -48,9 +48,10 @@ function loadDesign(id: string) {
     (v): v is ComponentType<Record<string, unknown>> =>
       typeof v === 'function' && /^[A-Z]/.test((v as { name: string }).name),
   );
-  const iconList = Object.values(icons).filter(
-    (v): v is ComponentType<TabIconProps> => typeof v === 'function',
-  );
+  // Icon components only: icons files may also export helpers (Search Dock's createAvatarIcon).
+  const iconList = Object.entries(icons)
+    .filter(([name, v]) => typeof v === 'function' && /^[A-Z]\w*Icon$/.test(name))
+    .map(([, v]) => v as ComponentType<TabIconProps>);
   return { Component, iconList };
 }
 
@@ -88,6 +89,14 @@ function makeState(
   return { state, press };
 }
 
+/**
+ * Props a design can't render without, beyond `onActionPress`. Section Sheet's bodies are
+ * keyed by route name (makeState names routes `tab-0`, `tab-1`…).
+ */
+const REQUIRED_PROPS: Record<string, Record<string, unknown>> = {
+  'section-sheet': { sections: { 'tab-0': <Text>First section</Text> } },
+};
+
 const ids = registry.items.map((item) => item.name);
 const kindOf = (id: string) => catalog.find((entry) => entry.id === id)?.kind;
 const bars = ids.filter((id) => kindOf(id) === 'bar');
@@ -99,6 +108,27 @@ test('every registry item is a tab bar or a panel in the catalog', () => {
   expect(panels.length).toBe(catalog.filter((entry) => entry.kind === 'panel').length);
   expect(panels).toEqual(expect.arrayContaining(['mini-player', 'context-tray', 'quick-create']));
 });
+
+/**
+ * Panels need their own smoke test (each has its own props and its own way of showing): the
+ * three below, and Bar Sheet, Companion Chip and Sub-Tabs in bottom-designs.test.tsx. A new
+ * panel fails here until it gets one.
+ */
+const PANELS_WITH_TESTS = [
+  'mini-player',
+  'context-tray',
+  'quick-create',
+  'bar-sheet',
+  'companion-chip',
+  'sub-tabs',
+];
+
+test('every panel has a smoke test', () => {
+  expect([...panels].sort()).toEqual([...PANELS_WITH_TESTS].sort());
+});
+
+// Every bar renders inside gesture handler's root view, as in an app: Scrub Pill and Section
+// Sheet use 'tabcn/gestures', which needs it.
 
 /** Tab bars; Side Rail also as a rail (a navigator with `tabBarPosition: 'left'`). */
 const barCases: [string, string, Position][] = bars.flatMap((id): [string, string, Position][] =>
@@ -123,9 +153,11 @@ describe.each(barCases)('%s', (_name, id, position) => {
     if (!Component) return;
     const { state, press } = makeState(count, 0, iconList, position);
     await render(
-      <TabBarStateProvider value={state}>
-        <Component onActionPress={jest.fn()} />
-      </TabBarStateProvider>,
+      <GestureHandlerRootView>
+        <TabBarStateProvider value={state}>
+          <Component onActionPress={jest.fn()} {...REQUIRED_PROPS[id]} />
+        </TabBarStateProvider>
+      </GestureHandlerRootView>,
     );
     const tabs = screen.getAllByRole('tab');
     expect(tabs).toHaveLength(count);
@@ -139,11 +171,13 @@ describe.each(barCases)('%s', (_name, id, position) => {
     if (!Component) return;
     const { state, press } = makeState(count, 0, iconList, position);
     await render(
-      <TabBarProvider>
-        <TabBarStateProvider value={state}>
-          <Component onActionPress={jest.fn()} />
-        </TabBarStateProvider>
-      </TabBarProvider>,
+      <GestureHandlerRootView>
+        <TabBarProvider>
+          <TabBarStateProvider value={state}>
+            <Component onActionPress={jest.fn()} {...REQUIRED_PROPS[id]} />
+          </TabBarStateProvider>
+        </TabBarProvider>
+      </GestureHandlerRootView>,
     );
     const tabs = screen.getAllByRole('tab');
     expect(tabs).toHaveLength(count);
@@ -157,15 +191,19 @@ describe.each(barCases)('%s', (_name, id, position) => {
     if (!Component) return;
     const first = makeState(count, 0, iconList, position);
     const view = await render(
-      <TabBarStateProvider value={first.state}>
-        <Component onActionPress={jest.fn()} />
-      </TabBarStateProvider>,
+      <GestureHandlerRootView>
+        <TabBarStateProvider value={first.state}>
+          <Component onActionPress={jest.fn()} {...REQUIRED_PROPS[id]} />
+        </TabBarStateProvider>
+      </GestureHandlerRootView>,
     );
     const next = makeState(count, count - 1, iconList, position);
     await view.rerender(
-      <TabBarStateProvider value={next.state}>
-        <Component onActionPress={jest.fn()} />
-      </TabBarStateProvider>,
+      <GestureHandlerRootView>
+        <TabBarStateProvider value={next.state}>
+          <Component onActionPress={jest.fn()} {...REQUIRED_PROPS[id]} />
+        </TabBarStateProvider>
+      </GestureHandlerRootView>,
     );
     const selected = screen
       .getAllByRole('tab')

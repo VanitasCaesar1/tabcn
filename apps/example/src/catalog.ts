@@ -16,6 +16,7 @@ export type Layout =
   | 'floating-buttons'
   | 'center-action'
   | 'side-rail'
+  | 'sheet'
   | 'panel';
 
 export type DesignStatus = 'planned' | 'in-progress' | 'ready';
@@ -41,6 +42,7 @@ export const LAYOUT_LABELS: Record<Layout, string> = {
   'floating-buttons': 'Floating buttons',
   'center-action': 'Center action',
   'side-rail': 'Side rail',
+  sheet: 'Sheet',
   panel: 'Panel',
 };
 
@@ -266,6 +268,136 @@ export const catalog: DesignEntry[] = [
     status: 'ready',
   },
   {
+    id: 'search-dock',
+    ref: 0,
+    title: 'Search Dock',
+    kind: 'bar',
+    layout: 'floating-buttons',
+    summary:
+      'Three separate white rounded tiles over the feed: Home, a search field that fills the row, and a Profile avatar. The glyphs crossfade, and the dock slides away on scroll.',
+    status: 'ready',
+  },
+  {
+    id: 'button-row',
+    ref: 0,
+    title: 'Button Row',
+    kind: 'bar',
+    layout: 'floating-buttons',
+    summary:
+      'No bar: separate white buttons float in a row (circle, circle, a wide Search pill, circle, circle) over a white fade; the active icon turns from a grey outline to filled black.',
+    status: 'ready',
+  },
+  {
+    id: 'color-flood',
+    ref: 0,
+    title: 'Colour Flood',
+    kind: 'bar',
+    layout: 'docked-bar',
+    summary:
+      'Icon-only docked bar with no surface of its own; a tab floods the screen and bar with its colour (Cash green on Pay), and the colours crossfade.',
+    status: 'ready',
+  },
+  {
+    id: 'accent-dark',
+    ref: 0,
+    title: 'Accent Dark',
+    kind: 'bar',
+    layout: 'docked-bar',
+    summary:
+      'Flat charcoal docked bar under a dark hairline, with white icons and labels; the active tab turns orange and its outline icon fills in, with no indicator.',
+    status: 'ready',
+  },
+  {
+    id: 'tile-plus',
+    ref: 0,
+    title: 'Tile Plus',
+    kind: 'bar',
+    layout: 'center-action',
+    summary:
+      'Plain white docked bar with icon-only tabs that turn from grey outlines to black filled glyphs, and a grey plus on a permanent light-grey rounded tile in the middle that runs an action.',
+    status: 'ready',
+  },
+  {
+    id: 'offset-plus',
+    ref: 0,
+    title: 'Offset Plus',
+    kind: 'bar',
+    layout: 'center-action',
+    summary:
+      'Solid black docked bar with outline icons over small labels that fill and turn white when active; the centre create button is a white rounded rectangle over cyan and red copies offset left and right.',
+    status: 'ready',
+  },
+  {
+    id: 'tinted-icons',
+    ref: 0,
+    title: 'Tinted Icons',
+    kind: 'bar',
+    layout: 'docked-bar',
+    summary:
+      'Flat black bar of outline icons, each tab with its own colour; a small triangle slides under the active one.',
+    status: 'ready',
+  },
+  {
+    id: 'badge-dock',
+    ref: 0,
+    title: 'Badge Dock',
+    kind: 'bar',
+    layout: 'docked-bar',
+    summary:
+      'Dark docked bar with five labelled tabs; outline grey icons turn solid white when active, with coral-red count badges and a dot badge over the icons.',
+    status: 'ready',
+  },
+  {
+    id: 'cart-pill',
+    ref: 0,
+    title: 'Cart Pill',
+    kind: 'bar',
+    layout: 'pill-with-action',
+    summary:
+      "Shop's frosted pill of filled icons with a sliding white capsule, centred between an optional back button and a purple cart button with the count cut out of the basket; soft bottom-edge blur (Liquid Glass, blur fallback).",
+    status: 'ready',
+  },
+  {
+    id: 'glass-badges',
+    ref: 0,
+    title: 'Glass Badges',
+    kind: 'bar',
+    layout: 'pill-with-action',
+    summary:
+      "Telegram's iOS 26 glass pill of labelled tabs with red count badges ringed into the glass; a grey capsule slides to the active tab, beside a round glass search button (Liquid Glass, blur fallback).",
+    status: 'ready',
+  },
+  {
+    id: 'section-sheet',
+    ref: 0,
+    title: 'Section Sheet',
+    kind: 'bar',
+    layout: 'sheet',
+    summary:
+      'No tab bar: one sheet rests over full-screen content with the sections in its header; drag it to half or full, and switching sections keeps its height.',
+    status: 'ready',
+  },
+  {
+    id: 'scrub-pill',
+    ref: 0,
+    title: 'Scrub Pill',
+    kind: 'bar',
+    layout: 'floating-pill',
+    summary:
+      'Light pill with a tinted lens behind the active tab; press and slide along the bar to scrub through tabs, with a haptic per tab, and lift to choose.',
+    status: 'ready',
+  },
+  {
+    id: 'live-tabs',
+    ref: 0,
+    title: 'Live Tabs',
+    kind: 'bar',
+    layout: 'docked-bar',
+    summary:
+      'Docked bar whose tabs show live state: a ring fills around the icon while something is in progress, and a countdown or now-playing line replaces the label.',
+    status: 'ready',
+  },
+  {
     id: 'mini-player',
     ref: 0,
     title: 'Mini Player',
@@ -293,6 +425,36 @@ export const catalog: DesignEntry[] = [
     layout: 'panel',
     summary:
       "A create menu that slides up from behind the bar's + button: icon-and-label actions in a column as wide as the button; choosing one runs it and closes the menu.",
+    status: 'ready',
+  },
+  {
+    id: 'bar-sheet',
+    ref: 0,
+    title: 'Bar Sheet',
+    kind: 'panel',
+    layout: 'panel',
+    summary:
+      'A comments sheet that rises from the bottom edge, passing behind the bar, to 60%; drag the header to full height, where the body scrolls.',
+    status: 'ready',
+  },
+  {
+    id: 'companion-chip',
+    ref: 0,
+    title: 'Companion Chip',
+    kind: 'panel',
+    layout: 'panel',
+    summary:
+      "A frosted locate button, search pill or '32 views' chip that sits above the bar's end and moves with it.",
+    status: 'ready',
+  },
+  {
+    id: 'sub-tabs',
+    ref: 0,
+    title: 'Sub-Tabs',
+    kind: 'panel',
+    layout: 'panel',
+    summary:
+      'Long-press a tab and its sub-tabs slide up from behind it; choosing one closes the drawer.',
     status: 'ready',
   },
 ];

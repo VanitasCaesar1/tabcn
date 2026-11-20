@@ -1,0 +1,241 @@
+/**
+ * Live Tabs: a docked bar whose tabs show what is happening on them right now. A thin ring
+ * fills around a tab's icon while something is in progress (a download, a timer), and a
+ * live line (a countdown, a track's name, "3 new") takes the label's place, in the accent
+ * colour with a small dot.
+ *
+ * The values come from `useLiveTab(routeName)` in tabcn. A screen, or a component that
+ * listens to a service, writes them; the bar draws them without re-rendering the navigator:
+ * the ring reads the progress on the UI thread, and new text re-renders only its own tab.
+ * Needs a `TabBarProvider` around the tabs navigator; without one the tabs draw no live
+ * state.
+ *
+ * ```tsx
+ * <TabBarProvider>
+ *   <Tabs tabBar={tabBar(<LiveTabs />)} screenOptions={{ headerShown: false }} />
+ * </TabBarProvider>
+ *
+ * // In the Downloads screen (or a component that follows your download service):
+ * const live = useLiveTab('downloads');
+ * live.progress.value = received / total; // as often as every frame; 0 or 1 hides the ring
+ *
+ * // In the Timer screen, once a second:
+ * const timer = useLiveTab('timer');
+ * timer.progress.value = elapsed / duration;
+ * timer.setText(remaining > 0 ? format(remaining) : undefined);
+ * ```
+ *
+ * Names are route names: in Expo Router, a tab's file name (`index`, `timer`), or its
+ * folder for a nested stack (`(timer)`). Screen readers hear the live text as the tab's
+ * value ("Timer, tab, 2 of 4, 4:59"); progress alone isn't spoken, so write text for what
+ * should be heard.
+ *
+ * The ring fades in and out on tabcnTiming and fills as the progress is written; the live
+ * line crossfades with the label; nothing scales, bounces or turns. With "reduce motion" on
+ * the fades are instant.
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
+ */
+import * as Haptics from 'expo-haptics';
+import { useEffect } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedProps,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import Svg, { Circle } from 'react-native-svg';
+import {
+  TabBarRoot,
+  TabButton,
+  type TabItem,
+  TabList,
+  tabcnTiming,
+  useLiveTab,
+  useTabBar,
+} from 'tabcn';
+
+const defaultColors = {
+  /** The bar. */
+  background: '#ffffff',
+  /** Hairline along the bar's top edge. */
+  border: 'rgba(0, 0, 0, 0.08)',
+  /** The active tab's icon and label. */
+  foreground: '#151517',
+  /** The other tabs' icons and labels. */
+  muted: 'rgba(21, 21, 23, 0.5)',
+  /** Live text, its dot and the filled part of the ring. */
+  accent: '#e8590c',
+  /** The ring's unfilled track. */
+  track: 'rgba(0, 0, 0, 0.08)',
+};
+
+export type LiveTabsColors = typeof defaultColors;
+
+export interface LiveTabsProps {
+  colors?: Partial<LiveTabsColors>;
+  /** A selection haptic on tab press. Default true. */
+  haptics?: boolean;
+}
+
+export function LiveTabs({ colors: custom, haptics = true }: LiveTabsProps) {
+  const colors = { ...defaultColors, ...custom };
+  const { tabs } = useTabBar();
+  return (
+    <TabBarRoot
+      placement="docked"
+      style={[styles.bar, { backgroundColor: colors.background, borderTopColor: colors.border }]}
+    >
+      <TabList style={styles.row}>
+        {tabs.map((tab) => (
+          <LiveTab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
+        ))}
+      </TabList>
+    </TabBarRoot>
+  );
+}
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+const ICON = 22;
+/** The ring's box: the icon plus room for the ring around it. */
+const RING = 34;
+const STROKE = 2;
+const RADIUS = (RING - STROKE) / 2;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+function LiveTab({
+  tab,
+  colors,
+  haptics,
+}: {
+  tab: TabItem;
+  colors: LiveTabsColors;
+  haptics: boolean;
+}) {
+  const live = useLiveTab(tab.routeName);
+  const { progress } = live;
+  const text = live.text?.trim() ? live.text : undefined;
+  const color = tab.focused ? colors.foreground : colors.muted;
+
+  // The ring shows only while something is in progress (between 0 and 1, exclusive).
+  const ringStyle = useAnimatedStyle(() => {
+    const p = progress.value;
+    return { opacity: withTiming(p > 0 && p < 1 ? 1 : 0, tabcnTiming) };
+  });
+  const ringProps = useAnimatedProps(() => {
+    const p = Math.min(1, Math.max(0, progress.value));
+    return { strokeDashoffset: CIRCUMFERENCE * (1 - p) };
+  });
+
+  // The live line crossfades with the label.
+  const showLive = useSharedValue(text ? 1 : 0);
+  useEffect(() => {
+    showLive.value = withTiming(text ? 1 : 0, tabcnTiming);
+  }, [text, showLive]);
+  const labelStyle = useAnimatedStyle(() => ({ opacity: 1 - showLive.value }));
+  const liveStyle = useAnimatedStyle(() => ({ opacity: showLive.value }));
+
+  return (
+    <TabButton
+      tab={tab}
+      style={styles.tab}
+      accessibilityValue={text ? { text } : undefined}
+      onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
+    >
+      <View style={styles.iconBox}>
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, ringStyle]}>
+          {/* Turned a quarter so the ring fills from the top. A fixed angle, not a motion. */}
+          <Svg width={RING} height={RING} style={styles.quarterTurn}>
+            <Circle
+              cx={RING / 2}
+              cy={RING / 2}
+              r={RADIUS}
+              stroke={colors.track}
+              strokeWidth={STROKE}
+              fill="none"
+            />
+            <AnimatedCircle
+              cx={RING / 2}
+              cy={RING / 2}
+              r={RADIUS}
+              stroke={colors.accent}
+              strokeWidth={STROKE}
+              strokeLinecap="round"
+              strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
+              fill="none"
+              animatedProps={ringProps}
+            />
+          </Svg>
+        </Animated.View>
+        {tab.renderIcon?.({ focused: tab.focused, color, size: ICON })}
+      </View>
+      <View style={styles.lines}>
+        <Animated.View style={[styles.line, labelStyle]}>
+          <Text numberOfLines={1} style={[styles.label, { color }]}>
+            {tab.label}
+          </Text>
+        </Animated.View>
+        <Animated.View
+          style={[styles.line, StyleSheet.absoluteFill, liveStyle]}
+          importantForAccessibility="no-hide-descendants"
+          accessibilityElementsHidden
+        >
+          <View style={[styles.dot, { backgroundColor: colors.accent }]} />
+          <Text numberOfLines={1} style={[styles.label, styles.live, { color: colors.accent }]}>
+            {text ?? ''}
+          </Text>
+        </Animated.View>
+      </View>
+    </TabButton>
+  );
+}
+
+const styles = StyleSheet.create({
+  bar: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  row: {
+    paddingTop: 6,
+    paddingHorizontal: 4,
+  },
+  tab: {
+    flex: 1,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 2,
+  },
+  iconBox: {
+    width: RING,
+    height: RING,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quarterTurn: {
+    transform: [{ rotate: '-90deg' }],
+  },
+  lines: {
+    alignSelf: 'stretch',
+    height: 14,
+  },
+  line: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    paddingHorizontal: 2,
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  label: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  live: {
+    fontVariant: ['tabular-nums'],
+  },
+});

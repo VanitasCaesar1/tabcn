@@ -18,10 +18,12 @@ import {
   TabBarRoot,
   type TabBarState,
   TabBarStateProvider,
+  TabButton,
   TabList,
   TabPanel,
   type TabPanelControls,
   usePanelAnchor,
+  useTabBar,
   useTabPanel,
 } from '../index';
 import { useOverrideSlot } from '../override';
@@ -439,6 +441,154 @@ describe('anchors', () => {
     plusFrame = { ...plusFrame, x: 600 };
     await layoutBar(83, 844);
     expect(flatStyle(panelWindow('create'))).toMatchObject({ left: 600 });
+  });
+});
+
+/** Where the anchor inside the second tab sits relative to TabBarRoot. */
+const subTabFrame = { x: 130, y: 6, width: 160, height: 49 };
+
+/** A docked bar whose second tab owns a long-press panel anchored inside it. */
+function BarWithSubTabs({
+  onLongPress,
+  actions,
+}: {
+  onLongPress: () => void;
+  actions?: { name: string; label?: string }[];
+}) {
+  const anchor = usePanelAnchor('library');
+  const { tabs } = useTabBar();
+  return (
+    <TabBarRoot placement="docked" testID="bar">
+      <TabList>
+        {tabs.map((tab) =>
+          tab.index === 1 ? (
+            <TabButton
+              key={tab.key}
+              tab={tab}
+              onLongPress={onLongPress}
+              accessibilityActions={actions}
+              accessibilityState={anchor.accessibilityState}
+            >
+              <Text>{tab.label}</Text>
+              <View
+                testID="sub-anchor"
+                onLayout={anchor.onLayout}
+                ref={(node) => {
+                  if (node) {
+                    (node as unknown as { measureLayout: unknown }).measureLayout = (
+                      _relativeTo: unknown,
+                      onSuccess: (x: number, y: number, w: number, h: number) => void,
+                    ) =>
+                      onSuccess(
+                        subTabFrame.x,
+                        subTabFrame.y,
+                        subTabFrame.width,
+                        subTabFrame.height,
+                      );
+                  }
+                  anchor.ref(node);
+                }}
+              />
+            </TabButton>
+          ) : (
+            <TabButton key={tab.key} tab={tab}>
+              <Text>{tab.label}</Text>
+            </TabButton>
+          ),
+        )}
+      </TabList>
+    </TabBarRoot>
+  );
+}
+
+describe('sub-tabs: a panel above one tab', () => {
+  async function renderSubTabs(
+    actions?: { name: string; label?: string }[],
+    state = makeTabState(),
+  ) {
+    const order: string[] = [];
+    const longPress = state.tabs[1]?.longPress as jest.Mock;
+    longPress.mockImplementation(() => order.push('tabLongPress'));
+    const onLongPress = jest.fn(() => {
+      order.push('onLongPress');
+      controls.menu?.open();
+    });
+    await render(
+      <App
+        state={state}
+        bar={<BarWithSubTabs onLongPress={onLongPress} actions={actions} />}
+        panels={[{ id: 'menu', anchor: { name: 'library' } }]}
+      />,
+    );
+    await layoutBar(83, 390);
+    await act(async () => {
+      await fireEvent(screen.getByTestId('sub-anchor'), 'layout', layoutFrame(0, 0, 160, 49));
+    });
+    await layoutPanel('menu', 120);
+    return { order, onLongPress };
+  }
+
+  const libraryTab = () => screen.getAllByRole('tab', { includeHiddenElements: true })[1];
+
+  it('takes the frame of the view inside the tab', async () => {
+    await renderSubTabs();
+    expect(flatStyle(panelWindow('menu'))).toMatchObject({
+      left: subTabFrame.x,
+      width: subTabFrame.width,
+      top: subTabFrame.y - 120,
+    });
+  });
+
+  it('runs onLongPress after the tab’s tabLongPress event', async () => {
+    const { order } = await renderSubTabs();
+    await act(async () => {
+      await fireEvent(libraryTab() as never, 'longPress');
+    });
+    expect(order).toEqual(['tabLongPress', 'onLongPress']);
+    expect(controls.menu?.state).toBe('open');
+  });
+
+  it('reports expanded and selected together on the tab', async () => {
+    await renderSubTabs(undefined, makeTabState({ activeIndex: 1 }));
+    // makeTabState focuses the first tab; the second reads selected: false.
+    expect(libraryTab()?.props.accessibilityState).toEqual({ expanded: false, selected: false });
+    await act(async () => controls.menu?.open());
+    expect(libraryTab()?.props.accessibilityState).toEqual({ expanded: true, selected: false });
+    // Other tabs keep `selected` only.
+    expect(
+      screen.getAllByRole('tab', { includeHiddenElements: true })[0]?.props.accessibilityState,
+    ).toEqual({
+      selected: true,
+    });
+  });
+
+  it('offers the long press to screen readers with a default spoken name', async () => {
+    const { onLongPress } = await renderSubTabs();
+    expect(libraryTab()?.props.accessibilityActions).toEqual([
+      { name: 'longpress', label: 'Long press' },
+    ]);
+    await act(async () => {
+      await fireEvent(libraryTab() as never, 'accessibilityAction', {
+        nativeEvent: { actionName: 'longpress' },
+      });
+    });
+    expect(onLongPress).toHaveBeenCalledTimes(1);
+    expect(controls.menu?.state).toBe('open');
+  });
+
+  it('keeps the label of a longpress action the design passes, and its other actions', async () => {
+    await renderSubTabs([{ name: 'magicTap' }, { name: 'longpress', label: 'Show sub-tabs' }]);
+    expect(libraryTab()?.props.accessibilityActions).toEqual([
+      { name: 'magicTap' },
+      { name: 'longpress', label: 'Show sub-tabs' },
+    ]);
+  });
+
+  it('adds no action to a tab without onLongPress', async () => {
+    await renderSubTabs();
+    expect(
+      screen.getAllByRole('tab', { includeHiddenElements: true })[0]?.props.accessibilityActions,
+    ).toBeUndefined();
   });
 });
 

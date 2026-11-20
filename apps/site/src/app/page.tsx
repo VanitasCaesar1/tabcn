@@ -4,16 +4,10 @@ import { DesignCard } from '@/components/design-card';
 import { DesignRow } from '@/components/design-row';
 import { Hero } from '@/components/hero';
 import { InstallCommand } from '@/components/install-command';
-import { Showcase } from '@/components/showcase';
 import { SiteHeader } from '@/components/site-header';
 import { categories, designs, getDesign, ordered, usageSnippet } from '@/lib/designs';
 import { registryUrl } from '@/lib/site';
 
-// The reel above the grid: the newest designs that have a recording, newest first.
-const fresh = designs
-  .filter((d) => d.video)
-  .slice(-6)
-  .reverse();
 const example = getDesign('sliding-capsule') ?? designs[0];
 
 const card = (d: (typeof designs)[number]) => ({
@@ -45,9 +39,7 @@ export default function Home() {
     <>
       <SiteHeader />
       <Hero />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-4 pb-16 sm:px-6">
-        <Showcase items={fresh.map(card)} />
-
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-12 pb-16 sm:px-6">
         <section id="designs" aria-labelledby="catalogue" className="scroll-mt-20">
           <h2 id="catalogue" className="font-medium text-[15px]">
             All designs

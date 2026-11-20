@@ -1,10 +1,12 @@
 /**
  * tabcn: the shared foundation every tab bar design builds on.
- * Specs: docs/designs/foundation.md, panels.md, motion-and-rail.md. Navigator adapters live
- * in 'tabcn/expo-router' and 'tabcn/react-navigation'; panel dragging in 'tabcn/gestures'.
+ * Specs: docs/designs/foundation.md, panels.md, motion-and-rail.md, bottom-components.md.
+ * Navigator adapters live in 'tabcn/expo-router' and 'tabcn/react-navigation'; panel and
+ * sheet dragging, and scrubbing the bar, in 'tabcn/gestures'.
  */
 
 export { BadgeCount } from './BadgeCount';
+export { TabBarCompanion, type TabBarCompanionProps } from './companions';
 export {
   TabIndicator,
   type TabIndicatorOptions,
@@ -12,6 +14,8 @@ export {
   type TabIndicatorValues,
   useTabIndicator,
 } from './indicator';
+export { useTabBarInset } from './inset';
+export { type LiveTab, useLiveTab } from './live';
 export { useMinimizeOnScroll, useRestoreTabBar, useTabBarMinimized } from './minimize';
 export { tabcnSpring, tabcnTiming } from './motion';
 export { PressableScale, type PressableScaleProps } from './PressableScale';
@@ -22,7 +26,7 @@ export {
   usePanelAnchor,
   useTabPanel,
 } from './panels';
-export { type PanelAnchor, type PanelState, TabBarProvider } from './provider';
+export { type PanelAnchor, type PanelState, type SnapPoint, TabBarProvider } from './provider';
 export {
   type Insets,
   type TabBarState,

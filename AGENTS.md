@@ -9,6 +9,7 @@ Monorepo (Bun workspaces, hoisted `node_modules`). Read README.md for the layout
 - New public API or install-flow changes start as a doc in `docs/designs/`.
 - Native `ios/` and `android/` folders are generated; never edit them by hand.
 - The README shows every design moving (`assets/readme/<id>.gif`, linked to its page on the site). Adding a design or changing how one looks means updating its GIF, the site's recording in `apps/site/public/videos/`, and its link-preview image (`python3 apps/site/scripts/og-images.py <recordings dir>`) in the same change.
+- Changing how a design looks also means re-running `apps/site/scripts/bar-loops.py <recordings dir>` (the home page's bar loops in `apps/site/public/bars/`).
 - `main` is protected: work on a short-lived branch and open a pull request; CI's `check` must pass before it merges.
 
 Before declaring work done: `bun run check`. For example-app changes, also `cd apps/example && bunx expo-doctor`.

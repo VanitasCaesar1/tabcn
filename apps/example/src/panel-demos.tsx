@@ -1,7 +1,8 @@
 /**
  * The parts of the example app's demos that need hooks: panel demos (Mini Player, Context
- * Tray, Quick Create) and the scrolling list that shows Split Search minimizing. Kept out of
- * demos.tsx, whose top-level object keys are read as design ids by scripts/check-registry.ts.
+ * Tray, Quick Create, Bar Sheet, Companion Chip, Sub-Tabs), the feeds behind Section Sheet
+ * and Live Tabs, and the scrolling list that shows a bar minimizing. Kept out of demos.tsx,
+ * whose top-level object keys are read as design ids by scripts/check-registry.ts.
  *
  * A panel demo renders its paired bar as the tab bar, declares the panel once in the design
  * layout (under its TabBarProvider, beside <Tabs>), and puts its controls on the demo screen.
@@ -12,15 +13,51 @@
  * `DemoExtraProps`, so nothing here reads one navigator's context under the other.
  */
 
+import { BarSheet, useBarSheet } from '@registry/bar-sheet/bar-sheet';
+import {
+  CompanionChip,
+  type CompanionChipIconProps,
+} from '@registry/companion-chip/companion-chip';
 import { ContextTray } from '@registry/context-tray/context-tray';
 import { LabeledPlus } from '@registry/labeled-plus/labeled-plus';
 import { MiniPlayer } from '@registry/mini-player/mini-player';
 import * as QuickCreateIcons from '@registry/quick-create/icons';
 import { QuickCreate, useQuickCreate } from '@registry/quick-create/quick-create';
-import { type ReactNode, useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated from 'react-native-reanimated';
-import { useMinimizeOnScroll, useTabPanel } from 'tabcn';
+import { SubTabs, useSubTabs } from '@registry/sub-tabs/sub-tabs';
+import { type ReactNode, useEffect, useState, useSyncExternalStore } from 'react';
+import {
+  AccessibilityInfo,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
+import Svg, { Circle, Path } from 'react-native-svg';
+import {
+  TabBarCompanion,
+  TabBarRoot,
+  TabButton,
+  type TabButtonProps,
+  TabIndicator,
+  type TabItem,
+  TabList,
+  tabcnTiming,
+  useLiveTab,
+  useMinimizeOnScroll,
+  useTabBar,
+  useTabBarInset,
+  useTabPanel,
+} from 'tabcn';
 import { useTabBarOverride as useExpoRouterOverride } from 'tabcn/expo-router';
 import { useTabBarOverride as useReactNavigationOverride } from 'tabcn/react-navigation';
 
@@ -77,6 +114,31 @@ function DemoButton({
 
 function Note({ text, message }: { text: string; message: string }) {
   return <Text style={[styles.note, { color: text }]}>{message}</Text>;
+}
+
+/**
+ * A value shared by a demo's panel (declared once in the design layout) and its controls (on
+ * each tab's screen), which sit in different parts of the tree.
+ */
+function demoStore<T>(initial: T) {
+  let value = initial;
+  const listeners = new Set<() => void>();
+  const subscribe = (listener: () => void) => {
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  };
+  const get = () => value;
+  return {
+    get,
+    set(next: T) {
+      if (Object.is(next, value)) return;
+      value = next;
+      for (const listener of listeners) listener();
+    },
+    useValue: () => useSyncExternalStore(subscribe, get, get),
+  };
 }
 
 // Mini Player (paired with Soft Pill) --------------------------------------------------------
@@ -238,6 +300,398 @@ export function QuickCreateControls({ text, chip }: DemoExtraProps) {
   );
 }
 
+// Bar Sheet (paired with Soft Pill) -----------------------------------------------------------
+
+const COMMENTS = Array.from({ length: 24 }, (_, i) => ({
+  id: `c${i}`,
+  author: ['Maya', 'Theo', 'Priya', 'Jonas', 'Aiko', 'Sam'][i % 6] ?? 'Sam',
+  text: [
+    'The light in this one is unreal.',
+    'Saving this for the weekend.',
+    'Which lens did you use?',
+    'Went there last spring, it was quiet early in the morning.',
+    'The colours are so calm.',
+    'More of these, please.',
+  ][i % 6],
+}));
+
+/** The sheet, declared once beside the navigator: a scrolling list of comments. */
+export function BarSheetPanel() {
+  return (
+    <BarSheet title="Comments" subtitle="128 replies">
+      {COMMENTS.map((comment) => (
+        <View key={comment.id} style={styles.comment}>
+          <Text style={styles.commentAuthor}>{comment.author}</Text>
+          <Text style={styles.commentText}>{comment.text}</Text>
+        </View>
+      ))}
+    </BarSheet>
+  );
+}
+
+/** Open, raise to full height or close the sheet from the screen. */
+export function BarSheetControls({ text, chip }: DemoExtraProps) {
+  const sheet = useBarSheet();
+  const where =
+    sheet.state === 'open' ? (sheet.snap >= 1 ? 'open at full height' : 'open at 60%') : 'closed';
+  return (
+    <View style={styles.block}>
+      <Note
+        text={text}
+        message={`Sheet: ${where}. Drag its header between 60% and full height, or below 60% to close it. Switching tabs closes it too.`}
+      />
+      <View style={styles.row}>
+        <DemoButton label="Open sheet" onPress={sheet.open} text={text} chip={chip} />
+        <DemoButton label="Full height" onPress={() => sheet.snapTo(1)} text={text} chip={chip} />
+        <DemoButton label="Close" onPress={sheet.hide} text={text} chip={chip} />
+      </View>
+    </View>
+  );
+}
+
+// Companion Chip and the toast inset (paired with Split Search) ------------------------------
+
+type ChipForm = 'round' | 'pill' | 'count';
+const chipForm = demoStore<ChipForm>('round');
+const toastMessage = demoStore<string | undefined>(undefined);
+
+function LocateIcon({ color, size }: CompanionChipIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M20 4 4 11l7 2 2 7 7-16Z" stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function SearchIcon({ color, size }: CompanionChipIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={11} cy={11} r={6.5} stroke={color} strokeWidth={1.8} />
+      <Path d="m16 16 4 4" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function EyeIcon({ color, size }: CompanionChipIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinejoin="round"
+      />
+      <Circle cx={12} cy={12} r={3} stroke={color} strokeWidth={1.8} />
+    </Svg>
+  );
+}
+
+/**
+ * The companion above the bar's end, in the form chosen on the screen, and a toast host that
+ * sits above both with `useTabBarInset()`. Declared once beside the navigator.
+ */
+export function CompanionChipPanel() {
+  const form = chipForm.useValue();
+  return (
+    <>
+      <TabBarCompanion position="above-end">
+        {form === 'round' ? (
+          <CompanionChip
+            variant="round"
+            icon={LocateIcon}
+            accessibilityLabel="Locate me"
+            onPress={() => toastMessage.set('Centred on your location')}
+          />
+        ) : form === 'pill' ? (
+          <CompanionChip
+            variant="pill"
+            icon={SearchIcon}
+            label="Search nearby"
+            onPress={() => toastMessage.set('Searching nearby')}
+          />
+        ) : (
+          <CompanionChip variant="count" icon={EyeIcon} label="views" count={32} />
+        )}
+      </TabBarCompanion>
+      <DemoToast />
+    </>
+  );
+}
+
+/**
+ * A plain toast, standing in for a toast library's host: it sits 8 pt above whatever tabcn
+ * draws at the bottom (the bar, its gap and the companion), and follows that edge when the
+ * bar minimizes. It fades in and out on tabcnTiming and slides on tabcnTiming when the edge
+ * moves; with "reduce motion" on, both are instant.
+ */
+function DemoToast() {
+  const message = toastMessage.useValue();
+  const inset = useTabBarInset();
+  // Keep the last text while the toast fades out.
+  const [shownText, setShownText] = useState(message);
+  if (message && message !== shownText) setShownText(message);
+
+  const opacity = useSharedValue(0);
+  const bottom = useSharedValue(inset + 8);
+  useEffect(() => {
+    opacity.value = withTiming(message ? 1 : 0, tabcnTiming);
+    if (!message) return;
+    AccessibilityInfo.announceForAccessibility(message);
+    const timer = setTimeout(() => toastMessage.set(undefined), 2500);
+    return () => clearTimeout(timer);
+  }, [message, opacity]);
+  useEffect(() => {
+    bottom.value = withTiming(inset + 8, tabcnTiming);
+  }, [inset, bottom]);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value, bottom: bottom.value }));
+
+  return (
+    <Animated.View pointerEvents="none" style={[styles.toastHost, style]}>
+      <View style={styles.toast}>
+        <Text style={styles.toastText}>{shownText}</Text>
+      </View>
+    </Animated.View>
+  );
+}
+
+/** Scroll to minimize the bar (the chip follows), switch the chip's form, show a toast. */
+export function CompanionChipExtra(props: DemoExtraProps) {
+  const { text, chip } = props;
+  const form = chipForm.useValue();
+  return (
+    <ScrollingList
+      {...props}
+      header={
+        <View style={styles.stack}>
+          <Note
+            text={text}
+            message="The chip rides above the bar's end. Scroll to minimize the bar and it follows; type below and both slide away for the keyboard."
+          />
+          <View style={styles.row}>
+            {(['round', 'pill', 'count'] as const).map((f) => (
+              <DemoButton
+                key={f}
+                label={f === form ? `• ${f}` : f}
+                onPress={() => chipForm.set(f)}
+                text={text}
+                chip={chip}
+              />
+            ))}
+            <DemoButton
+              label="Show toast"
+              onPress={() => toastMessage.set('Saved to your list')}
+              text={text}
+              chip={chip}
+            />
+          </View>
+          <TextInput
+            placeholder="Type to raise the keyboard"
+            placeholderTextColor={text}
+            style={[styles.input, { color: text, backgroundColor: chip }]}
+          />
+        </View>
+      }
+    />
+  );
+}
+
+// Sub-Tabs (a Soft Pill whose Library tab owns a drawer) -------------------------------------
+
+const LIBRARY = 'library';
+/** Library is the third tab. */
+const LIBRARY_TAB = 2;
+const subTabChoice = demoStore<string | undefined>(undefined);
+
+const PILL = { background: '#fafafa', capsule: '#e5e6e8', foreground: '#151517' };
+
+/** Soft Pill, copied, with `useSubTabs` on its Library tab. */
+export function SubTabsBar() {
+  const { tabs } = useTabBar();
+  return (
+    <TabBarRoot placement="floating">
+      <TabList style={styles.pill}>
+        <TabIndicator inset={{ x: -3.75, y: 0 }} style={styles.capsule} />
+        {tabs.map((tab) =>
+          tab.index === LIBRARY_TAB ? (
+            <LibraryTab key={tab.key} tab={tab} />
+          ) : (
+            <PillTab key={tab.key} tab={tab} />
+          ),
+        )}
+      </TabList>
+    </TabBarRoot>
+  );
+}
+
+function LibraryTab({ tab }: { tab: TabItem }) {
+  const sub = useSubTabs(LIBRARY, { width: 168 });
+  return (
+    <PillTab tab={tab} {...sub.tabProps}>
+      <View {...sub.anchorProps} />
+    </PillTab>
+  );
+}
+
+function PillTab({
+  tab,
+  children,
+  ...rest
+}: { tab: TabItem; children?: ReactNode } & Pick<
+  TabButtonProps,
+  'onLongPress' | 'accessibilityActions' | 'accessibilityState'
+>) {
+  return (
+    <TabButton tab={tab} style={styles.pillTab} {...rest}>
+      {tab.renderIcon?.({ focused: tab.focused, color: PILL.foreground, size: 18 })}
+      <Text
+        numberOfLines={1}
+        style={[styles.pillLabel, { fontWeight: tab.focused ? '700' : '500' }]}
+      >
+        {tab.label}
+      </Text>
+      {children}
+    </TabButton>
+  );
+}
+
+/** The drawer, declared once beside the navigator. */
+export function SubTabsPanel() {
+  return (
+    <SubTabs
+      name={LIBRARY}
+      items={['Albums', 'Artists', 'Songs'].map((label) => ({
+        label,
+        onPress: () => subTabChoice.set(label),
+      }))}
+    />
+  );
+}
+
+export function SubTabsNote({ text }: DemoExtraProps) {
+  const choice = subTabChoice.useValue();
+  return (
+    <View style={styles.block}>
+      <Note
+        text={text}
+        message={`Long-press Library: Albums, Artists and Songs slide up from behind it. With VoiceOver or TalkBack, use its "Show sub-tabs" action.${choice ? ` Last chosen: ${choice}.` : ''}`}
+      />
+    </View>
+  );
+}
+
+// Section Sheet: a section's body ------------------------------------------------------------
+
+const SECTION_ROWS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+/** A dozen rows for one section of the sheet; the sheet scrolls them at full height. */
+export function SectionRows({ title }: { title: string }) {
+  return (
+    <View style={styles.sectionRows}>
+      {SECTION_ROWS.map((n) => (
+        <View key={n} style={styles.sectionRow}>
+          <View style={styles.sectionThumb} />
+          <View style={styles.sectionCopy}>
+            <Text style={styles.sectionTitle}>{`${title} ${n}`}</Text>
+            <Text style={styles.sectionMeta}>{`${(n * 0.4).toFixed(1)} km away`}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// Live Tabs: a timer and a download, fed from outside the bar ------------------------------
+
+const TIMER_SECONDS = 5 * 60;
+const DOWNLOAD_MS = 6000;
+const liveRunning = demoStore(true);
+const liveRun = demoStore(0);
+
+const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+/**
+ * Writes the live tabs' values with `useLiveTab`, as a screen or a service would: the Timer
+ * tab counts down from 5:00 once a second, and the Downloads tab's ring fills every 6 s.
+ * Declared once beside the navigator, so it keeps running on every tab.
+ */
+export function LiveTabsFeed({ timer, download }: { timer: string; download: string }) {
+  const { progress: timerProgress, setText: setTimerText } = useLiveTab(timer);
+  const { progress: downloadProgress } = useLiveTab(download);
+  const running = liveRunning.useValue();
+  const run = liveRun.useValue();
+  const [remaining, setRemaining] = useState(TIMER_SECONDS);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `run` restarts the countdown.
+  useEffect(() => {
+    setRemaining(TIMER_SECONDS);
+  }, [run]);
+  useEffect(() => {
+    if (!running) return;
+    const tick = setInterval(() => setRemaining((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(tick);
+  }, [running]);
+  useEffect(() => {
+    setTimerText(remaining > 0 ? clock(remaining) : undefined);
+    timerProgress.value = 1 - remaining / TIMER_SECONDS;
+  }, [remaining, setTimerText, timerProgress]);
+
+  // The download loops 0 → 1 on the UI thread; pausing holds it where it is.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `run` restarts the download.
+  useEffect(() => {
+    if (!running) {
+      cancelAnimation(downloadProgress);
+      return;
+    }
+    downloadProgress.value = 0;
+    downloadProgress.value = withRepeat(
+      withTiming(1, { duration: DOWNLOAD_MS, easing: Easing.linear }),
+      -1,
+      false,
+    );
+    return () => cancelAnimation(downloadProgress);
+  }, [running, run, downloadProgress]);
+
+  // Leaving the demo clears the tabs.
+  useEffect(
+    () => () => {
+      setTimerText(undefined);
+      timerProgress.value = 0;
+      downloadProgress.value = 0;
+    },
+    [setTimerText, timerProgress, downloadProgress],
+  );
+  return null;
+}
+
+export function LiveTabsControls({ text, chip }: DemoExtraProps) {
+  const running = liveRunning.useValue();
+  return (
+    <View style={styles.block}>
+      <Note
+        text={text}
+        message="Timer counts down in place of its label, and a ring fills around Downloads. Both are written from outside the bar with useLiveTab."
+      />
+      <View style={styles.row}>
+        <DemoButton
+          label={running ? 'Pause' : 'Resume'}
+          onPress={() => liveRunning.set(!running)}
+          text={text}
+          chip={chip}
+        />
+        <DemoButton
+          label="Restart"
+          onPress={() => {
+            liveRun.set(liveRun.get() + 1);
+            liveRunning.set(true);
+          }}
+          text={text}
+          chip={chip}
+        />
+      </View>
+    </View>
+  );
+}
+
 // Split Search: a list to scroll ------------------------------------------------------------
 
 const ROWS = Array.from({ length: 40 }, (_, i) => `Row ${i + 1}`);
@@ -246,7 +700,19 @@ const ROWS = Array.from({ length: 40 }, (_, i) => `Row ${i + 1}`);
  * A long list whose scroll minimizes the bar (`useMinimizeOnScroll`). Tap the minimized bar,
  * scroll up, or reach the top to bring it back.
  */
-export function MinimizeList({ text, chip, barHeight }: DemoExtraProps) {
+export function MinimizeList(props: DemoExtraProps) {
+  return (
+    <ScrollingList
+      {...props}
+      header={
+        <Note text={props.text} message="Scroll down to minimize the bar; tap it to expand." />
+      }
+    />
+  );
+}
+
+/** The minimizing list, with any controls at its top. */
+function ScrollingList({ text, chip, barHeight, header }: DemoExtraProps & { header: ReactNode }) {
   const onScroll = useMinimizeOnScroll();
   return (
     <Animated.FlatList
@@ -254,13 +720,10 @@ export function MinimizeList({ text, chip, barHeight }: DemoExtraProps) {
       keyExtractor={(row) => row}
       onScroll={onScroll}
       scrollEventThrottle={16}
+      keyboardShouldPersistTaps="handled"
       style={styles.list}
       contentContainerStyle={[styles.listContent, { paddingBottom: barHeight + 16 }]}
-      ListHeaderComponent={
-        <View style={styles.listHeader}>
-          <Note text={text} message="Scroll down to minimize the bar; tap it to expand." />
-        </View>
-      }
+      ListHeaderComponent={<View style={styles.listHeader}>{header}</View>}
       renderItem={({ item }) => (
         <View style={[styles.listRow, { backgroundColor: chip }]}>
           <Text style={{ color: text }}>{item}</Text>
@@ -280,4 +743,40 @@ const styles = StyleSheet.create({
   listContent: { gap: 8, paddingHorizontal: 20 },
   listHeader: { paddingTop: 20, paddingBottom: 4 },
   listRow: { padding: 16, borderRadius: 14 },
+  stack: { gap: 12 },
+  input: { paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, fontSize: 15 },
+  comment: { gap: 2, paddingVertical: 10 },
+  commentAuthor: { fontSize: 14, fontWeight: '600', color: '#141416' },
+  commentText: { fontSize: 15, lineHeight: 21, color: '#3a3a3e' },
+  toastHost: { position: 'absolute', left: 16, right: 16, alignItems: 'center' },
+  toast: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(20, 20, 22, 0.92)',
+  },
+  toastText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
+  pill: {
+    borderRadius: 999,
+    paddingVertical: 3.8,
+    paddingHorizontal: 8,
+    backgroundColor: PILL.background,
+    boxShadow: '0 10px 28px rgba(60, 40, 20, 0.14)',
+  },
+  capsule: { borderRadius: 999, backgroundColor: PILL.capsule },
+  pillTab: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5.5,
+    paddingTop: 2.5,
+    width: 63,
+    height: 50.7,
+  },
+  pillLabel: { fontSize: 9.5, color: PILL.foreground },
+  sectionRows: { gap: 4, paddingBottom: 24 },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  sectionThumb: { width: 48, height: 48, borderRadius: 10, backgroundColor: '#dfe6da' },
+  sectionCopy: { flex: 1, gap: 2 },
+  sectionTitle: { fontSize: 15, fontWeight: '600', color: '#151517' },
+  sectionMeta: { fontSize: 13, color: 'rgba(21, 21, 23, 0.6)' },
 });

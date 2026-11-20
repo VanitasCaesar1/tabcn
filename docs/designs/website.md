@@ -18,11 +18,24 @@ One place to see every tabcn design move, and to install one. A visitor should b
 
 ## Pages
 
-| Path             | Content                                                                                                                                                                                    |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/`              | Hero with a few tab bar stills floating at the sides, the newest designs playing in a showcase, all 20 as rows (each tab state as a still) or a grid of posters, how it works, quick start |
-| `/designs/<id>/` | Stage with the recording in a phone frame, title, description, layout pill, View source, install, Expo Go QR, usage snippet, Previous/Next                                                 |
-| `/r/<id>.json`   | shadcn registry item with file contents inlined                                                                                                                                            |
+| Path             | Content                                                                                                                                                                                                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`              | Hero: an actual-size row of real tab bars stepping on tabcnSpring over two smaller rows, a layout dock that drives it, the install command for the bar in focus; then all designs as rows (each tab state as a still) or a grid of posters, how it works, quick start |
+| `/designs/<id>/` | Stage with the recording in a phone frame, title, description, layout pill, View source, install, Expo Go QR, usage snippet, Previous/Next                                                                                                                            |
+| `/r/<id>.json`   | shadcn registry item with file contents inlined                                                                                                                                                                                                                       |
+
+The home hero (the bar board, built 2026-11-21) changes the `/` row above. **Owner sign-off: pending.** Still to approve: the sub copy ("{n} tab bars for React Native and Expo. Each one is a single file you copy in with the shadcn CLI and change as you like.") and the board's opening bar (`BOARD_START = 'glow-glass'` in `apps/site/src/lib/board.ts`). The bar loops in `apps/site/public/bars/` are made by `python3 apps/site/scripts/bar-loops.py <recordings dir>`.
+
+## Props tables on each design's page
+
+- **Status:** proposed 2026-11-21 (moved here from `bottom-components.md`, part F1); not covered by the approval above.
+- **Goal:** every design page lists its props (name, type, default, description) from the source, so the table can't drift from the code.
+- **Reader.** `scripts/design-props.ts` (in the root `scripts/` folder, so both the site and `scripts/check-registry.ts` import it without the site bundling `typescript`) parses one design file at a time with `ts.createSourceFile` (syntax only, no type checker), so it's fast and doesn't need React Native's types. It finds the interface named `<Component>Props` (the component name `designs.ts` already reads), or else the type of the component's first parameter, and for each member records its name and optionality, its type as written (`MiniPlayerColors`, `'glass' | 'tint'`), its default (from the destructured parameter's initializer or a `@default` JSDoc tag) and its JSDoc description.
+- **Page.** `apps/site/src/lib/designs.ts` calls it during the static export and the design page shows a "Props" section after "Usage" (`props-table.tsx`), types in code font, named types linking to their line in "View source".
+- **CI.** `scripts/check-registry.ts` fails when a design's props member has no doc comment. The pull request that adds the rule also adds any missing comments to the existing designs, so it lands green.
+- **Rejected:** the full type checker (slow on React Native's types, prints expanded types); `react-docgen-typescript` (another dependency on the same compiler API, aimed at web components); hand-written tables (they drift).
+- **Files:** `scripts/design-props.ts` (create); `apps/site/src/lib/designs.ts`, `apps/site/src/app/designs/[id]/page.tsx`, `scripts/check-registry.ts`, existing `registry/designs/*/*.tsx` as needed (modify); `apps/site/src/components/props-table.tsx` (create).
+- **Built 2026-11-21**, with two changes from the plan above. (1) The reader runs in `apps/site/scripts/build-props.ts` (part of the site's `build` and `dev`), which writes `apps/site/generated/design-props.json` (gitignored); `designs.ts` reads that file, because importing the reader from page code would bundle `typescript` into the static export. (2) `colors` and `haptics` mean the same in every design, so a member with one of those names and no doc comment gets shared text (`SHARED_DESCRIPTIONS` in `scripts/design-props.ts`) instead of 41 copies of the same comment. Defaults also come from a doc comment's "Default <value>" sentence when there is no initializer or `@default` tag, and a `const` initializer from the same file is shown by its value. Eight members had no comment and got one (Mini Player, Companion Chip, Bar Sheet, Playful Tiles).
 
 ## Out of scope
 

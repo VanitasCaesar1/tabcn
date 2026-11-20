@@ -9,10 +9,14 @@
  * with and adds the panel or its controls (`panel:` or `extra:`). `tabcn/gestures` needs
  * react-native-gesture-handler, so a design that imports it must list that dependency.
  *
+ * Every design's props are read from its source for the props table on its page of the site
+ * (scripts/design-props.ts, docs/designs/website.md), so each member needs a doc comment.
+ *
  * Run: bun scripts/check-registry.ts   (part of `bun run check`)
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { readDesignProps } from './design-props';
 
 const root = join(import.meta.dir, '..');
 const read = (p: string) => readFileSync(join(root, p), 'utf8');
@@ -84,6 +88,20 @@ for (const item of registry.items) {
   const allowed = new Set([...ALWAYS, ...(item.dependencies ?? [])]);
   const main = `registry/designs/${item.name}/${item.name}.tsx`;
   if (!item.files.some((f) => f.path === main)) fail(`${item.name}: files must include ${main}`);
+  if (existsSync(join(root, main))) {
+    const props = readDesignProps(read(main), main);
+    if (!props) {
+      fail(`${item.name}: ${main} needs an exported component with a \`<Component>Props\` type`);
+    } else {
+      for (const prop of props.props) {
+        if (!prop.description) {
+          fail(
+            `${item.name}: ${props.typeName ?? 'props'}.${prop.name} needs a doc comment (it's the description in the props table on the site)`,
+          );
+        }
+      }
+    }
+  }
   for (const file of item.files) {
     if (!existsSync(join(root, file.path))) {
       fail(`${item.name}: ${file.path} does not exist`);

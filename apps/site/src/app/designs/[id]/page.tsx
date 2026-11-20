@@ -6,6 +6,7 @@ import { CodeBlock } from '@/components/code-block';
 import { InstallCommand } from '@/components/install-command';
 import { OpenOnPhone } from '@/components/open-on-phone';
 import { DesignPhone } from '@/components/phone';
+import { PropsTable } from '@/components/props-table';
 import { SiteHeader } from '@/components/site-header';
 import { cn } from '@/lib/cn';
 import { designs, getDesign, neighbours, usageSnippet } from '@/lib/designs';
@@ -120,10 +121,23 @@ export default async function DesignPage({ params }: Props) {
                     </code>
                     : Center CTA, Glow Glass, Labeled + Plus, Pill + Plus or Segment + Search.
                   </>
+                ) : design.id === 'sub-tabs' ? (
+                  <>
+                    It slides up from behind one tab, so that tab calls{' '}
+                    <code className="font-mono text-[13px]">useSubTabs(name)</code> inside your bar
+                    design: a few lines in a copy of any tabcn bar. Screen readers reach it through
+                    the tab&rsquo;s &ldquo;Show sub-tabs&rdquo; action.
+                  </>
+                ) : design.id === 'companion-chip' ? (
+                  <>
+                    <code className="font-mono text-[13px]">TabBarCompanion</code> places it against
+                    any tabcn tab bar, and it moves with the bar when it minimizes or slides away
+                    for the keyboard.
+                  </>
                 ) : (
                   'It works with any tabcn tab bar.'
                 )}
-                {design.id === 'mini-player' && (
+                {(design.id === 'mini-player' || design.id === 'bar-sheet') && (
                   <>
                     {' '}
                     Dragging it needs{' '}
@@ -145,10 +159,30 @@ export default async function DesignPage({ params }: Props) {
                 {design.id === 'side-rail' &&
                   ' It draws a rail when the navigator’s tabBarPosition is left, and a bottom bar otherwise.'}
                 {design.hasAction && ' The separate button runs onActionPress.'}
+                {design.id === 'section-sheet' &&
+                  ' Each section is a route, and its sheet body comes from sections, by route name. It needs a TabBarProvider around the navigator and a GestureHandlerRootView around the app.'}
+                {design.id === 'scrub-pill' &&
+                  ' Scrubbing needs react-native-gesture-handler and a GestureHandlerRootView around the app.'}
+                {design.id === 'live-tabs' &&
+                  ' Screens write each tab’s live values with useLiveTab(routeName), which needs a TabBarProvider around the navigator.'}
               </>
             )}
           </p>
           <CodeBlock filename="app/(tabs)/_layout.tsx" code={usageSnippet(design)} />
+        </section>
+
+        <section aria-labelledby="props-heading">
+          <h2 id="props-heading" className="pl-1 font-medium text-[13px]">
+            Props
+          </h2>
+          <p className="mt-1 mb-2.5 pl-1 text-pretty text-muted text-sm">
+            Read from{' '}
+            <code className="font-mono text-[13px]">
+              {design.props.typeName ?? design.component}
+            </code>{' '}
+            in the design&rsquo;s source, so they match the file you copy.
+          </p>
+          <PropsTable props={design.props} source={sourceUrl(design.id)} />
         </section>
 
         <OpenOnPhone id={design.id} title={design.title} />
