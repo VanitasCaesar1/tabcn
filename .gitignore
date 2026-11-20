@@ -36,3 +36,6 @@ npm-debug.*
 
 # Expo generated types
 expo-env.d.ts
+
+# icon tracing intermediates
+tools/trace/specs/*.out.json
