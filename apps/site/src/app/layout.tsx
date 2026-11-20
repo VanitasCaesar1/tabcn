@@ -4,11 +4,13 @@ import Script from 'next/script';
 import { Sidebar } from '@/components/sidebar';
 import { SiteFooter } from '@/components/site-footer';
 import { themeScript } from '@/components/theme-toggle';
-import { site } from '@/lib/site';
+import { absoluteUrl, site } from '@/lib/site';
 import './globals.css';
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
+
+const shareAlt = 'tabcn: nine of its animated tab bars for React Native and Expo';
 
 export const metadata: Metadata = {
   metadataBase: new URL(`${site.url}/`),
@@ -28,8 +30,19 @@ export const metadata: Metadata = {
     'reanimated',
     'shadcn',
   ],
-  openGraph: { type: 'website', siteName: site.name, locale: site.locale, url: './' },
-  twitter: { card: 'summary', creator: `@${site.x}` },
+  // Link previews: scripts/og-images.py makes these from the simulator recordings.
+  openGraph: {
+    type: 'website',
+    siteName: site.name,
+    locale: site.locale,
+    url: './',
+    images: [{ url: absoluteUrl('/og.jpg'), width: 1200, height: 630, alt: shareAlt }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    creator: `@${site.x}`,
+    images: [{ url: absoluteUrl('/og.jpg'), alt: shareAlt }],
+  },
 };
 
 export const viewport: Viewport = {
