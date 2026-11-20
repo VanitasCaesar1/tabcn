@@ -80,7 +80,7 @@ export const demos: Record<string, Demo> = {
     ),
     background: '#ab9ff1',
     pattern: { kind: 'waves', color: '#a296ec', gap: 9.6, amp: 1.2, wavelength: 18 },
-    barHeight: 52,
+    barHeight: 56,
     tabs: [
       { label: 'Home', icon: () => null },
       { label: 'Trade', icon: () => null },
@@ -105,13 +105,14 @@ export const demos: Record<string, Demo> = {
   },
   'pill-plus': {
     render: ({ onActionPress }) => <PillPlus onActionPress={onActionPress} />,
-    background: '#dce3eb',
-    pattern: { kind: 'grid', color: '#cfd7e1', gap: 24 },
-    barHeight: 53,
+    // corner: a light map behind the bar.
+    background: '#c5dff3',
+    pattern: { kind: 'grid', color: '#d9e9f6', gap: 24 },
+    initialTab: 1,
+    barHeight: 54,
     tabs: [
-      { label: 'People', icon: PillPlusIcons.PeopleIcon },
-      { label: 'Map', icon: PillPlusIcons.MapIcon },
       { label: 'Search', icon: PillPlusIcons.SearchIcon },
+      { label: 'Map', icon: PillPlusIcons.MapIcon },
       { label: 'Me', icon: PillPlusIcons.AvatarIcon },
     ],
   },
@@ -147,15 +148,14 @@ export const demos: Record<string, Demo> = {
   },
   'glass-expand': {
     render: () => <GlassExpand />,
-    background: '#3324f1',
-    pattern: { kind: 'rings', color: '#4133f9', gap: 9.6, stroke: 0.8 },
-    initialTab: 2,
-    barHeight: 69,
-    dark: true,
+    // GO Club: the bar floats on a flat light-lavender card.
+    background: '#ebe9ff',
+    barHeight: 82,
     tabs: [
-      { label: 'Run', icon: GlassExpandIcons.SneakerIcon },
-      { label: 'Hydrate', icon: GlassExpandIcons.DropIcon },
-      { label: 'Plan', icon: GlassExpandIcons.SparkleIcon },
+      { label: 'Steps', icon: GlassExpandIcons.SneakerIcon },
+      { label: 'Water', icon: GlassExpandIcons.DropIcon },
+      { label: 'Plan', icon: GlassExpandIcons.ListSparkleIcon },
+      { label: 'Settings', icon: GlassExpandIcons.HexNutIcon },
     ],
   },
   'segment-search': {
@@ -263,14 +263,16 @@ export const demos: Record<string, Demo> = {
   },
   'outline-dark': {
     render: () => <OutlineDark />,
-    background: '#f1f1ef',
-    pattern: { kind: 'dots', color: '#d9d9d7', gap: 9.6, r: 0.55 },
-    barHeight: 46,
+    // Blank Spaces: flat black screens.
+    background: '#000000',
+    pattern: { kind: 'dots', color: '#141414', gap: 9.6, r: 0.55 },
+    initialTab: 1,
+    barHeight: 80,
+    dark: true,
     tabs: [
       { label: 'Apps', icon: OutlineDarkIcons.AppsIcon },
-      { label: 'Vault', icon: OutlineDarkIcons.LockIcon },
-      { label: 'Stats', icon: OutlineDarkIcons.StatsIcon },
-      { label: 'Account', icon: OutlineDarkIcons.PersonIcon },
+      { label: 'Lock', icon: OutlineDarkIcons.LockIcon },
+      { label: 'Profile', icon: OutlineDarkIcons.PersonIcon },
     ],
   },
   'dark-capsule': {
@@ -289,12 +291,12 @@ export const demos: Record<string, Demo> = {
   },
   'light-icons': {
     render: () => <LightIcons />,
-    background: '#cdeb3e',
-    pattern: { kind: 'contours', color: '#bfdd30' },
-    initialTab: 3,
-    barHeight: 55,
+    // Amble: the bar sits straight on the app's near-black screen.
+    background: '#0e0e0e',
+    barHeight: 53,
+    dark: true,
     tabs: [
-      { label: 'Hooks', icon: LightIconsIcons.HookIcon },
+      { label: 'Route', icon: LightIconsIcons.RouteIcon },
       { label: 'Search', icon: LightIconsIcons.SearchIcon },
       { label: 'Record', icon: LightIconsIcons.RecordIcon },
       { label: 'Chats', icon: LightIconsIcons.BubbleIcon },
@@ -318,42 +320,42 @@ export const demos: Record<string, Demo> = {
   },
   'sliding-capsule': {
     render: () => <SlidingCapsule />,
-    background: '#173300',
-    pattern: { kind: 'plus', color: '#25450f', gap: 12, size: 3, stroke: 0.9 },
-    barHeight: 58.5,
-    dark: true,
+    // Wise: the glass pill floats over white content.
+    background: '#ffffff',
+    pattern: { kind: 'plus', color: '#efefef', gap: 12, size: 3, stroke: 0.9 },
+    barHeight: 62.5,
     tabs: [
       { label: 'Home', icon: SlidingCapsuleIcons.HomeIcon },
-      { label: 'Cards', icon: SlidingCapsuleIcons.CardsIcon },
+      { label: 'Card', icon: SlidingCapsuleIcons.CardIcon },
       { label: 'Recipients', icon: SlidingCapsuleIcons.RecipientsIcon },
       { label: 'Payments', icon: SlidingCapsuleIcons.PaymentsIcon },
     ],
   },
   'labeled-plus': {
     render: ({ onActionPress }) => <LabeledPlus onActionPress={onActionPress} />,
-    background: '#0e0e0e',
-    pattern: { kind: 'waves', color: '#1c1c1c', gap: 9.6, amp: 1.2, wavelength: 18 },
-    barHeight: 58.5,
-    dark: true,
+    // ElevenLabs: photo cards scroll under the glass bar.
+    background: '#fcfcfc',
+    barHeight: 62,
+    blobs: [
+      { dx: -110, dy: -70, r: 60, color: '#c8dca0' },
+      { dx: 115, dy: -65, r: 60, color: '#b6d4bf' },
+    ],
     tabs: [
       { label: 'Home', icon: LabeledPlusIcons.HomeIcon },
       { label: 'Creator', icon: LabeledPlusIcons.CreatorIcon },
-      { label: 'Explore', icon: LabeledPlusIcons.ExploreIcon },
-      { label: 'Templates', icon: LabeledPlusIcons.TemplatesIcon },
     ],
   },
   'mono-type': {
     render: () => <MonoType />,
-    background: '#2d0f2b',
-    pattern: { kind: 'dottedRings', color: '#4a2547', gap: 48, dot: 1.4 },
-    barHeight: 54,
-    dark: true,
+    // CHANI: a warm light-grey page above the bar's black rule.
+    background: '#f4f2f3',
+    barHeight: 73,
     tabs: [
       { label: 'Home', icon: MonoTypeIcons.HouseIcon },
       { label: 'Grow', icon: MonoTypeIcons.CrystalIcon },
-      { label: 'Me', icon: MonoTypeIcons.WheelIcon },
+      { label: 'Charts', icon: MonoTypeIcons.WheelIcon },
       { label: 'Transits', icon: MonoTypeIcons.ClockIcon },
-      { label: 'Listen', icon: MonoTypeIcons.HeadphonesIcon },
+      { label: 'Audio', icon: MonoTypeIcons.HeadphonesIcon },
     ],
   },
 };

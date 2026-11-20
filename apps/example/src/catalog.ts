@@ -38,7 +38,8 @@ export const catalog: DesignEntry[] = [
     ref: 1,
     title: 'Glass Expand',
     layout: 'floating-pill',
-    summary: 'Frosted pill; the active tab grows into a glass capsule that shows its label.',
+    summary:
+      'Near-white glass pill with icon-only tabs; a flat grey capsule glides behind the active icon (Liquid Glass on iOS 26).',
     status: 'ready',
   },
   {
@@ -54,7 +55,7 @@ export const catalog: DesignEntry[] = [
     ref: 3,
     title: 'Chip Rail',
     layout: 'chip-rail',
-    summary: 'Dark rail with an avatar and text-only chips that scroll sideways.',
+    summary: 'Dark docked bar with an avatar and text-only chips that scroll sideways.',
     status: 'ready',
   },
   {
@@ -79,7 +80,7 @@ export const catalog: DesignEntry[] = [
     ref: 6,
     title: 'Pill + Plus',
     layout: 'pill-with-action',
-    summary: 'White icon-only pill with an avatar tab and a separate plus button.',
+    summary: 'White icon-only capsule with an avatar tab and a grey plus action at its end.',
     status: 'ready',
   },
   {
@@ -95,7 +96,8 @@ export const catalog: DesignEntry[] = [
     ref: 8,
     title: 'Outline Dark',
     layout: 'docked-bar',
-    summary: 'Black bar with outline icons; the active icon brightens.',
+    summary:
+      'Docked, icon-only black bar from Blank Spaces: grey outline glyphs, the active one crossfades to a white filled glyph.',
     status: 'ready',
   },
   {
@@ -141,9 +143,10 @@ export const catalog: DesignEntry[] = [
   {
     id: 'light-icons',
     ref: 14,
-    title: 'Light Icons',
+    title: 'Dark Icons',
     layout: 'docked-bar',
-    summary: 'Light grey bar, icons only; the active icon switches to its filled version.',
+    summary:
+      'Icons straight on a near-black screen, no labels; grey outlines turn white, and the record tab is drawn larger.',
     status: 'ready',
   },
   {
@@ -159,7 +162,8 @@ export const catalog: DesignEntry[] = [
     ref: 16,
     title: 'Sliding Capsule',
     layout: 'floating-pill',
-    summary: 'White pill with icons and labels; a grey capsule slides to the active tab.',
+    summary:
+      "Wise's near-white glass pill (Liquid Glass on iOS 26) with green outline icons and labels; a grey capsule glides to the active tab.",
     status: 'ready',
   },
   {
@@ -167,7 +171,8 @@ export const catalog: DesignEntry[] = [
     ref: 17,
     title: 'Labeled + Plus',
     layout: 'pill-with-action',
-    summary: 'Labelled pill with a sliding capsule beside a separate plus button.',
+    summary:
+      'iOS 26-style glass pill with labelled tabs and a gliding grey capsule, beside a round glass plus button that runs an action (Liquid Glass, blur fallback).',
     status: 'ready',
   },
   {

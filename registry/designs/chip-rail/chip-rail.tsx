@@ -1,5 +1,5 @@
 /**
- * Chip Rail: a black rail with a leading avatar and text-only chips that scroll
+ * Chip Rail: a black docked bar with a leading avatar and text-only chips that scroll
  * sideways. A lavender chip slides to the active tab; the rail scrolls it into view.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
@@ -23,7 +23,7 @@ const defaultColors = {
   chipBorder: '#232323',
   active: '#b4a7f9',
   activeText: '#121212',
-  text: '#b3b3b3',
+  text: '#c4c4c4',
 };
 
 export type ChipRailColors = typeof defaultColors;
@@ -47,8 +47,8 @@ export function ChipRail({ leading, colors: custom, haptics = true }: ChipRailPr
   }, [activeIndex]);
 
   return (
-    <TabBarRoot placement="floating" style={styles.outer}>
-      <View style={[styles.rail, { backgroundColor: colors.background }]}>
+    <TabBarRoot placement="docked" style={{ backgroundColor: colors.background }}>
+      <View style={styles.rail}>
         {leading ? <View style={styles.leading}>{leading}</View> : null}
         <ScrollView
           ref={scroll}
@@ -116,14 +116,13 @@ function Chip({
 }
 
 const styles = StyleSheet.create({
-  outer: { width: 359, maxWidth: '100%' },
+  // Docked like Phantom's own bar: full width and flush with the bottom edge, with the dark
+  // background running under the home indicator.
   rail: {
-    height: 52,
-    borderRadius: 16,
-    borderCurve: 'continuous',
+    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 7,
+    paddingLeft: 12,
     overflow: 'hidden',
   },
   leading: {
