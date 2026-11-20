@@ -155,7 +155,7 @@
       "type": "registry:component",
       "title": "Orbs",
       "description": "Separate floating circles with live content and badges; the center one is larger.",
-      "dependencies": ["tabcn", "expo-haptics", "expo-linear-gradient", "react-native-svg"],
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
           "path": "registry/designs/orbs/orbs.tsx",

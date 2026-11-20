@@ -1,17 +1,15 @@
 /**
- * Orbs: separate floating circles instead of a bar. Inactive tabs are blue
- * gradient orbs; the active one grows into a larger white orb. Badges are
+ * Orbs: separate floating circles instead of a bar. Each inactive tab is its
+ * icon art (a round sticker); the active one grows into a larger white orb. Badges are
  * glossy red balls.
  * Built on tabcn: https://github.com/OWNER/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet } from 'react-native';
 import Animated, { interpolate, useAnimatedStyle, ZoomIn } from 'react-native-reanimated';
 import { TabBarRoot, TabButton, type TabItem, TabList, useFocusProgress, useTabBar } from 'tabcn';
 
 const defaultColors = {
-  orb: ['#86c4ff', '#5d55f0'] as const,
   active: '#ffffff',
   badge: '#f0151c',
 };
@@ -48,7 +46,7 @@ function Orb({ tab, colors, haptics }: { tab: TabItem; colors: OrbsColors; hapti
   });
   const white = useAnimatedStyle(() => ({ opacity: progress.value }));
   const icon = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(progress.value, [0, 1], [1, 0.62]) }],
+    transform: [{ scale: interpolate(progress.value, [0, 1], [1, 0.72]) }],
   }));
   return (
     <TabButton
@@ -60,12 +58,11 @@ function Orb({ tab, colors, haptics }: { tab: TabItem; colors: OrbsColors; hapti
       }
     >
       <Animated.View style={[styles.orb, size]}>
-        <LinearGradient colors={colors.orb} style={StyleSheet.absoluteFill} />
         <Animated.View
           style={[StyleSheet.absoluteFill, { backgroundColor: colors.active }, white]}
         />
         <Animated.View style={icon}>
-          {tab.renderIcon?.({ focused: tab.focused, color: colors.active, size: SMALL })}
+          {tab.renderIcon?.({ focused: tab.focused, color: colors.active, size: SMALL * 1.08 })}
         </Animated.View>
       </Animated.View>
       {tab.badge != null ? (
@@ -84,10 +81,10 @@ const styles = StyleSheet.create({
   list: { alignItems: 'center', gap: 30, paddingVertical: 4 },
   slot: { width: LARGE, height: LARGE, alignItems: 'center', justifyContent: 'center' },
   orb: {
+    boxShadow: '0 6px 16px rgba(120, 90, 40, 0.14)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    boxShadow: '0 8px 20px rgba(80, 60, 200, 0.22)',
   },
   badge: { position: 'absolute', top: 2, right: 2, width: 13, height: 13, borderRadius: 7 },
   gloss: {

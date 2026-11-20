@@ -5,9 +5,9 @@
   "boxes": [[935, 1100]],
   "band": [0.08, 0.95],
   "mode": "multi",
-  "k": 8,
-  "up": 3,
-  "turd": 500,
-  "opt": 1.4,
-  "modefilter": 11
+  "k": 9,
+  "up": 4,
+  "turd": 250,
+  "opt": 1.0,
+  "modefilter": 7
 }

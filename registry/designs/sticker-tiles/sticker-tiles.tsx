@@ -73,7 +73,7 @@ function Tab({
       onPressIn={haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) : undefined}
     >
       <Animated.View style={icon}>
-        {tab.renderIcon?.({ focused: tab.focused, color: colors.label, size: 33 })}
+        {tab.renderIcon?.({ focused: tab.focused, color: colors.label, size: 40 })}
         {tab.badge != null ? (
           <Animated.View
             entering={ZoomIn.springify()}
@@ -99,8 +99,8 @@ const styles = StyleSheet.create({
   outer: { width: 371, maxWidth: '100%' },
   bar: { height: 68, borderRadius: 13, paddingHorizontal: 4 },
   tile: { borderRadius: 14 },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  label: { fontSize: 14 },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 0 },
+  label: { fontSize: 12.5 },
   systemWeight: { fontWeight: '800' },
   badge: {
     position: 'absolute',

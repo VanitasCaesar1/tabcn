@@ -82,7 +82,7 @@ export function CenterCta({
 function Tab({ tab, haptics }: { tab: TabItem; haptics: boolean }) {
   const progress = useFocusProgress(tab);
   const icon = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 1], [0.6, 1]),
+    opacity: interpolate(progress.value, [0, 1], [0.85, 1]),
     transform: [
       { translateY: interpolate(progress.value, [0, 1], [0, -2]) },
       { scale: interpolate(progress.value, [0, 1], [0.94, 1.04]) },
