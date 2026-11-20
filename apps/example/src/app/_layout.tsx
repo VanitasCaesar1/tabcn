@@ -7,7 +7,12 @@ export default function RootLayout() {
     <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="index" options={{ title: 'tabcn' }} />
-        <Stack.Screen name="designs/[id]" options={{ title: '', headerBackTitle: 'Back' }} />
+        <Stack.Screen
+          name="designs/[id]"
+          // One screen instance per design, so each nested tab navigator keeps its own `id`.
+          getId={({ params }) => (params as { id?: string } | undefined)?.id}
+          options={{ title: '', headerBackTitle: 'Back' }}
+        />
       </Stack>
     </ThemeProvider>
   );

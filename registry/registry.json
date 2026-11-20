@@ -4,6 +4,90 @@
   "homepage": "https://github.com/OWNER/tabcn",
   "items": [
     {
+      "name": "top-notch",
+      "type": "registry:component",
+      "title": "Top Notch",
+      "description": "Rounded card with icons and labels; a short bar slides along the top edge.",
+      "dependencies": ["tabcn", "expo-haptics"],
+      "files": [
+        {
+          "path": "registry/designs/top-notch/top-notch.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/top-notch.tsx"
+        }
+      ]
+    },
+    {
+      "name": "solid-dark",
+      "type": "registry:component",
+      "title": "Solid Dark",
+      "description": "Black bar, icons only; each icon crossfades from outline to filled and a dot follows the active tab.",
+      "dependencies": ["tabcn", "expo-haptics"],
+      "files": [
+        {
+          "path": "registry/designs/solid-dark/solid-dark.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/solid-dark.tsx"
+        }
+      ]
+    },
+    {
+      "name": "outline-dark",
+      "type": "registry:component",
+      "title": "Outline Dark",
+      "description": "Black bar with outline icons; the active icon brightens.",
+      "dependencies": ["tabcn", "expo-haptics"],
+      "files": [
+        {
+          "path": "registry/designs/outline-dark/outline-dark.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/outline-dark.tsx"
+        }
+      ]
+    },
+    {
+      "name": "dark-capsule",
+      "type": "registry:component",
+      "title": "Dark Capsule",
+      "description": "Dark bar, icons only, an outlined capsule behind the active tab and an avatar tab.",
+      "dependencies": ["tabcn", "expo-haptics"],
+      "files": [
+        {
+          "path": "registry/designs/dark-capsule/dark-capsule.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/dark-capsule.tsx"
+        }
+      ]
+    },
+    {
+      "name": "light-icons",
+      "type": "registry:component",
+      "title": "Light Icons",
+      "description": "Light grey bar, icons only; the active icon switches to its filled version.",
+      "dependencies": ["tabcn", "expo-haptics"],
+      "files": [
+        {
+          "path": "registry/designs/light-icons/light-icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/light-icons.tsx"
+        }
+      ]
+    },
+    {
+      "name": "playful-tiles",
+      "type": "registry:component",
+      "title": "Playful Tiles",
+      "description": "White bar with colourful icons; the active tab gets a bordered tile.",
+      "dependencies": ["tabcn", "expo-haptics"],
+      "files": [
+        {
+          "path": "registry/designs/playful-tiles/playful-tiles.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/playful-tiles.tsx"
+        }
+      ]
+    },
+    {
       "name": "sliding-capsule",
       "type": "registry:component",
       "title": "Sliding Capsule",
@@ -32,16 +116,16 @@
       ]
     },
     {
-      "name": "solid-dark",
+      "name": "mono-type",
       "type": "registry:component",
-      "title": "Solid Dark",
-      "description": "Black bar, icons only; each icon crossfades from outline to filled and a dot follows the active tab.",
+      "title": "Mono Type",
+      "description": "White bar with line icons and uppercase monospace labels; the active tab takes the accent colour.",
       "dependencies": ["tabcn", "expo-haptics"],
       "files": [
         {
-          "path": "registry/designs/solid-dark/solid-dark.tsx",
+          "path": "registry/designs/mono-type/mono-type.tsx",
           "type": "registry:component",
-          "target": "components/tabcn/solid-dark.tsx"
+          "target": "components/tabcn/mono-type.tsx"
         }
       ]
     }

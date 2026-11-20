@@ -47,7 +47,7 @@ export const catalog: DesignEntry[] = [
     title: 'Top Notch',
     layout: 'docked-bar',
     summary: 'Rounded card with icons and labels; a short bar slides along the top edge.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'chip-rail',
@@ -96,7 +96,7 @@ export const catalog: DesignEntry[] = [
     title: 'Outline Dark',
     layout: 'docked-bar',
     summary: 'Black bar with outline icons; the active icon brightens.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'orbs',
@@ -128,7 +128,7 @@ export const catalog: DesignEntry[] = [
     title: 'Dark Capsule',
     layout: 'docked-bar',
     summary: 'Dark bar, icons only, an outlined capsule behind the active tab and an avatar tab.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'gradient-stickers',
@@ -144,7 +144,7 @@ export const catalog: DesignEntry[] = [
     title: 'Light Icons',
     layout: 'docked-bar',
     summary: 'Light grey bar, icons only; the active icon switches to its filled version.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'playful-tiles',
@@ -152,7 +152,7 @@ export const catalog: DesignEntry[] = [
     title: 'Playful Tiles',
     layout: 'docked-bar',
     summary: 'White bar with colourful icons; the active tab gets a bordered tile.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'sliding-capsule',
@@ -194,7 +194,7 @@ export const catalog: DesignEntry[] = [
     layout: 'docked-bar',
     summary:
       'White bar with line icons and uppercase monospace labels; the active tab takes the accent colour.',
-    status: 'planned',
+    status: 'ready',
   },
 ];
 

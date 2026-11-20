@@ -67,7 +67,6 @@ export function useTabIndicator(options: TabIndicatorOptions = {}): TabIndicator
       width.value = withSpring(next.width, spring);
       height.value = withSpring(next.height, spring);
     },
-    [activeIndex, inset, spring],
   );
 
   const style = useAnimatedStyle(() => ({
