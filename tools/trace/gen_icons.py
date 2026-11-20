@@ -13,9 +13,14 @@ for name, ic in zip(names, icons):
     if not ic or name == '-': continue
     single = not ic['layers'][0]['fill']
     args = '{ color, size }' if single else '{ size }'
-    paths = '\n'.join(
-        f'      <Path d="{L["d"]}" fill={{color}} />' if not L['fill'] else f'      <Path d="{L["d"]}" fill="{L["fill"]}" />'
-        for L in ic['layers'])
+    def path(L):
+        if L.get('stroke'):
+            return (f'      <Path d="{L["d"]}" fill="none" stroke="{L["stroke"]}" strokeWidth={{{L["width"]}}}'
+                    ' strokeLinecap="round" strokeLinejoin="round" />')
+        if not L['fill']:
+            return f'      <Path d="{L["d"]}" fill={{color}} />'
+        return f'      <Path d="{L["d"]}" fill="{L["fill"]}" />'
+    paths = '\n'.join(path(L) for L in ic['layers'])
     out.append(f'export function {name}({args}: TabIconProps) {{\n  return (\n    <Svg width={{size}} height={{size}} viewBox="0 0 40 40">\n{paths}\n    </Svg>\n  );\n}}\n')
 code = '\n'.join(out) + (('\n' + extra) if extra else '')
 path = os.path.join(ROOT, 'registry', 'designs', did, 'icons.tsx')

@@ -234,6 +234,24 @@ for x0, y0, x1, y1, o in items:
         d, tf = potrace(L['mask'], o.get('opt', 0.6), o.get('turd', 40 * UP))
         if d:
             out.append({'fill': L['fill'], 'd': transform(d, tf, s, ox, oy)})
+    # Details too small to trace (eye glints, a mouth), drawn from reference-pixel coordinates.
+    u = lambda v, o0, off: (v - o0) * UP * s + off  # noqa: E731
+    for e in o.get('extras', []):
+        if 'circle' in e:
+            cx, cy, rr = e['circle']
+            X, Y, R = u(cx, x0, ox), u(cy, y0, oy), rr * UP * s
+            d = f'M {fmt(X - R)} {fmt(Y)} a {fmt(R)} {fmt(R)} 0 1 0 {fmt(2 * R)} 0 a {fmt(R)} {fmt(R)} 0 1 0 {fmt(-2 * R)} 0 Z'
+        elif 'ellipse' in e:
+            cx, cy, rx, ry = e['ellipse']
+            X, Y, RX, RY = u(cx, x0, ox), u(cy, y0, oy), rx * UP * s, ry * UP * s
+            d = f'M {fmt(X - RX)} {fmt(Y)} a {fmt(RX)} {fmt(RY)} 0 1 0 {fmt(2 * RX)} 0 a {fmt(RX)} {fmt(RY)} 0 1 0 {fmt(-2 * RX)} 0 Z'
+        else:
+            pts = [(u(px, x0, ox), u(py, y0, oy)) for px, py in e['line']]
+            d = 'M ' + ' L '.join(f'{fmt(X)} {fmt(Y)}' for X, Y in pts)
+        layer = {'fill': e.get('fill'), 'd': d}
+        if 'stroke' in e:
+            layer.update(fill='none', stroke=e['stroke'], width=round(e['width'] * UP * s, 2))
+        out.append(layer)
     res.append({'w': round(w * s, 1), 'h': round(h * s, 1), 'layers': out})
 
 json.dump(res, open(sys.argv[1].replace('.json', '.out.json'), 'w'))

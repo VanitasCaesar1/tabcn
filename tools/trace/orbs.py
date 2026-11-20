@@ -1,6 +1,6 @@
 """Build the Orbs icons from parts: gradient circle + lettering + white elements.
 The white elements are traced from the reference. The lettering is too blurred in the JPEG
-to trace cleanly, so it is rebuilt: the word is set in Impact and warped onto the orb the
+to trace cleanly, so it is rebuilt: the word is set in Bowlby One and warped onto the orb the
 way the reference bends it (letters fan out from a point above the orb, squeeze toward the
 edges, and their feet follow the orb's curve), then traced. Writes registry/designs/orbs/icons.tsx
 (keeps ChatIcon from the existing file)."""
@@ -41,11 +41,12 @@ def transform(d, tf, s):
     return re.sub(r'\s+', ' ', ' '.join(out)).strip()
 
 
-IMPACT = '/System/Library/Fonts/Supplemental/Impact.ttf'
+# Bowlby One (SIL Open Font License, see fonts/OFL.txt): heavy and tight like the reference's lettering.
+LETTERING = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fonts', 'BowlbyOne-Regular.ttf')
 
 
-def flat_text(word, track=-0.02):
-    f = ImageFont.truetype(IMPACT, 400)
+def flat_text(word, track=-0.02, font=None):
+    f = ImageFont.truetype(font or LETTERING, 400)
     bbs = [f.getbbox(ch) for ch in word]
     widths = [b[2] - b[0] for b in bbs]
     W = int(sum(widths) + track * 400 * (len(word) - 1)) + 80
@@ -60,11 +61,11 @@ def flat_text(word, track=-0.02):
     return a[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
 
 
-def warped_word(word, n, span=(0.08, 0.92), top=0.43, foot=(0.45, 0.42), lam=45, cy=-0.9):
+def warped_word(word, n, span=(0.08, 0.92), top=0.43, foot=(0.45, 0.42), lam=45, cy=-0.9, font=None, track=-0.02):
     """Mask (n x n) of `word` bent onto the orb. Measured on the reference: letter tops sit on
     y = 0.43 of the orb, their feet on an oval (radii 0.45 across, 0.42 down) well inside the
     orb's edge, and the word spans x 0.08-0.92."""
-    a = flat_text(word)
+    a = flat_text(word, track, font)
     fh, fw = a.shape
     yy, xx = np.mgrid[0:n, 0:n] / n
     th = np.arctan2(xx - 0.5, yy - cy)

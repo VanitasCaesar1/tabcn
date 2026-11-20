@@ -23,4 +23,4 @@ python3 tools/trace/gen_icons.py gradient-stickers "Gradient Stickers" 13 tools/
 
 It finds the white border by colour and fills it to get a smooth silhouette, then clusters the art's colours on flat pixels only, so JPEG blends at colour edges don't become colours of their own. Every layer is smoothed before it is traced. For art without a white border, set `bg` to the background colour. `erase` with `mirror` fills an area hidden under a badge with the icon's mirror image. The printed `BIGPX … pt` is the size to render the icons at: the design's `ICON` constant.
 
-`orbs.py` builds the Orbs icons. Their curved lettering and timer digits are set in Impact and Arial Bold and warped to match the reference, because the JPEG is too soft to trace them cleanly.
+`orbs.py` builds the Orbs icons. Their curved lettering and timer digits are set in Bowlby One and Arial Bold and warped to match the reference, because the JPEG is too soft to trace them cleanly.

@@ -1,0 +1,16 @@
+{
+  "ref": 6,
+  "bar": [1110, 105, 1901, 314],
+  "tabs": 1,
+  "boxes": [[1700, 1800]],
+  "band": [0.1, 0.9],
+  "bg": [255, 255, 255],
+  "bg_tol": 30,
+  "k": 10,
+  "merge": 22,
+  "min_area": 0.0015,
+  "min_flat": 0.0004,
+  "blend_tol": 0,
+  "smooth": 0.7,
+  "highlights": false
+}
