@@ -154,8 +154,14 @@
       "name": "orbs",
       "type": "registry:component",
       "title": "Orbs",
-      "description": "Separate floating circles with live content and badges; the center one is larger.",
-      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
+      "description": "Separate frosted glass orbs (Liquid Glass on iOS 26) with curved lettering; the active one is larger.",
+      "dependencies": [
+        "tabcn",
+        "expo-blur",
+        "expo-glass-effect",
+        "expo-haptics",
+        "react-native-svg"
+      ],
       "files": [
         {
           "path": "registry/designs/orbs/orbs.tsx",

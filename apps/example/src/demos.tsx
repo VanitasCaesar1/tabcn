@@ -117,14 +117,20 @@ export const demos: Record<string, Demo> = {
   },
   orbs: {
     render: () => <Orbs />,
-    background: '#fff2df',
-    pattern: { kind: 'dots', color: '#f6e3c6', gap: 9, r: 0.6 },
+    // The app's sea-blue map, with lighter shallows and a darker channel for the glass to blur.
+    background: '#2ea5f0',
     initialTab: 1,
-    barHeight: 76,
+    barHeight: 82,
+    blobs: [
+      { dx: -150, dy: -30, r: 70, color: '#58bdf6' },
+      { dx: 120, dy: 20, r: 60, color: '#1f8fdc' },
+      { dx: 10, dy: 60, r: 50, color: '#47b3f4' },
+    ],
+    dark: true,
     tabs: [
-      { label: 'Scratch', icon: OrbsIcons.ScratchIcon, badge: 1 },
+      { label: 'Scratch', icon: OrbsIcons.ScratchIcon },
       { label: 'Chat', icon: OrbsIcons.ChatIcon },
-      { label: 'Places', icon: OrbsIcons.PlacesIcon, badge: 1 },
+      { label: 'Places', icon: OrbsIcons.PlacesIcon },
     ],
   },
   'center-cta': {

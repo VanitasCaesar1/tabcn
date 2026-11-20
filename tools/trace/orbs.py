@@ -1,5 +1,5 @@
-"""Build the Orbs icons from parts: gradient circle + lettering + white elements.
-The white elements are traced from the reference. The lettering is too blurred in the JPEG
+"""Build the Orbs icons: what sits inside each glass orb (the design draws the glass).
+Measured on the app's own screenshot. The lettering is too blurred in the JPEG
 to trace cleanly, so it is rebuilt: the word is set in Bowlby One and warped onto the orb the
 way the reference bends it (letters fan out from a point above the orb, squeeze toward the
 edges, and their feet follow the orb's curve), then traced. Writes registry/designs/orbs/icons.tsx
@@ -112,55 +112,88 @@ def set_text(text, n, box):
     return out
 
 
-def orb(cx, cy, r, badge, word, digits=None):
-    box = (cx - r, cy - r, cx + r, cy + r)
-    im = img.crop(box).resize((2 * r * UP, 2 * r * UP), Image.LANCZOS)
-    a = np.array(im).astype(int); n = a.shape[0]
-    yy, xx = np.mgrid[0:n, 0:n]; inside = (xx - n / 2) ** 2 + (yy - n / 2) ** 2 < (n / 2 * 0.97) ** 2
-    bx, by = (badge[0] - (cx - r)) * UP, (badge[1] - (cy - r)) * UP
-    nobadge = (xx - bx) ** 2 + (yy - by) ** 2 > (badge[2] * UP) ** 2
-    white = inside & nobadge & (a.min(-1) > 225)
-    if digits:
-        white = set_text(digits[0], n, digits[1])
-    letters = warped_word(word, n)
-    s = 40 / n
-    out = []
-    for mask, fill in ((letters, 'url(#INK)'), (white, '#ffffff')):
-        d, tf = potrace(mask)
-        out.append((transform(d, tf, s), fill))
+def text_mask(text, n, box, font=None):
+    """Mask (n x n) of `text` stretched to fill `box` (x0, y0, x1, y1 as fractions of the orb)."""
+    f = ImageFont.truetype(font or LETTERING, 400)
+    im = Image.new('L', (420 * len(text), 700), 0)
+    ImageDraw.Draw(im).text((20, 50), text, font=f, fill=255)
+    a = np.array(im)
+    ys, xs = np.where(a > 127)
+    a = a[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    x0, y0, x1, y1 = [int(v * n) for v in box]
+    out = np.zeros((n, n), bool)
+    out[y0:y1, x0:x1] = np.array(Image.fromarray(a).resize((x1 - x0, y1 - y0), Image.LANCZOS)) > 127
     return out
 
-def component(name, gid, layers):
+
+def rounded_hexagon(cx, cy, r, corner):
+    """Pointy-top hexagon path with rounded corners, in orb units."""
+    import math
+    pts = [(cx + r * math.cos(math.radians(a)), cy + r * math.sin(math.radians(a))) for a in range(-90, 270, 60)]
+    d = []
+    for i, (x, y) in enumerate(pts):
+        px, py = pts[i - 1]
+        nx, ny = pts[(i + 1) % 6]
+        def toward(ax, ay, bx, by, t):
+            L = math.hypot(bx - ax, by - ay)
+            return ax + (bx - ax) * t / L, ay + (by - ay) * t / L
+        sx, sy = toward(x, y, px, py, corner)
+        ex, ey = toward(x, y, nx, ny, corner)
+        d.append(f"{'M' if i == 0 else 'L'}{sx:.2f} {sy:.2f}Q{x:.2f} {y:.2f} {ex:.2f} {ey:.2f}")
+    return ''.join(d) + 'Z'
+
+
+# Measured on the app's own screenshot (orb = 64.5 pt = 40 units): a hexagon 27 x 29 pt and a
+# count 30 x 16 pt, both #3c54ec, centred; the lettering arcs faintly round the bottom.
+BLUE = '#3c54ec'
+
+
+def glyph_orb(word, n=960, center=None):
+    s = 40 / n
+    layers = []
+    d, tf = potrace(warped_word(word, n))
+    layers.append((transform(d, tf, s), 'url(#INK)'))
+    if center == 'hexagon':
+        layers.append((rounded_hexagon(20, 20, 10.4, 2.6), BLUE))
+    elif center:
+        d, tf = potrace(text_mask(center, n, (0.24, 0.365, 0.76, 0.635)))
+        layers.append((transform(d, tf, s), BLUE))
+    return layers
+
+
+def component(name, gid, layers, doc):
     paths = '\n'.join(f'      <Path d="{d}" fill="{fill.replace('INK', gid + '-ink')}" />' for d, fill in layers)
-    return f'''export function {name}({{ size }}: TabIconProps) {{
+    return f'''/** {doc} */
+export function {name}({{ size }}: TabIconProps) {{
   return (
     <Svg width={{size}} height={{size}} viewBox="0 0 40 40">
       <Defs>
-        <LinearGradient id="{gid}" x1="0.5" y1="0" x2="0.5" y2="1">
-          <Stop offset="0" stopColor="#8cc8ff" />
-          <Stop offset="0.5" stopColor="#6f8cf8" />
-          <Stop offset="1" stopColor="#5a50ee" />
-        </LinearGradient>
         <LinearGradient id="{gid}-ink" x1="0" y1="17" x2="0" y2="37" gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor="#bccbff" stopOpacity="0.3" />
-          <Stop offset="1" stopColor="#c4d2ff" stopOpacity="0.7" />
+          <Stop offset="0" stopColor="#a9b8ff" stopOpacity="0.3" />
+          <Stop offset="1" stopColor="#b8c6ff" stopOpacity="0.7" />
         </LinearGradient>
       </Defs>
-      <Circle cx={{20}} cy={{20}} r={{19.6}} fill="url(#{gid})" />
 {paths}
     </Svg>
   );
 }}
 '''
 
+
 p = os.path.join(ROOT, 'registry', 'designs', 'orbs', 'icons.tsx')
 old = open(p).read()
 chat = old[old.index('export function ChatIcon'):]
-code = ('/**\n * Icons for the Orbs design, built from reference image 9: a gradient orb with its\n * lettering and white details traced on top. Pass them as `tabBarIcon`.\n */\n'
-        "import Svg, {\n  Circle,\n  Defs,\n  Ellipse,\n  LinearGradient,\n  Path,\n  RadialGradient,\n  Stop,\n} from 'react-native-svg';\n"
+if '<G transform' not in chat:
+    # The bubble was drawn for a smaller box; in orb units it spans 38 of the active orb's 74 pt.
+    chat = chat.replace('viewBox="0 0 40 40">\n      <Defs>', 'viewBox="0 0 40 40">\n      <G transform="translate(20 20) scale(0.672) translate(-20.5 -20)">\n      <Defs>', 1)
+    chat = chat.replace('    </Svg>\n  );\n}', '      </G>\n    </Svg>\n  );\n}', 1)
+code = ('/**\n * Icons for the Orbs design: what sits inside each glass orb, in the orb\'s own 40-unit box\n'
+        ' * (render them at the orb\'s size). Lettering is set in Bowlby One and bent round the orb;\n'
+        ' * see tools/trace/orbs.py. Pass them as `tabBarIcon`.\n */\n'
+        "import Svg, {\n  Defs,\n  Ellipse,\n  G,\n  LinearGradient,\n  Path,\n  RadialGradient,\n  Stop,\n} from 'react-native-svg';\n"
         "import type { TabIconProps } from 'tabcn';\n\n"
-        + component('ScratchIcon', 'orbs-scratch', orb(1246, 216, 121, (1327, 122, 40), 'SCRATCH', ('23:48:59', (0.169, 0.428, 0.83, 0.531))))
-        + '\n' + component('PlacesIcon', 'orbs-places', orb(1995, 216, 120, (2078, 122, 40), 'PLACES'))
+        + component('ScratchIcon', 'orbs-scratch', glyph_orb('SCRATCH', center='hexagon'), 'Curved "SCRATCH" lettering round a blue hexagon.')
+        + '\n' + component('PlacesIcon', 'orbs-places', glyph_orb('PLACES', center='64'), 'Curved "PLACES" lettering round a count.')
         + '\n' + chat)
 open(p, 'w').write(code)
 print('orbs icons', len(code) // 1024, 'KB')
