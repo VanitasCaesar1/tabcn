@@ -1,9 +1,12 @@
-"""Build the Orbs icons from parts: gradient circle + lettering (lighter than its
-surroundings) + white elements, each traced with potrace. Writes registry/designs/orbs/icons.tsx
+"""Build the Orbs icons from parts: gradient circle + lettering + white elements.
+The white elements are traced from the reference. The lettering is too blurred in the JPEG
+to trace cleanly, so it is rebuilt: the word is set in Impact and warped onto the orb the
+way the reference bends it (letters fan out from a point above the orb, squeeze toward the
+edges, and their feet follow the orb's curve), then traced. Writes registry/designs/orbs/icons.tsx
 (keeps ChatIcon from the existing file)."""
 import os, re, sys, glob, subprocess, tempfile
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 f = sorted(glob.glob(os.path.join(ROOT, 'references', '09-*.jpg')))[0]
 img = Image.open(f).convert('RGB').rotate(-90, expand=True)
@@ -37,21 +40,86 @@ def transform(d, tf, s):
         if cmd == 'M': cmd = 'L'
     return re.sub(r'\s+', ' ', ' '.join(out)).strip()
 
-def orb(cx, cy, r, badge):
+
+IMPACT = '/System/Library/Fonts/Supplemental/Impact.ttf'
+
+
+def flat_text(word, track=-0.02):
+    f = ImageFont.truetype(IMPACT, 400)
+    bbs = [f.getbbox(ch) for ch in word]
+    widths = [b[2] - b[0] for b in bbs]
+    W = int(sum(widths) + track * 400 * (len(word) - 1)) + 80
+    flat = Image.new('L', (W, 700), 0)
+    d = ImageDraw.Draw(flat)
+    x = 40
+    for ch, bb, w in zip(word, bbs, widths):
+        d.text((x - bb[0], 50), ch, font=f, fill=255)
+        x += w + track * 400
+    a = np.array(flat)
+    ys, xs = np.where(a > 127)
+    return a[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+
+
+def warped_word(word, n, span=(0.07, 0.93), top=0.426, rb=0.485, lam=45, cy=-0.9):
+    """Mask (n x n) of `word` bent onto the orb. Measured on the reference: letter tops sit on
+    y = 0.426 of the orb, their feet on a circle of radius 0.485, and the word spans x 0.07-0.93."""
+    a = flat_text(word)
+    fh, fw = a.shape
+    yy, xx = np.mgrid[0:n, 0:n] / n
+    th = np.arctan2(xx - 0.5, yy - cy)
+    xn = th / np.arctan2(span[1] - 0.5, 0.6 - cy)
+    ok = np.abs(xn) <= 1
+    L = np.radians(lam)
+    u = np.arcsin(np.clip(xn, -1, 1) * np.sin(L)) / (2 * L) + 0.5
+    dy = np.cos(th)
+    rho = np.hypot(xx - 0.5, yy - cy)
+    r_top = (top - cy) / dy
+    oy = cy - 0.5
+    b = oy * dy
+    disc = b * b - (oy * oy - rb * rb)
+    r_bot = -b + np.sqrt(np.clip(disc, 0, None))
+    v = (rho - r_top) / (r_bot - r_top)
+    ok &= (v >= 0) & (v <= 1) & (disc > 0)
+    sx = np.clip((u * (fw - 1)).astype(int), 0, fw - 1)
+    sy = np.clip((v * (fh - 1)).astype(int), 0, fh - 1)
+    out = np.zeros((n, n), bool)
+    out[ok] = a[sy[ok], sx[ok]] > 127
+    return out
+
+
+
+ARIAL_BOLD = '/System/Library/Fonts/Supplemental/Arial Bold.ttf'
+
+
+def set_text(text, n, box):
+    """Mask (n x n) of `text` in Arial Bold, stretched to fill `box` (x0, y0, x1, y1 as
+    fractions of the orb): the box of the digits measured on the reference."""
+    f = ImageFont.truetype(ARIAL_BOLD, 400)
+    im = Image.new('L', (400 * len(text), 600), 0)
+    ImageDraw.Draw(im).text((20, 50), text, font=f, fill=255)
+    a = np.array(im)
+    ys, xs = np.where(a > 127)
+    a = a[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    x0, y0, x1, y1 = [int(v * n) for v in box]
+    out = np.zeros((n, n), bool)
+    out[y0:y1, x0:x1] = np.array(Image.fromarray(a).resize((x1 - x0, y1 - y0), Image.LANCZOS)) > 127
+    return out
+
+
+def orb(cx, cy, r, badge, word, digits=None):
     box = (cx - r, cy - r, cx + r, cy + r)
     im = img.crop(box).resize((2 * r * UP, 2 * r * UP), Image.LANCZOS)
     a = np.array(im).astype(int); n = a.shape[0]
     yy, xx = np.mgrid[0:n, 0:n]; inside = (xx - n / 2) ** 2 + (yy - n / 2) ** 2 < (n / 2 * 0.97) ** 2
-    bx, by, br = [(v - o) * UP for v, o in zip(badge, (cx - r, cy - r))] + [0]
     bx, by = (badge[0] - (cx - r)) * UP, (badge[1] - (cy - r)) * UP
     nobadge = (xx - bx) ** 2 + (yy - by) ** 2 > (badge[2] * UP) ** 2
-    lum = a.sum(-1)
     white = inside & nobadge & (a.min(-1) > 225)
-    local = np.array(Image.fromarray(np.clip(lum / 3, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(9 * UP))).astype(int) * 3
-    letters = inside & nobadge & ~white & (lum > local + 28)
+    if digits:
+        white = set_text(digits[0], n, digits[1])
+    letters = warped_word(word, n)
     s = 40 / n
     out = []
-    for mask, fill in ((letters, 'rgba(196, 208, 255, 0.85)'), (white, '#ffffff')):
+    for mask, fill in ((letters, 'rgba(190, 205, 255, 0.58)'), (white, '#ffffff')):
         d, tf = potrace(mask)
         out.append((transform(d, tf, s), fill))
     return out
@@ -79,10 +147,10 @@ p = os.path.join(ROOT, 'registry', 'designs', 'orbs', 'icons.tsx')
 old = open(p).read()
 chat = old[old.index('export function ChatIcon'):]
 code = ('/**\n * Icons for the Orbs design, built from reference image 9: a gradient orb with its\n * lettering and white details traced on top. Pass them as `tabBarIcon`.\n */\n'
-        "import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';\n"
+        "import Svg, {\n  Circle,\n  Defs,\n  Ellipse,\n  LinearGradient,\n  Path,\n  RadialGradient,\n  Stop,\n} from 'react-native-svg';\n"
         "import type { TabIconProps } from 'tabcn';\n\n"
-        + component('ScratchIcon', 'orbs-scratch', orb(1246, 216, 121, (1327, 122, 40)))
-        + '\n' + component('PlacesIcon', 'orbs-places', orb(1995, 216, 120, (2078, 122, 40)))
+        + component('ScratchIcon', 'orbs-scratch', orb(1246, 216, 121, (1327, 122, 40), 'SCRATCH', ('23:48:59', (0.169, 0.428, 0.83, 0.531))))
+        + '\n' + component('PlacesIcon', 'orbs-places', orb(1995, 216, 120, (2078, 122, 40), 'PLACES'))
         + '\n' + chat)
 open(p, 'w').write(code)
 print('orbs icons', len(code) // 1024, 'KB')

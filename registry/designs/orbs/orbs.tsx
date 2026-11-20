@@ -67,7 +67,7 @@ function Orb({ tab, colors, haptics }: { tab: TabItem; colors: OrbsColors; hapti
       </Animated.View>
       {tab.badge != null ? (
         <Animated.View
-          entering={ZoomIn.springify()}
+          entering={ZoomIn.springify().dampingRatio(0.8).duration(320)}
           style={[styles.badge, { backgroundColor: colors.badge }]}
         >
           <Animated.View style={styles.gloss} />

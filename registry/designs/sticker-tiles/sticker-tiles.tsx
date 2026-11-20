@@ -4,17 +4,9 @@
  * Built on tabcn: https://github.com/OWNER/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { StyleSheet, Text } from 'react-native';
-import Animated, { interpolate, useAnimatedStyle, ZoomIn } from 'react-native-reanimated';
-import {
-  TabBarRoot,
-  TabButton,
-  TabIndicator,
-  type TabItem,
-  TabList,
-  useFocusProgress,
-  useTabBar,
-} from 'tabcn';
+import { StyleSheet, Text, View } from 'react-native';
+import Animated, { ZoomIn } from 'react-native-reanimated';
+import { TabBarRoot, TabButton, TabIndicator, type TabItem, TabList, useTabBar } from 'tabcn';
 
 const defaultColors = {
   background: '#27799f',
@@ -27,7 +19,7 @@ export type StickerTilesColors = typeof defaultColors;
 
 export interface StickerTilesProps {
   colors?: Partial<StickerTilesColors>;
-  /** Label font, e.g. a rounded heavy sans. Default: system font, weight 800. */
+  /** Label font, e.g. a rounded bold sans. Default: system font, weight 700. */
   fontFamily?: string;
   haptics?: boolean;
 }
@@ -39,7 +31,7 @@ export function StickerTiles({ colors: custom, fontFamily, haptics = true }: Sti
     <TabBarRoot placement="floating" style={styles.outer}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
         <TabIndicator
-          inset={{ x: 1.5, y: 4 }}
+          inset={{ x: 0, y: 3.9 }}
           style={[styles.tile, { backgroundColor: colors.tile }]}
         />
         {tabs.map((tab) => (
@@ -61,26 +53,21 @@ function Tab({
   fontFamily?: string;
   haptics: boolean;
 }) {
-  const progress = useFocusProgress(tab);
-  const icon = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(progress.value, [0, 0.5, 1], [1, 1.12, 1.04]) }],
-  }));
   return (
     <TabButton
       tab={tab}
       style={styles.tab}
-      scale={0.92}
-      onPressIn={haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) : undefined}
+      onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      <Animated.View style={icon}>
-        {tab.renderIcon?.({ focused: tab.focused, color: colors.label, size: 40 })}
+      <View>
+        {tab.renderIcon?.({ focused: tab.focused, color: colors.label, size: ICON })}
         {tab.badge != null ? (
           <Animated.View
-            entering={ZoomIn.springify()}
+            entering={ZoomIn.springify().dampingRatio(0.8).duration(320)}
             style={[styles.badge, { backgroundColor: colors.badge }]}
           />
         ) : null}
-      </Animated.View>
+      </View>
       <Text
         numberOfLines={1}
         style={[
@@ -95,13 +82,16 @@ function Tab({
   );
 }
 
+/** The traced stickers' 40-unit box, in points, at the reference's scale. */
+const ICON = 33.5;
+
 const styles = StyleSheet.create({
-  outer: { width: 371, maxWidth: '100%' },
-  bar: { height: 68, borderRadius: 13, paddingHorizontal: 4 },
-  tile: { borderRadius: 14 },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 0 },
-  label: { fontSize: 12.5 },
-  systemWeight: { fontWeight: '800' },
+  outer: { width: 370, maxWidth: '100%' },
+  bar: { height: 68.4, borderRadius: 14, borderCurve: 'continuous', paddingHorizontal: 3.5 },
+  tile: { borderRadius: 16, borderCurve: 'continuous' },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1, paddingTop: 1 },
+  label: { fontSize: 10.6 },
+  systemWeight: { fontWeight: '700' },
   badge: {
     position: 'absolute',
     top: -4,

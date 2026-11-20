@@ -1,25 +1,19 @@
 /**
- * Gradient Stickers: a warm gradient pill of sticker icons. The active sticker
- * sits in a soft circle that slides between tabs, and the sticker pops.
+ * Gradient Stickers: a cream pill with a two-tone glow along its top edge and
+ * sticker icons. A soft tinted capsule glides to the active sticker.
  * Built on tabcn: https://github.com/OWNER/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
-import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
-import {
-  TabBarRoot,
-  TabButton,
-  TabIndicator,
-  type TabItem,
-  TabList,
-  useFocusProgress,
-  useTabBar,
-} from 'tabcn';
+import { TabBarRoot, TabButton, TabIndicator, type TabItem, TabList, useTabBar } from 'tabcn';
 
 const defaultColors = {
-  gradient: ['#ffd49a', '#fff3be', '#fff0b0', '#e3f19a'] as const,
-  bubble: 'rgba(196, 160, 96, 0.38)',
+  background: '#fef0c3',
+  /** The glow along the top edge, left to right. */
+  glow: ['#ffd392', '#ffd392', '#fff5c1', '#dcee82', '#dcee82'] as const,
+  rim: 'rgba(255, 250, 214, 0.9)',
+  capsule: 'rgba(214, 160, 60, 0.22)',
   badge: '#ff4b4b',
 };
 
@@ -36,62 +30,67 @@ export function GradientStickers({ colors: custom, haptics = true }: GradientSti
   return (
     <TabBarRoot placement="floating" style={styles.outer}>
       <View style={styles.shadow}>
-        <LinearGradient
-          colors={colors.gradient}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-          style={styles.pill}
+        <View
+          style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.rim }]}
         >
+          <LinearGradient
+            pointerEvents="none"
+            colors={colors.glow}
+            locations={[0, 0.46, 0.52, 0.57, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.glow}
+          >
+            <LinearGradient
+              colors={[`${colors.background}00`, colors.background]}
+              locations={[0.5, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+          </LinearGradient>
           <TabList style={styles.list}>
             <TabIndicator
-              inset={{ x: 8, y: 6 }}
-              style={[styles.bubble, { backgroundColor: colors.bubble }]}
+              inset={{ x: -2.5, y: 0 }}
+              style={[styles.capsule, { backgroundColor: colors.capsule }]}
             />
             {tabs.map((tab) => (
               <Tab key={tab.key} tab={tab} badge={colors.badge} haptics={haptics} />
             ))}
           </TabList>
-        </LinearGradient>
+        </View>
       </View>
     </TabBarRoot>
   );
 }
 
 function Tab({ tab, badge, haptics }: { tab: TabItem; badge: string; haptics: boolean }) {
-  const progress = useFocusProgress(tab);
-  const sticker = useAnimatedStyle(() => ({
-    transform: [
-      { scale: interpolate(progress.value, [0, 0.6, 1], [1, 1.16, 1.08]) },
-      { rotate: `${interpolate(progress.value, [0, 1], [0, -6])}deg` },
-    ],
-  }));
   return (
     <TabButton
       tab={tab}
       style={styles.tab}
-      scale={0.9}
-      onPressIn={haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) : undefined}
+      onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      <Animated.View style={sticker}>
-        {tab.renderIcon?.({ focused: tab.focused, color: '#000000', size: 40 })}
-      </Animated.View>
+      {tab.renderIcon?.({ focused: tab.focused, color: '#000000', size: ICON })}
       {tab.badge != null ? <View style={[styles.badge, { backgroundColor: badge }]} /> : null}
     </TabButton>
   );
 }
+
+/** The traced stickers' 40-unit box, in points, at the reference's scale. */
+const ICON = 35.5;
 
 const styles = StyleSheet.create({
   outer: { width: 330, maxWidth: '100%' },
   shadow: { borderRadius: 30, boxShadow: '0 10px 26px rgba(150, 110, 40, 0.22)' },
   pill: {
     borderRadius: 30,
-    padding: 4,
+    paddingVertical: 2.5,
+    paddingHorizontal: 5,
     overflow: 'hidden',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.65)',
   },
+  glow: { position: 'absolute', left: 0, right: 0, top: 0, height: 15 },
   list: { alignItems: 'stretch' },
-  bubble: { borderRadius: 999 },
+  capsule: { borderRadius: 999 },
   tab: { flex: 1, height: 50.5, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: 12, right: '22%', width: 10, height: 10, borderRadius: 5 },
 });

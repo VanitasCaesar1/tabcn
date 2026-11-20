@@ -1,4 +1,4 @@
-import { Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
+import { Nunito_700Bold } from '@expo-google-fonts/nunito';
 import { Outfit_700Bold, Outfit_800ExtraBold, useFonts } from '@expo-google-fonts/outfit';
 import { PatrickHand_400Regular } from '@expo-google-fonts/patrick-hand';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
@@ -10,7 +10,7 @@ export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Outfit_700Bold,
     Outfit_800ExtraBold,
-    Nunito_800ExtraBold,
+    Nunito_700Bold,
     PatrickHand_400Regular,
   });
   if (!fontsLoaded) return null;

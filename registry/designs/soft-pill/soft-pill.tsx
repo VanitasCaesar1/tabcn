@@ -9,8 +9,8 @@ import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated
 import { TabBarRoot, TabButton, type TabItem, TabList, useFocusProgress, useTabBar } from 'tabcn';
 
 const defaultColors = {
-  background: '#ffffff',
-  capsule: '#e9e9ec',
+  background: '#fafafa',
+  capsule: '#e5e6e8',
   foreground: '#151517',
 };
 
@@ -39,7 +39,7 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: SoftPillColors; h
   const progress = useFocusProgress(tab);
   const capsule = useAnimatedStyle(() => ({
     opacity: progress.value,
-    transform: [{ scale: interpolate(progress.value, [0, 1], [0.7, 1]) }],
+    transform: [{ scale: interpolate(progress.value, [0, 1], [0.92, 1]) }],
   }));
   return (
     <TabButton
@@ -49,14 +49,9 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: SoftPillColors; h
     >
       <Animated.View
         pointerEvents="none"
-        style={[
-          StyleSheet.absoluteFill,
-          styles.capsule,
-          { backgroundColor: colors.capsule },
-          capsule,
-        ]}
+        style={[styles.capsule, { backgroundColor: colors.capsule }, capsule]}
       />
-      {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: 18 })}
+      {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: ICON })}
       <Text
         numberOfLines={1}
         style={[
@@ -70,19 +65,34 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: SoftPillColors; h
   );
 }
 
+/** The traced icons' 40-unit box, in points, at the reference's scale. */
+const ICON = 18;
+const TAB_WIDTH = 63;
+/** The active capsule is wider than its tab and overlaps its neighbours' padding. */
+const CAPSULE_OVERHANG = 3.75;
+
 const styles = StyleSheet.create({
   pill: {
     borderRadius: 999,
-    padding: 5,
+    paddingVertical: 3.8,
+    paddingHorizontal: 8,
     boxShadow: '0 10px 28px rgba(60, 40, 20, 0.14)',
   },
-  capsule: { borderRadius: 999 },
+  capsule: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: -CAPSULE_OVERHANG,
+    right: -CAPSULE_OVERHANG,
+    borderRadius: 999,
+  },
   tab: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
-    width: 64,
-    height: 48.5,
+    gap: 5.5,
+    paddingTop: 2.5,
+    width: TAB_WIDTH,
+    height: 50.7,
   },
-  label: { fontSize: 10.5 },
+  label: { fontSize: 9.5 },
 });

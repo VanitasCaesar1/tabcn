@@ -88,7 +88,7 @@ function Tab({
         {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: 21 })}
         {tab.badge != null ? (
           <Animated.View
-            entering={ZoomIn.springify()}
+            entering={ZoomIn.springify().dampingRatio(0.8).duration(320)}
             exiting={ZoomOut}
             style={[styles.badge, { backgroundColor: colors.badge }]}
           />
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
-    width: 65.9,
+    width: 71.5,
   },
   label: {
     fontSize: 10,

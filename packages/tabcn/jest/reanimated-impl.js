@@ -26,6 +26,16 @@ function createAnimatedComponent(Component) {
 }
 
 const ReduceMotion = { System: 'system', Always: 'always', Never: 'never' };
+const linear = (t) => t;
+const Easing = {
+  linear,
+  quad: (t) => t * t,
+  cubic: (t) => t * t * t,
+  bezier: () => linear,
+  in: (f) => f,
+  out: (f) => f,
+  inOut: (f) => f,
+};
 
 module.exports = {
   __esModule: true,
@@ -38,6 +48,7 @@ module.exports = {
   },
   createAnimatedComponent,
   ReduceMotion,
+  Easing,
   useSharedValue: (initial) => React.useState(() => makeShared(initial))[0],
   useAnimatedStyle: () => ({}),
   useAnimatedReaction: () => {},

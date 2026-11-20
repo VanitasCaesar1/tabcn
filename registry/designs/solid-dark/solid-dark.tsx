@@ -51,7 +51,7 @@ function Tab({
   const outline = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
   const filled = useAnimatedStyle(() => ({
     opacity: progress.value,
-    transform: [{ scale: interpolate(progress.value, [0, 1], [0.85, 1]) }],
+    transform: [{ scale: interpolate(progress.value, [0, 1], [0.9, 1]) }],
   }));
 
   return (

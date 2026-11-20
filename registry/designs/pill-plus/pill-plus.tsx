@@ -4,7 +4,6 @@
  * Built on tabcn: https://github.com/OWNER/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import {
@@ -18,11 +17,10 @@ import {
 } from 'tabcn';
 
 const defaultColors = {
-  top: '#ffffff',
-  bottom: '#f1f2f5',
+  background: '#ffffff',
   active: '#111114',
   inactive: '#9a9a9f',
-  plus: '#9a9a9f',
+  plus: '#acacac',
 };
 
 export type PillPlusColors = typeof defaultColors;
@@ -44,17 +42,16 @@ export function PillPlus({
 }: PillPlusProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
-  const surface = [colors.top, colors.bottom] as const;
   return (
     <TabBarRoot placement="floating" style={styles.row}>
       <View style={styles.raised}>
-        <LinearGradient colors={surface} style={styles.pill}>
+        <View style={[styles.pill, { backgroundColor: colors.background }]}>
           <TabList style={styles.list}>
             {tabs.map((tab) => (
               <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
             ))}
           </TabList>
-        </LinearGradient>
+        </View>
       </View>
       <PressableScale
         accessibilityLabel={actionLabel}
@@ -64,12 +61,12 @@ export function PillPlus({
         }
         style={styles.raised}
       >
-        <LinearGradient colors={surface} style={styles.round}>
+        <View style={[styles.round, { backgroundColor: colors.background }]}>
           <View style={[styles.plusBar, { backgroundColor: colors.plus }]} />
           <View
             style={[styles.plusBar, styles.plusBarVertical, { backgroundColor: colors.plus }]}
           />
-        </LinearGradient>
+        </View>
       </PressableScale>
     </TabBarRoot>
   );
@@ -90,10 +87,10 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: PillPlusColors; h
     >
       <Animated.View style={[styles.iconBox, box]}>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, dim]}>
-          {tab.renderIcon?.({ focused: false, color: colors.inactive, size: 25 })}
+          {tab.renderIcon?.({ focused: false, color: colors.inactive, size: ICON })}
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, lit]}>
-          {tab.renderIcon?.({ focused: true, color: colors.active, size: 25 })}
+          {tab.renderIcon?.({ focused: true, color: colors.active, size: ICON })}
         </Animated.View>
       </Animated.View>
     </TabButton>
@@ -101,11 +98,26 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: PillPlusColors; h
 }
 
 const HEIGHT = 53;
+/** The traced icons' 40-unit box, in points, at the reference's scale. */
+const ICON = 24.6;
+/** A white, slightly domed surface: a soft bevel darkens the bottom edge. */
+const BEVEL = 'inset 0 -6px 6px -3px rgba(30, 36, 48, 0.16)';
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  raised: { borderRadius: HEIGHT / 2, boxShadow: '0 12px 22px rgba(40, 50, 70, 0.2)' },
-  pill: { width: 200, height: HEIGHT, borderRadius: HEIGHT / 2, paddingHorizontal: 18 },
+  // A tight contact shadow plus a short soft one: the pill sits just above the page.
+  raised: {
+    borderRadius: HEIGHT / 2,
+    boxShadow:
+      '0 0 3px rgba(30, 40, 60, 0.14), 0 1.5px 2px rgba(30, 40, 60, 0.2), 0 4px 9px rgba(30, 40, 60, 0.1)',
+  },
+  pill: {
+    width: 200,
+    height: HEIGHT,
+    borderRadius: HEIGHT / 2,
+    paddingHorizontal: 18,
+    boxShadow: BEVEL,
+  },
   list: { flex: 1, alignItems: 'stretch' },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   iconBox: { width: 27, height: 27 },
@@ -116,7 +128,8 @@ const styles = StyleSheet.create({
     borderRadius: HEIGHT / 2,
     alignItems: 'center',
     justifyContent: 'center',
+    boxShadow: BEVEL,
   },
-  plusBar: { position: 'absolute', width: 19, height: 1.8, borderRadius: 1 },
+  plusBar: { position: 'absolute', width: 15.2, height: 1.6, borderRadius: 1 },
   plusBarVertical: { transform: [{ rotate: '90deg' }] },
 });

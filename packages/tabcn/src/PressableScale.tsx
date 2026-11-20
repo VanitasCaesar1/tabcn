@@ -7,6 +7,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import Animated, {
+  Easing,
   ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
@@ -43,15 +44,20 @@ export function PressableScale({
 
   const handlePressIn = (e: GestureResponderEvent) => {
     if (scale !== 1) {
-      pressed.value = withTiming(scale, { duration: 90, reduceMotion: ReduceMotion.System });
+      pressed.value = withTiming(scale, {
+        duration: 100,
+        easing: Easing.out(Easing.quad),
+        reduceMotion: ReduceMotion.System,
+      });
     }
     onPressIn?.(e);
   };
   const handlePressOut = (e: GestureResponderEvent) => {
     if (scale !== 1) {
+      // Releases with a soft settle, not a bounce.
       pressed.value = withSpring(1, {
-        damping: 15,
-        stiffness: 300,
+        damping: 30,
+        stiffness: 380,
         reduceMotion: ReduceMotion.System,
       });
     }

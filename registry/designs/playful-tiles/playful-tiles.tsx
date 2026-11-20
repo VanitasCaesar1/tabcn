@@ -77,8 +77,8 @@ function Tab({
   useEffect(() => {
     if (tab.focused) {
       bounce.value = withSequence(
-        withTiming(-6, { duration: 120, reduceMotion: ReduceMotion.System }),
-        withSpring(0, { damping: 7, stiffness: 300, reduceMotion: ReduceMotion.System }),
+        withTiming(-3, { duration: 110, reduceMotion: ReduceMotion.System }),
+        withSpring(0, { damping: 18, stiffness: 300, reduceMotion: ReduceMotion.System }),
       );
     }
   }, [tab.focused, bounce]);
@@ -87,7 +87,7 @@ function Tab({
     <TabButton
       tab={tab}
       style={styles.tab}
-      scale={0.88}
+      scale={0.94}
       onPressIn={haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) : undefined}
     >
       <Animated.View style={icon}>

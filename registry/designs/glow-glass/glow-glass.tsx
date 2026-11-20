@@ -23,11 +23,13 @@ import {
 const defaultColors = {
   background: 'rgba(28, 30, 38, 0.72)',
   border: 'rgba(255, 255, 255, 0.14)',
-  capsule: 'rgba(255, 255, 255, 0.08)',
-  capsuleBorder: 'rgba(255, 255, 255, 0.16)',
-  glow: '#ff8a1f',
-  active: '#ffffff',
-  inactive: '#9a9aa6',
+  capsule: 'rgba(255, 255, 255, 0.13)',
+  glow: '#9c5d18',
+  active: '#fff4df',
+  /** Inactive labels. */
+  inactive: '#8a8b91',
+  /** Inactive icons, a shade darker than their labels. */
+  inactiveIcon: '#76777c',
 };
 
 export type GlowGlassColors = typeof defaultColors;
@@ -83,21 +85,17 @@ export function GlowGlass({
 
 /** Glass capsule with a glow at the icon's position; follows the active tab. */
 function Capsule({ colors }: { colors: GlowGlassColors }) {
-  const { style } = useTabIndicator({ inset: { x: 0, y: 5 } });
+  const { style } = useTabIndicator({ inset: { x: -4, y: 3.75 } });
   return (
     <Animated.View
       pointerEvents="none"
-      style={[
-        styles.capsule,
-        { backgroundColor: colors.capsule, borderColor: colors.capsuleBorder },
-        style,
-      ]}
+      style={[styles.capsule, { backgroundColor: colors.capsule }, style]}
     >
       <View
         style={[
           styles.glow,
           {
-            experimental_backgroundImage: `radial-gradient(circle, ${colors.glow}cc 0%, ${colors.glow}55 38%, ${colors.glow}00 70%)`,
+            experimental_backgroundImage: `radial-gradient(circle closest-side, ${colors.glow}e6 0%, ${colors.glow}c4 58%, ${colors.glow}5c 74%, ${colors.glow}00 100%)`,
           },
         ]}
       />
@@ -128,10 +126,10 @@ function Tab({
     >
       <View style={styles.iconBox}>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, dim]}>
-          {tab.renderIcon?.({ focused: false, color: colors.inactive, size: 21 })}
+          {tab.renderIcon?.({ focused: false, color: colors.inactiveIcon, size: ICON })}
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, lit]}>
-          {tab.renderIcon?.({ focused: true, color: colors.active, size: 21 })}
+          {tab.renderIcon?.({ focused: true, color: colors.active, size: ICON })}
         </Animated.View>
       </View>
       <Animated.Text numberOfLines={1} style={[styles.label, label]}>
@@ -142,22 +140,25 @@ function Tab({
 }
 
 const HEIGHT = 58.5;
+/** The traced icons' 40-unit box, in points, at the reference's scale. */
+const ICON = 20.3;
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8.5 },
   pill: { height: HEIGHT, borderRadius: 999, borderWidth: 1, overflow: 'hidden' },
-  list: { flex: 1, alignItems: 'stretch', paddingHorizontal: 2 },
-  capsule: { borderRadius: 999, borderWidth: 1, overflow: 'hidden', alignItems: 'center' },
-  glow: { marginTop: -8, width: 66, height: 66, borderRadius: 33 },
+  list: { flex: 1, alignItems: 'stretch', paddingHorizontal: 6.8 },
+  capsule: { borderRadius: 999, overflow: 'hidden', alignItems: 'center' },
+  // Centred on the icon, not the capsule.
+  glow: { marginTop: -10, width: 58, height: 58 },
   tab: {
-    width: 65,
+    width: 62,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
   },
-  iconBox: { width: 22, height: 22 },
+  iconBox: { width: ICON, height: ICON },
   center: { alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 9.5, fontWeight: '500' },
+  label: { fontSize: 9.2, fontWeight: '400' },
   round: {
     width: HEIGHT,
     height: HEIGHT,

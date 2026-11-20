@@ -98,7 +98,7 @@
       "type": "registry:component",
       "title": "Pill + Plus",
       "description": "White icon-only pill with an avatar tab and a separate plus button.",
-      "dependencies": ["tabcn", "expo-haptics", "expo-linear-gradient", "react-native-svg"],
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
           "path": "registry/designs/pill-plus/pill-plus.tsx",
@@ -230,7 +230,7 @@
       "name": "gradient-stickers",
       "type": "registry:component",
       "title": "Gradient Stickers",
-      "description": "Gradient pill with sticker-style icons; the active one sits in a soft circle.",
+      "description": "Cream pill with a two-tone glow along its top and sticker icons; a soft tinted capsule glides to the active one.",
       "dependencies": ["tabcn", "expo-haptics", "expo-linear-gradient", "react-native-svg"],
       "files": [
         {

@@ -8,6 +8,8 @@ import { useTabListContext } from './TabList';
 export interface TabButtonProps
   extends Omit<PressableScaleProps, 'children' | 'onPress' | 'onLongPress' | 'role'> {
   tab: TabItem;
+  /** Scale while pressed. 1 turns press feedback off. Default 0.96. */
+  scale?: number;
   children?: ReactNode | ((state: { focused: boolean; pressed: boolean }) => ReactNode);
 }
 
@@ -15,7 +17,7 @@ export interface TabButtonProps
  * A tab. Handles press and long press, the `tab` role and selected state, and
  * reports its position so `TabIndicator` can move to it.
  */
-export function TabButton({ tab, children, onLayout, ...rest }: TabButtonProps) {
+export function TabButton({ tab, children, onLayout, scale = 0.96, ...rest }: TabButtonProps) {
   const { tabs } = useTabBar();
   const { listRef, frames } = useTabListContext('TabButton');
   const ref = useRef<ComponentRef<typeof Pressable>>(null);
@@ -45,6 +47,7 @@ export function TabButton({ tab, children, onLayout, ...rest }: TabButtonProps) 
       aria-selected={tab.focused}
       accessibilityLabel={accessibilityLabel}
       testID={tab.testID}
+      scale={scale}
       onPress={tab.press}
       onLongPress={tab.longPress}
       onLayout={(e) => {

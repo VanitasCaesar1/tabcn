@@ -76,7 +76,7 @@ export interface Demo {
 export const demos: Record<string, Demo> = {
   'chip-rail': {
     render: () => (
-      <ChipRail leading={<ChipRailIcons.AvatarIcon focused={false} color="" size={37} />} />
+      <ChipRail leading={<ChipRailIcons.AvatarIcon focused={false} color="" size={39.5} />} />
     ),
     background: '#ab9ff1',
     pattern: { kind: 'waves', color: '#a296ec', gap: 9.6, amp: 1.2, wavelength: 18 },
@@ -90,7 +90,7 @@ export const demos: Record<string, Demo> = {
     ],
   },
   'sticker-tiles': {
-    render: () => <StickerTiles fontFamily="Nunito_800ExtraBold" />,
+    render: () => <StickerTiles fontFamily="Nunito_700Bold" />,
     background: '#d5ebf6',
     pattern: { kind: 'plus', color: '#bfdcec', gap: 24, size: 4, stroke: 1 },
     barHeight: 68,
@@ -213,7 +213,7 @@ export const demos: Record<string, Demo> = {
     render: ({ onActionPress }) => (
       <GlowGlass
         onActionPress={onActionPress}
-        actionIcon={<GlowGlassIcons.SpendIcon focused={false} color="#9a9aa6" size={28} />}
+        actionIcon={<GlowGlassIcons.SpendIcon focused={false} color="#76777c" size={21.5} />}
       />
     ),
     background: '#1f1810',

@@ -47,9 +47,10 @@ function Tab({
   const progress = useFocusProgress(tab);
   const icon = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 1], [0.42, 1]),
+    // A small lift during the change only; both resting states are the reference's size.
     transform: [
-      { translateY: interpolate(progress.value, [0, 1], [0, -2]) },
-      { scale: interpolate(progress.value, [0, 1], [1, 1.08]) },
+      { translateY: -1.5 * Math.sin(Math.PI * progress.value) },
+      { scale: 1 + 0.05 * Math.sin(Math.PI * progress.value) },
     ],
   }));
   return (

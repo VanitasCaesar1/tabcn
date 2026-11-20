@@ -20,11 +20,13 @@ import {
 } from 'tabcn';
 
 const defaultColors = {
-  gradient: ['#b1d8ff', '#7cb6ff'] as const,
+  /** Top to bottom: a lighter band along the top edge, then the body colour. */
+  gradient: ['#a4d2fe', '#86c1fb', '#86c1fb'] as const,
   text: '#ffffff',
   capsule: 'rgba(255, 255, 255, 0.2)',
-  capsuleBorder: 'rgba(255, 255, 255, 0.6)',
-  halo: 'rgba(150, 175, 210, 0.22)',
+  capsuleBorder: 'rgba(255, 255, 255, 0.55)',
+  /** The soft grey shadow the pill and button sit in. */
+  shadow: 'rgba(100, 120, 150, 0.34)',
 };
 
 export type SegmentSearchColors = typeof defaultColors;
@@ -51,16 +53,11 @@ export function SegmentSearch({
   const { tabs } = useTabBar();
   return (
     <TabBarRoot placement="floating" style={styles.row}>
-      <View style={[styles.halo, { backgroundColor: colors.halo }]}>
-        <LinearGradient
-          colors={colors.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.pill}
-        >
+      <View style={[styles.well, wellShadow(colors.shadow)]}>
+        <LinearGradient colors={colors.gradient} locations={GRADIENT_STOPS} style={styles.pill}>
           <TabList style={styles.list}>
             <TabIndicator
-              inset={6}
+              inset={{ x: 0.3, y: 4.5 }}
               style={[
                 styles.capsule,
                 { backgroundColor: colors.capsule, borderColor: colors.capsuleBorder },
@@ -72,7 +69,7 @@ export function SegmentSearch({
           </TabList>
         </LinearGradient>
       </View>
-      <View style={[styles.halo, styles.roundHalo, { backgroundColor: colors.halo }]}>
+      <View style={[styles.well, wellShadow(colors.shadow)]}>
         <PressableScale
           accessibilityLabel={actionLabel}
           onPress={onActionPress}
@@ -80,12 +77,7 @@ export function SegmentSearch({
             haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) : undefined
           }
         >
-          <LinearGradient
-            colors={colors.gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.round}
-          >
+          <LinearGradient colors={colors.gradient} locations={GRADIENT_STOPS} style={styles.round}>
             {actionIcon ?? <Magnifier color={colors.text} />}
           </LinearGradient>
         </PressableScale>
@@ -123,41 +115,45 @@ function Magnifier({ color }: { color: string }) {
 }
 
 const HEIGHT = 58;
+const GRADIENT_STOPS = [0, 0.45, 1] as const;
+
+/** A soft shadow on every side, a little stronger below: the shapes look set into the page. */
+function wellShadow(color: string) {
+  return { boxShadow: `0 0 2px ${color}, 0 0 12px 3px ${color}, 0 5px 12px ${color}` };
+}
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 56 },
-  halo: { padding: 6, borderRadius: 999 },
-  roundHalo: { padding: 6 },
-  pill: { height: HEIGHT, borderRadius: 999, boxShadow: '0 8px 16px rgba(50, 100, 170, 0.35)' },
-  list: { flex: 1, alignItems: 'stretch', paddingHorizontal: 0 },
-  capsule: { borderRadius: 999, borderWidth: 1.5 },
-  tab: { justifyContent: 'center', alignItems: 'center', width: 91 },
-  label: { fontSize: 15.5, fontWeight: '500' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 89 },
+  well: { borderRadius: 999 },
+  pill: { height: HEIGHT, borderRadius: 999, overflow: 'hidden' },
+  list: { flex: 1, alignItems: 'stretch', paddingHorizontal: 5.2 },
+  capsule: { borderRadius: 999, borderWidth: 0.8 },
+  tab: { justifyContent: 'center', alignItems: 'center', width: 86 },
+  label: { fontSize: 15, fontWeight: '500' },
   round: {
     width: HEIGHT,
     height: HEIGHT,
     borderRadius: HEIGHT / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 8px 16px rgba(50, 100, 170, 0.35)',
   },
-  magnifier: { width: 24, height: 24 },
+  magnifier: { width: 18, height: 18 },
   lens: {
     position: 'absolute',
-    left: 1,
-    top: 1,
-    width: 17,
-    height: 17,
-    borderRadius: 9,
-    borderWidth: 2.6,
+    left: 0,
+    top: 0,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2.4,
   },
   handle: {
     position: 'absolute',
-    left: 15,
-    top: 16.5,
-    width: 8,
-    height: 2.8,
-    borderRadius: 2,
+    left: 10.4,
+    top: 12.6,
+    width: 7.2,
+    height: 2.6,
+    borderRadius: 1.3,
     transform: [{ rotate: '45deg' }],
   },
 });
