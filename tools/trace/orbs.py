@@ -60,9 +60,10 @@ def flat_text(word, track=-0.02):
     return a[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
 
 
-def warped_word(word, n, span=(0.07, 0.93), top=0.426, rb=0.485, lam=45, cy=-0.9):
+def warped_word(word, n, span=(0.08, 0.92), top=0.43, foot=(0.45, 0.42), lam=45, cy=-0.9):
     """Mask (n x n) of `word` bent onto the orb. Measured on the reference: letter tops sit on
-    y = 0.426 of the orb, their feet on a circle of radius 0.485, and the word spans x 0.07-0.93."""
+    y = 0.43 of the orb, their feet on an oval (radii 0.45 across, 0.42 down) well inside the
+    orb's edge, and the word spans x 0.08-0.92."""
     a = flat_text(word)
     fh, fw = a.shape
     yy, xx = np.mgrid[0:n, 0:n] / n
@@ -74,10 +75,14 @@ def warped_word(word, n, span=(0.07, 0.93), top=0.426, rb=0.485, lam=45, cy=-0.9
     dy = np.cos(th)
     rho = np.hypot(xx - 0.5, yy - cy)
     r_top = (top - cy) / dy
+    # Far intersection of the ray from the fan centre with the feet's oval.
+    rx, ry = foot
     oy = cy - 0.5
-    b = oy * dy
-    disc = b * b - (oy * oy - rb * rb)
-    r_bot = -b + np.sqrt(np.clip(disc, 0, None))
+    qa = (np.sin(th) / rx) ** 2 + (dy / ry) ** 2
+    qb = 2 * oy * dy / ry**2
+    qc = (oy / ry) ** 2 - 1
+    disc = qb * qb - 4 * qa * qc
+    r_bot = (-qb + np.sqrt(np.clip(disc, 0, None))) / (2 * qa)
     v = (rho - r_top) / (r_bot - r_top)
     ok &= (v >= 0) & (v <= 1) & (disc > 0)
     sx = np.clip((u * (fw - 1)).astype(int), 0, fw - 1)
@@ -119,13 +124,13 @@ def orb(cx, cy, r, badge, word, digits=None):
     letters = warped_word(word, n)
     s = 40 / n
     out = []
-    for mask, fill in ((letters, 'rgba(190, 205, 255, 0.58)'), (white, '#ffffff')):
+    for mask, fill in ((letters, 'url(#INK)'), (white, '#ffffff')):
         d, tf = potrace(mask)
         out.append((transform(d, tf, s), fill))
     return out
 
 def component(name, gid, layers):
-    paths = '\n'.join(f'      <Path d="{d}" fill="{fill}" />' for d, fill in layers)
+    paths = '\n'.join(f'      <Path d="{d}" fill="{fill.replace('INK', gid + '-ink')}" />' for d, fill in layers)
     return f'''export function {name}({{ size }}: TabIconProps) {{
   return (
     <Svg width={{size}} height={{size}} viewBox="0 0 40 40">
@@ -134,6 +139,10 @@ def component(name, gid, layers):
           <Stop offset="0" stopColor="#8cc8ff" />
           <Stop offset="0.5" stopColor="#6f8cf8" />
           <Stop offset="1" stopColor="#5a50ee" />
+        </LinearGradient>
+        <LinearGradient id="{gid}-ink" x1="0" y1="17" x2="0" y2="37" gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor="#bccbff" stopOpacity="0.3" />
+          <Stop offset="1" stopColor="#c4d2ff" stopOpacity="0.7" />
         </LinearGradient>
       </Defs>
       <Circle cx={{20}} cy={{20}} r={{19.6}} fill="url(#{gid})" />
