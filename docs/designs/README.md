@@ -5,4 +5,4 @@ Write the design here before building anything that changes the public API of `t
 | Doc                                                                                                      | Status              |
 | -------------------------------------------------------------------------------------------------------- | ------------------- |
 | [`foundation.md`](foundation.md): core API, navigator adapters, motion primitives, registry/install flow | Approved 2026-11-20 |
-| `website.md`: the tabcn site (ui-lab-style pages, demo videos, Expo Go QR, registry hosting)             | Not started         |
+| [`website.md`](website.md): the tabcn site (ui-lab-style pages, demo videos, Expo Go QR, registry hosting) | Approved 2026-11-20 |
