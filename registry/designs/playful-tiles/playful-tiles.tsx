@@ -45,7 +45,7 @@ export function PlayfulTiles({
     <TabBarRoot placement="floating" style={styles.outer}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
         <TabIndicator
-          inset={6}
+          inset={{ x: 9, y: 11 }}
           style={[styles.tile, { backgroundColor: colors.tile, borderColor: colors.tileBorder }]}
         />
         {tabs.map((tab) => (
@@ -91,7 +91,7 @@ function Tab({
       onPressIn={haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) : undefined}
     >
       <Animated.View style={icon}>
-        {tab.renderIcon?.({ focused: true, color, size: 32 })}
+        {tab.renderIcon?.({ focused: true, color, size: 36 })}
       </Animated.View>
       {tab.badge != null ? <View style={[styles.badge, { backgroundColor: badgeColor }]} /> : null}
     </TabButton>
@@ -101,11 +101,11 @@ function Tab({
 const styles = StyleSheet.create({
   outer: { alignSelf: 'stretch', paddingHorizontal: 16 },
   bar: {
-    height: 76,
-    borderRadius: 24,
+    height: 66,
+    borderRadius: 20,
     boxShadow: '0 8px 24px rgba(0, 0, 0, 0.10)',
   },
-  tile: { borderRadius: 16, borderWidth: 2.5 },
+  tile: { borderRadius: 12, borderWidth: 2.5 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: 16, right: '24%', width: 10, height: 10, borderRadius: 5 },
 });

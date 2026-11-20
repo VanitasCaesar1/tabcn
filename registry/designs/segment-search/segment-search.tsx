@@ -122,17 +122,17 @@ function Magnifier({ color }: { color: string }) {
   );
 }
 
-const HEIGHT = 66;
+const HEIGHT = 58;
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 22 },
-  halo: { padding: 8, borderRadius: 999 },
-  roundHalo: { padding: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 56 },
+  halo: { padding: 6, borderRadius: 999 },
+  roundHalo: { padding: 6 },
   pill: { height: HEIGHT, borderRadius: 999, boxShadow: '0 6px 18px rgba(80, 140, 230, 0.3)' },
   list: { flex: 1, alignItems: 'stretch', paddingHorizontal: 0 },
   capsule: { borderRadius: 999, borderWidth: 1.5 },
-  tab: { justifyContent: 'center', alignItems: 'center', minWidth: 104, paddingHorizontal: 22 },
-  label: { fontSize: 19, fontWeight: '500' },
+  tab: { justifyContent: 'center', alignItems: 'center', width: 91 },
+  label: { fontSize: 15.5, fontWeight: '500' },
   round: {
     width: HEIGHT,
     height: HEIGHT,

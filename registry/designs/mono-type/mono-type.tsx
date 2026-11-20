@@ -54,10 +54,10 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: MonoTypeColors; h
     >
       <View style={styles.iconBox}>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, plain]}>
-          {tab.renderIcon?.({ focused: false, color: colors.foreground, size: 30 })}
+          {tab.renderIcon?.({ focused: false, color: colors.foreground, size: 29 })}
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, accent]}>
-          {tab.renderIcon?.({ focused: false, color: colors.accent, size: 30 })}
+          {tab.renderIcon?.({ focused: false, color: colors.accent, size: 29 })}
         </Animated.View>
         {tab.badge != null ? (
           <View style={[styles.badge, { backgroundColor: colors.badge }]} />
@@ -74,12 +74,13 @@ const styles = StyleSheet.create({
   outer: { alignSelf: 'stretch', paddingHorizontal: 16 },
   bar: {
     borderRadius: 20,
-    paddingVertical: 12,
+    height: 54,
+    justifyContent: 'center',
     boxShadow: '0 8px 26px rgba(0, 0, 0, 0.12)',
   },
-  tab: { flex: 1, alignItems: 'center', gap: 6 },
-  iconBox: { width: 34, height: 34 },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  iconBox: { width: 29, height: 29 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 13 },
+  label: { fontSize: 11.8 },
   badge: { position: 'absolute', top: 0, right: -2, width: 8, height: 8, borderRadius: 4 },
 });

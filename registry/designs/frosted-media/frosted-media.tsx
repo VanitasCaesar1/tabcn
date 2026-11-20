@@ -86,7 +86,7 @@ function Tab({ tab, color, haptics }: { tab: TabItem; color: string; haptics: bo
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <Animated.View style={[styles.content, content]}>
-        {tab.renderIcon?.({ focused: tab.focused, color, size: 30 })}
+        {tab.renderIcon?.({ focused: tab.focused, color, size: 24 })}
         <Text numberOfLines={1} style={[styles.label, { color }]}>
           {tab.label}
         </Text>
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   },
   list: { padding: 4 },
   capsule: { borderRadius: 999, borderWidth: 1.2 },
-  tab: { minWidth: 104, height: 72, alignItems: 'center', justifyContent: 'center' },
-  content: { alignItems: 'center', gap: 4 },
-  label: { fontSize: 15, fontWeight: '600' },
+  tab: { width: 84.5, height: 50, alignItems: 'center', justifyContent: 'center' },
+  content: { alignItems: 'center', gap: 2 },
+  label: { fontSize: 12, fontWeight: '600' },
 });

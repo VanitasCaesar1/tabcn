@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { catalog } from '@/catalog';
 import { demos, useCurrentDemo } from '@/demos';
@@ -17,6 +18,7 @@ export function DemoScreen({ index }: { index: number }) {
   const id = Object.keys(demos).find((key) => demos[key] === demo);
   const barHeight = useBottomTabBarHeight();
   const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const built = catalog.filter((d) => demos[d.id]);
   const next = built[(built.findIndex((d) => d.id === id) + 1) % built.length];
   const title = demo?.tabs[index]?.label ?? '';
@@ -26,7 +28,8 @@ export function DemoScreen({ index }: { index: number }) {
   return (
     <View style={[styles.screen, { backgroundColor: demo?.background }]}>
       {demo?.pattern ? <Pattern spec={demo.pattern} centerY={height - barHeight / 2 - 60} /> : null}
-      <View style={styles.header}>
+      {/* The stack header is transparent on iOS 26, so clear it by hand. */}
+      <View style={[styles.header, { paddingTop: insets.top + 64 }]}>
         <Text style={[styles.title, { color: text }]}>{title}</Text>
         {next ? (
           <Pressable
@@ -56,7 +59,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 16,
   },
   title: { fontSize: 30, fontWeight: '700' },
   next: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 },

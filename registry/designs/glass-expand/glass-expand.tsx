@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   pill: {
     borderRadius: 999,
     borderWidth: 1.5,
-    padding: 6,
+    padding: 5,
     boxShadow: '0 10px 30px rgba(20, 10, 120, 0.35)',
   },
   list: { alignItems: 'center' },
@@ -105,10 +105,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    height: 64,
-    minWidth: 76,
+    height: 56,
+    minWidth: 74,
     paddingHorizontal: 18,
   },
   tabFocused: { paddingHorizontal: 26 },
-  label: { fontSize: 18, fontWeight: '500' },
+  label: { fontSize: 14, fontWeight: '500' },
 });

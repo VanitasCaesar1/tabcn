@@ -86,8 +86,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   bar: {
-    height: 60,
-    borderRadius: 18,
+    height: 45,
+    borderRadius: 14,
     alignItems: 'stretch',
   },
   tab: {

@@ -56,7 +56,7 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: SoftPillColors; h
           capsule,
         ]}
       />
-      {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: 25 })}
+      {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: 18 })}
       <Text
         numberOfLines={1}
         style={[
@@ -81,9 +81,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    minWidth: 70,
-    paddingHorizontal: 10,
-    paddingVertical: 9,
+    width: 64,
+    height: 48.5,
   },
-  label: { fontSize: 13 },
+  label: { fontSize: 10.5 },
 });

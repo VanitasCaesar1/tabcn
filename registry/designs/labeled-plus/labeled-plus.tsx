@@ -85,7 +85,7 @@ function Tab({
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <View>
-        {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: 23 })}
+        {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: 21 })}
         {tab.badge != null ? (
           <Animated.View
             entering={ZoomIn.springify()}
@@ -101,13 +101,13 @@ function Tab({
   );
 }
 
-const PILL_HEIGHT = 64;
+const PILL_HEIGHT = 58.5;
 
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8.5,
   },
   pill: {
     height: PILL_HEIGHT,
@@ -121,10 +121,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
-    paddingHorizontal: 13,
+    width: 65.9,
   },
   label: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
   },
   badge: {

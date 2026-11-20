@@ -59,7 +59,7 @@ function Tab({
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <Animated.View style={icon}>
-        {tab.renderIcon?.({ focused: false, color: colors.icon, size: 27 })}
+        {tab.renderIcon?.({ focused: false, color: colors.icon, size: 24 })}
       </Animated.View>
       {tab.badge != null ? (
         <View
@@ -72,11 +72,11 @@ function Tab({
 
 const styles = StyleSheet.create({
   outer: { alignSelf: 'stretch', paddingHorizontal: 16 },
-  bar: { height: 64, borderRadius: 20 },
+  bar: { height: 46, borderRadius: 15 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   badge: {
     position: 'absolute',
-    top: 16,
+    top: 9,
     right: '30%',
     width: 11,
     height: 11,

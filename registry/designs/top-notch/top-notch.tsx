@@ -37,7 +37,7 @@ export interface TopNotchProps {
 export function TopNotch({
   colors: custom,
   fontFamily,
-  iconSize = 40,
+  iconSize = 38,
   haptics = true,
 }: TopNotchProps) {
   const colors = { ...defaultColors, ...custom };
@@ -121,9 +121,9 @@ function Tab({
 }
 
 const styles = StyleSheet.create({
-  outer: { alignSelf: 'stretch', paddingHorizontal: 16 },
+  outer: { width: 338, maxWidth: '100%' },
   card: {
-    height: 82,
+    height: 75,
     borderRadius: 19,
     paddingHorizontal: 6,
     boxShadow: '0 8px 24px rgba(30, 20, 120, 0.18)',
@@ -136,9 +136,9 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 3,
   },
-  tab: { flex: 1, alignItems: 'center', paddingTop: 14, gap: 1 },
+  tab: { flex: 1, alignItems: 'center', paddingTop: 11, gap: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 11.5, lineHeight: 15 },
+  label: { fontSize: 10.5, lineHeight: 14 },
   systemWeight: { fontWeight: '800' },
   badge: { position: 'absolute', top: 2, right: 0, width: 9, height: 9, borderRadius: 5 },
 });

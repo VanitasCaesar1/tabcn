@@ -96,7 +96,7 @@ function Capsule({ colors }: { colors: GlowGlassColors }) {
       <View
         style={[
           styles.glow,
-          { backgroundColor: colors.glow, boxShadow: `0 0 26px 14px ${colors.glow}88` },
+          { backgroundColor: colors.glow, boxShadow: `0 0 20px 12px ${colors.glow}66` },
         ]}
       />
     </Animated.View>
@@ -126,10 +126,10 @@ function Tab({
     >
       <View style={styles.iconBox}>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, dim]}>
-          {tab.renderIcon?.({ focused: false, color: colors.inactive, size: 28 })}
+          {tab.renderIcon?.({ focused: false, color: colors.inactive, size: 21 })}
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, lit]}>
-          {tab.renderIcon?.({ focused: true, color: colors.active, size: 28 })}
+          {tab.renderIcon?.({ focused: true, color: colors.active, size: 21 })}
         </Animated.View>
       </View>
       <Animated.Text numberOfLines={1} style={[styles.label, label]}>
@@ -139,24 +139,23 @@ function Tab({
   );
 }
 
-const HEIGHT = 74;
+const HEIGHT = 58.5;
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8.5 },
   pill: { height: HEIGHT, borderRadius: 999, borderWidth: 1, overflow: 'hidden' },
   list: { flex: 1, alignItems: 'stretch', paddingHorizontal: 2 },
   capsule: { borderRadius: 999, borderWidth: 1, overflow: 'hidden', alignItems: 'center' },
-  glow: { marginTop: 14, width: 18, height: 18, borderRadius: 9, opacity: 0.9 },
+  glow: { marginTop: 6, width: 30, height: 30, borderRadius: 15, opacity: 0.55 },
   tab: {
-    minWidth: 70,
+    width: 65,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
-    paddingHorizontal: 6,
+    gap: 2,
   },
-  iconBox: { width: 30, height: 30 },
+  iconBox: { width: 22, height: 22 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 13, fontWeight: '500' },
+  label: { fontSize: 9.5, fontWeight: '500' },
   round: {
     width: HEIGHT,
     height: HEIGHT,

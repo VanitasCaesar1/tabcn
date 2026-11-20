@@ -89,6 +89,7 @@ for t in range(tabs):
     boxes.append((cx0 + xs.min() - p, cy0 + ys.min() - p, cx0 + xs.max() + p + 1, cy0 + ys.max() + p + 1, bg, o))
 big = max(max(b[2] - b[0], b[3] - b[1]) for b in boxes if b) * UP
 s = 40 / big
+print('BIGPX', spec['ref'], round(big / UP, 1), 'pt', round(big / UP * 370 / 1460, 1))
 res = []
 for b in boxes:
     if not b: res.append(None); continue

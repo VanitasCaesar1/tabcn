@@ -95,8 +95,8 @@ function Tab({
 const styles = StyleSheet.create({
   outer: { alignSelf: 'stretch', paddingHorizontal: 16 },
   bar: {
-    height: 72,
-    borderRadius: 24,
+    height: 55,
+    borderRadius: 18,
     boxShadow: '0 6px 20px rgba(0, 0, 0, 0.08)',
   },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },

@@ -54,7 +54,7 @@ function Tab({
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <View>
-        {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: 24 })}
+        {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: 21 })}
         {tab.badge != null ? (
           <Animated.View
             entering={ZoomIn.springify()}
@@ -91,12 +91,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    minWidth: 76,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    width: 82.5,
+    height: 58.5,
   },
   label: {
-    fontSize: 13,
+    fontSize: 10.5,
   },
   badge: {
     position: 'absolute',

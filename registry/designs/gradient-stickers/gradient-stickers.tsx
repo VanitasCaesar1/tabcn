@@ -19,7 +19,7 @@ import {
 
 const defaultColors = {
   gradient: ['#ffd49a', '#fff3be', '#fff0b0', '#e3f19a'] as const,
-  highlight: 'rgba(255, 255, 255, 0.55)',
+  highlight: 'rgba(255, 255, 255, 0.28)',
   bubble: 'rgba(214, 178, 104, 0.32)',
   badge: '#ff4b4b',
 };
@@ -78,7 +78,7 @@ function Tab({ tab, badge, haptics }: { tab: TabItem; badge: string; haptics: bo
       onPressIn={haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) : undefined}
     >
       <Animated.View style={sticker}>
-        {tab.renderIcon?.({ focused: tab.focused, color: '#000000', size: 46 })}
+        {tab.renderIcon?.({ focused: tab.focused, color: '#000000', size: 36 })}
       </Animated.View>
       {tab.badge != null ? <View style={[styles.badge, { backgroundColor: badge }]} /> : null}
     </TabButton>
@@ -86,12 +86,18 @@ function Tab({ tab, badge, haptics }: { tab: TabItem; badge: string; haptics: bo
 }
 
 const styles = StyleSheet.create({
-  outer: { alignSelf: 'stretch', paddingHorizontal: 20 },
-  shadow: { borderRadius: 40, boxShadow: '0 10px 26px rgba(150, 110, 40, 0.22)' },
-  pill: { borderRadius: 40, padding: 4, overflow: 'hidden' },
+  outer: { width: 330, maxWidth: '100%' },
+  shadow: { borderRadius: 30, boxShadow: '0 10px 26px rgba(150, 110, 40, 0.22)' },
+  pill: {
+    borderRadius: 30,
+    padding: 4,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.65)',
+  },
   shine: { position: 'absolute', left: 24, right: 24, top: 3, height: 10, borderRadius: 999 },
   list: { alignItems: 'stretch' },
   bubble: { borderRadius: 999 },
-  tab: { flex: 1, height: 72, alignItems: 'center', justifyContent: 'center' },
+  tab: { flex: 1, height: 50.5, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: 12, right: '22%', width: 10, height: 10, borderRadius: 5 },
 });

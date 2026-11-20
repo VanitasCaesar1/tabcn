@@ -1,1 +1,10 @@
-{"bar": [1107, 94, 2130, 324], "tabs": 3, "band": [0.12, 0.6], "mode": "mono", "neutral": 1, "neutral_min": 170, "ref": 18, "edge": 0.3}
+{
+  "bar": [1107, 94, 2130, 324],
+  "tabs": 3,
+  "band": [0.12, 0.6],
+  "mode": "mono",
+  "neutral": 1,
+  "neutral_min": 170,
+  "ref": 18,
+  "edge": 0.3
+}
