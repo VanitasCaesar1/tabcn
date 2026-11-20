@@ -1,18 +1,14 @@
-import Link from 'next/link';
-import { Arrow } from '@/components/arrow';
+import { Catalogue } from '@/components/catalogue';
 import { CodeBlock } from '@/components/code-block';
 import { DesignCard } from '@/components/design-card';
-import { DesignGrid } from '@/components/design-grid';
-import { GitHubIcon } from '@/components/github-icon';
+import { DesignRow } from '@/components/design-row';
+import { Hero } from '@/components/hero';
 import { InstallCommand } from '@/components/install-command';
 import { Showcase } from '@/components/showcase';
 import { SiteHeader } from '@/components/site-header';
-import { Underline } from '@/components/underline';
 import { categories, designs, getDesign, ordered, usageSnippet } from '@/lib/designs';
-import { designPath, registryUrl, site } from '@/lib/site';
+import { registryUrl } from '@/lib/site';
 
-// The catalog appends, so the last design is the newest.
-const latest = designs[designs.length - 1];
 // The reel above the grid, newest first.
 const fresh = designs.slice(-6).reverse();
 const example = getDesign('sliding-capsule') ?? designs[0];
@@ -41,74 +37,33 @@ const HOW = [
   },
 ];
 
-const buttonPrimary =
-  'flex h-10 items-center rounded-full bg-foreground px-5 font-medium text-background text-sm outline-hidden transition-[scale,opacity] duration-150 ease-out hover:opacity-90 focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:scale-[0.96]';
-const buttonSecondary =
-  'flex h-10 items-center gap-2 rounded-full bg-surface px-4 font-medium text-foreground text-sm shadow-[inset_0_0_0_1px_var(--border)] outline-hidden transition-[scale,background-color] duration-150 ease-out hover:bg-background focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:scale-[0.96]';
-
 export default function Home() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-16 pb-16 sm:px-6 sm:pt-20">
-        <section className="relative isolate mb-16 flex flex-col items-center text-center">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 -top-24 -z-10 h-[440px] bg-[radial-gradient(color-mix(in_oklab,var(--foreground)_11%,transparent)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:radial-gradient(ellipse_50%_55%_at_50%_40%,black,transparent)]"
-          />
-          {latest && (
-            <Link
-              href={designPath(latest.id)}
-              className="group/latest flex h-8 items-center gap-2 rounded-full bg-background pr-3 pl-1 text-[13px] text-muted shadow-[inset_0_0_0_1px_var(--border)] outline-hidden transition-[color,scale] duration-150 ease-out hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:scale-[0.96]"
-            >
-              <span className="flex h-6 items-center rounded-full bg-foreground px-2 font-medium text-[12px] text-background">
-                New
-              </span>
-              <span className="font-medium text-foreground">{latest.title}</span>
-              <Arrow
-                direction="right"
-                className="size-3 transition-[translate] duration-150 ease-out group-hover/latest:translate-x-0.5 motion-reduce:transition-none"
-              />
-            </Link>
-          )}
-          <h1 className="mt-6 max-w-2xl text-balance font-semibold text-[34px] leading-[1.1] tracking-tight sm:text-[46px]">
-            Animated tab bars you copy in and make your{' '}
-            <span className="relative inline-block">
-              own
-              <Underline />
-            </span>
-          </h1>
-          <p className="mt-5 max-w-md text-pretty text-[15px] text-muted leading-relaxed">
-            {designs.length} tab bars for React Native and Expo. A small package does the hard
-            parts; each design is one file you install with the shadcn CLI and change as you like.
-          </p>
-          <div className="mt-8 flex items-center gap-2">
-            <a href="#designs" className={buttonPrimary}>
-              Browse designs
-            </a>
-            <a href={site.repo} target="_blank" rel="noreferrer" className={buttonSecondary}>
-              <GitHubIcon />
-              GitHub
-            </a>
-          </div>
-        </section>
-
+      <Hero />
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-4 pb-16 sm:px-6">
         <Showcase items={fresh.map(card)} />
 
-        <div id="designs" className="scroll-mt-20" />
-        <DesignGrid
-          categories={categories}
-          entries={ordered.map(({ title, description, layout, layoutLabel }) => ({
-            title,
-            description,
-            layout,
-            layoutLabel,
-          }))}
-        >
-          {ordered.map((d) => (
-            <DesignCard key={d.id} item={card(d)} />
-          ))}
-        </DesignGrid>
+        <section id="designs" aria-labelledby="catalogue" className="scroll-mt-20">
+          <h2 id="catalogue" className="font-medium text-[15px]">
+            All designs
+          </h2>
+          <p className="mt-1 mb-5 max-w-xl text-pretty text-muted text-sm">
+            Each tab bar in its different states. Open one to watch it move and install it.
+          </p>
+          <Catalogue
+            categories={categories}
+            entries={ordered.map(({ title, description, layout, layoutLabel }) => ({
+              title,
+              description,
+              layout,
+              layoutLabel,
+            }))}
+            rows={ordered.map((d) => <DesignRow key={d.id} design={d} />)}
+            cards={ordered.map((d) => <DesignCard key={d.id} item={card(d)} />)}
+          />
+        </section>
 
         <section aria-labelledby="how" className="mt-24">
           <h2 id="how" className="font-medium text-[15px]">

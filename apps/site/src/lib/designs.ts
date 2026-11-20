@@ -1,7 +1,7 @@
 // Build-time data for every page: the catalog (ids, titles, layout groups) from the example app,
 // descriptions from registry/registry.json, and facts read from each design's source. Server
 // only: it reads the file system while the static export renders.
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { catalog, LAYOUT_LABELS, type Layout } from '../../../example/src/catalog';
 import registry from '../../../../registry/registry.json';
@@ -27,6 +27,10 @@ export interface Design {
   /** basePath-aware URLs, or null while the recording is missing. */
   video: string | null;
   poster: string | null;
+  /** basePath-aware URLs of the tab bar stills, one per tab state, in order. */
+  stills: string[];
+  /** How many tabs the example app's demo shows, or null if it can't be read. */
+  tabs: number | null;
 }
 
 /** The part of a design the client components need. */
@@ -40,6 +44,35 @@ export interface DesignSummary {
 
 function media(file: string) {
   return existsSync(join(publicDir, 'videos', file)) ? asset(`/videos/${file}`) : null;
+}
+
+const stillFiles = existsSync(join(publicDir, 'stills'))
+  ? readdirSync(join(publicDir, 'stills'))
+  : [];
+
+/** `public/stills/<id>-<n>.jpg`, sorted by n. */
+function stills(id: string) {
+  return stillFiles
+    .map((file) => ({ file, n: Number(file.match(new RegExp(`^${id}-(\\d+)\\.jpg$`))?.[1]) }))
+    .filter((s) => s.n > 0)
+    .sort((a, b) => a.n - b.n)
+    .map((s) => asset(`/stills/${s.file}`));
+}
+
+// The demos file imports React Native, so it's read as text: each design's block in `demos`
+// lists its tabs as `{ label: ... }` lines inside `tabs: [ ... ]`.
+const demosSource = readFileSync(join(root, 'apps/example/src/demos.tsx'), 'utf8');
+const demosBody = demosSource.slice(demosSource.indexOf('export const demos'));
+
+function tabCount(id: string) {
+  const start = demosBody.search(new RegExp(`^  '?${id}'?: \\{$`, 'm'));
+  if (start < 0) return null;
+  const rest = demosBody.slice(start + 1);
+  const next = rest.search(/^ {2}'?[\w-]+'?: \{$/m);
+  const block = next < 0 ? rest : rest.slice(0, next);
+  const list = block.match(/tabs: \[([\s\S]*?)\n {4}\]/)?.[1];
+  const n = list?.match(/\{ label:/g)?.length ?? 0;
+  return n > 0 ? n : null;
 }
 
 function load(): Design[] {
@@ -72,6 +105,8 @@ function load(): Design[] {
       iconsFile: iconsEntry ? iconsEntry.target.replace(/\.tsx$/, '') : null,
       video: media(`${entry.id}.mp4`),
       poster: media(`${entry.id}.jpg`),
+      stills: stills(entry.id),
+      tabs: tabCount(entry.id),
     };
   });
 }

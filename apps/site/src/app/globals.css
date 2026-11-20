@@ -89,6 +89,57 @@ body {
   }
 }
 
+/* Home hero: a few tab bar cards floating at the sides of the headline. Position and size come
+   from inline custom properties; drift and a slight tilt run on two loops of different lengths,
+   so the motion doesn't visibly repeat. Both loops ease in and out and only reverse, so nothing
+   overshoots. */
+.hero-card {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: calc(var(--w) * var(--hero-scale, 1));
+  translate: -50% -50%;
+  perspective: 900px;
+  opacity: var(--o);
+}
+
+.hero-card > div {
+  translate: 0 0 var(--z);
+  transform: rotateX(var(--rx0)) rotateY(var(--ry0)) rotateZ(var(--rz0));
+  animation:
+    hero-float var(--df) ease-in-out var(--delay) infinite alternate,
+    hero-tumble var(--dt) ease-in-out var(--delay) infinite alternate;
+  will-change: translate, transform;
+}
+
+.hero-field[data-paused] .hero-card > div {
+  animation-play-state: paused;
+}
+
+@keyframes hero-float {
+  to {
+    translate: var(--tx) var(--ty) var(--z);
+  }
+}
+
+@keyframes hero-tumble {
+  to {
+    transform: rotateX(var(--rx1)) rotateY(var(--ry1)) rotateZ(var(--rz1));
+  }
+}
+
+@media (max-width: 639px) {
+  .hero-field {
+    --hero-scale: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-card > div {
+    animation: none;
+  }
+}
+
 /* One focus ring for the whole site; components only say where it goes. */
 :focus-visible,
 :focus-visible::after {
