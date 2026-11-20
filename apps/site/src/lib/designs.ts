@@ -7,7 +7,10 @@ import { catalog, type DesignKind, LAYOUT_LABELS, type Layout } from '../../../e
 import registry from '../../../../registry/registry.json';
 import type { DesignProps } from '../../../../scripts/design-props';
 import { asset } from './base-path';
+import { GROUP_NOTES, GROUP_OF, SITE_GROUPS, type SiteGroupId, siteGroupOf } from './groups';
 import { absoluteUrl } from './site';
+
+export { legacyGroup } from './groups';
 
 const root = join(process.cwd(), '../..');
 const publicDir = join(process.cwd(), 'public');
@@ -22,6 +25,10 @@ export interface Design {
   description: string;
   layout: Layout;
   layoutLabel: string;
+  /** The site group it's listed under: one of the board's four, or the panels. */
+  group: SiteGroupId;
+  /** The demo screen's colour behind the bar (`#rrggbb`), from the example app's demos. */
+  background: string;
   /** The exported component, e.g. `SlidingCapsule`. */
   component: string;
   /** The design takes a required `onActionPress` (it has a separate action button). */
@@ -36,6 +43,17 @@ export interface Design {
   ogImage: string;
   /** basePath-aware URLs of the tab bar stills, one per tab state, in order. */
   stills: string[];
+  /** basePath-aware URLs of the cropped loop (public/bars) and its poster, or null. */
+  loop: string | null;
+  loopPoster: string | null;
+  /** A small picture of the bar (138 x 48) for the sidebar, search and list rows. */
+  thumb: string | null;
+  /** For a panel without its own crop yet: a still to show in its place. */
+  fallbackPoster: string | null;
+  /** The newest design, as the hero's "New" link picks it. */
+  isNew: boolean;
+  /** A panel's bar in the example app (its title), or null. */
+  pairedBar: string | null;
   /** How many tabs the example app's demo shows, or null if it can't be read. */
   tabs: number | null;
   /** The component's props, read from its source by scripts/design-props.ts. */
@@ -49,6 +67,9 @@ export interface DesignSummary {
   description: string;
   layout: Layout;
   layoutLabel: string;
+  group: SiteGroupId;
+  thumb: string | null;
+  background: string;
 }
 
 function ogImage(id: string) {
@@ -80,15 +101,49 @@ const demosSource = readFileSync(join(root, 'apps/example/src/demos.tsx'), 'utf8
 const demosBody = demosSource.slice(demosSource.indexOf('export const demos'));
 
 function tabCount(id: string) {
-  const start = demosBody.search(new RegExp(`^  '?${id}'?: \\{$`, 'm'));
-  if (start < 0) return null;
-  const rest = demosBody.slice(start + 1);
-  const next = rest.search(/^ {2}'?[\w-]+'?: \{$/m);
-  const block = next < 0 ? rest : rest.slice(0, next);
+  const block = demoBlock(id);
+  if (!block) return null;
   const list = block.match(/tabs: \[([\s\S]*?)\n {4}\]/)?.[1];
   const n = list?.match(/\{ label:/g)?.length ?? 0;
   return n > 0 ? n : null;
 }
+
+function demoBlock(id: string) {
+  const start = demosBody.search(new RegExp(`^  '?${id}'?: \\{$`, 'm'));
+  if (start < 0) return null;
+  const rest = demosBody.slice(start + 1);
+  const next = rest.search(/^ {2}'?[\w-]+'?: \{$/m);
+  return next < 0 ? rest : rest.slice(0, next);
+}
+
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/**
+ * The demo screen's `background`: a hex literal, or a named constant declared at the top of
+ * demos.tsx or exported by the registry file it imports from. Throws if neither is found, so a
+ * new design can't ship without its tile colour.
+ */
+function demoBackground(id: string) {
+  const value = demoBlock(id)?.match(/^ {4}background: (.+),$/m)?.[1]?.trim();
+  if (!value) throw new Error(`${id}: no background in apps/example/src/demos.tsx`);
+  const literal = value.match(/^'(#[0-9a-fA-F]{6})'$/)?.[1];
+  if (literal) return literal.toLowerCase();
+  if (!/^\w+$/.test(value)) throw new Error(`${id}: can't read background ${value}`);
+  const constant = new RegExp(`^(?:export )?const ${value} = '(#[0-9a-fA-F]{6})'`, 'm');
+  const local = demosSource.match(constant)?.[1];
+  if (local) return local.toLowerCase();
+  const from = demosSource
+    .match(new RegExp(`^import \\{[^}]*\\b${value}\\b[^}]*\\} from '@registry/([\\w/-]+)';`, 'm'))
+    ?.at(1);
+  const file = from ? join(root, 'registry/designs', `${from}.tsx`) : null;
+  const imported = file && existsSync(file) ? readFileSync(file, 'utf8').match(constant)?.[1] : null;
+  if (imported && HEX.test(imported)) return imported.toLowerCase();
+  throw new Error(`${id}: can't resolve background ${value} to a hex colour`);
+}
+
+// The bar loops and thumbnails cut by scripts/bar-loops.py.
+const barsDir = join(publicDir, 'bars');
+const bar = (file: string) => (existsSync(join(barsDir, file)) ? asset(`/bars/${file}`) : null);
 
 // Written by scripts/build-props.ts before `next build` (it needs the TypeScript compiler,
 // which the site doesn't bundle).
@@ -97,79 +152,6 @@ if (!existsSync(propsFile)) {
   throw new Error('generated/design-props.json is missing: run `bun scripts/build-props.ts`');
 }
 const propsData = JSON.parse(readFileSync(propsFile, 'utf8')) as Record<string, DesignProps>;
-
-function load(): Design[] {
-  return catalog.map((entry) => {
-    const item = registry.items.find((i) => i.name === entry.id);
-    if (!item) throw new Error(`${entry.id} is in the catalog but not in registry/registry.json`);
-    const main = item.files.find((f) => f.path.endsWith(`/${entry.id}.tsx`));
-    if (!main) throw new Error(`${entry.id}: registry entry has no ${entry.id}.tsx`);
-    const source = readFileSync(join(root, main.path), 'utf8');
-    const component = source.match(/^export function (\w+)\(/m)?.[1];
-    if (!component) throw new Error(`${entry.id}: no exported component in ${main.path}`);
-    const props = propsData[entry.id];
-    if (!props) throw new Error(`${entry.id}: no props in generated/design-props.json`);
-    const iconsEntry = item.files.find((f) => f.path.endsWith('/icons.tsx'));
-    const icons = iconsEntry
-      ? [
-          ...readFileSync(join(root, iconsEntry.path), 'utf8').matchAll(
-            /^export function (\w+Icon)\(/gm,
-          ),
-        ].map((m) => m[1] as string)
-      : [];
-    return {
-      id: entry.id,
-      ref: entry.ref,
-      title: entry.title,
-      kind: entry.kind,
-      description: item.description,
-      layout: entry.layout,
-      layoutLabel: LAYOUT_LABELS[entry.layout],
-      component,
-      hasAction: /^\s+onActionPress: /m.test(source),
-      icons,
-      iconsFile: iconsEntry ? iconsEntry.target.replace(/\.tsx$/, '') : null,
-      video: media(`${entry.id}.mp4`),
-      poster: media(`${entry.id}.jpg`),
-      ogImage: ogImage(entry.id),
-      stills: stills(entry.id),
-      tabs: tabCount(entry.id),
-      props,
-    };
-  });
-}
-
-export const designs = load();
-
-/** Sidebar groups, in the order of LAYOUT_LABELS; designs keep catalog order inside each. */
-export const groups = (Object.keys(LAYOUT_LABELS) as Layout[])
-  .map((id) => ({
-    id,
-    label: LAYOUT_LABELS[id],
-    items: designs.filter((d) => d.layout === id),
-  }))
-  .filter((g) => g.items.length > 0);
-
-/** The reading order: the sidebar's, which Previous / Next walk too. */
-export const ordered = groups.flatMap((g) => g.items);
-
-export const categories = groups.map(({ id, label }) => ({ id, label }));
-
-export function getDesign(id: string) {
-  return designs.find((d) => d.id === id);
-}
-
-export function neighbours(id: string) {
-  const i = ordered.findIndex((d) => d.id === id);
-  return {
-    previous: i > 0 ? ordered[i - 1] : undefined,
-    next: i >= 0 && i < ordered.length - 1 ? ordered[i + 1] : undefined,
-  };
-}
-
-export function summary({ id, title, description, layout, layoutLabel }: Design): DesignSummary {
-  return { id, title, description, layout, layoutLabel };
-}
 
 /** The tab bar each panel's page shows it with (the pairing in the example app). */
 const PANEL_USAGE: Record<
@@ -238,6 +220,124 @@ const PANEL_USAGE: Record<
       ],
     },
   };
+
+/** Panels with no PANEL_USAGE entry, and the bar their demo draws them with. */
+const PANEL_BARS: Record<string, string> = {
+  'context-tray': 'glass-expand',
+  'sub-tabs': 'soft-pill',
+};
+
+function load(): Design[] {
+  return catalog.map((entry, index) => {
+    const item = registry.items.find((i) => i.name === entry.id);
+    if (!item) throw new Error(`${entry.id} is in the catalog but not in registry/registry.json`);
+    const main = item.files.find((f) => f.path.endsWith(`/${entry.id}.tsx`));
+    if (!main) throw new Error(`${entry.id}: registry entry has no ${entry.id}.tsx`);
+    const source = readFileSync(join(root, main.path), 'utf8');
+    const component = source.match(/^export function (\w+)\(/m)?.[1];
+    if (!component) throw new Error(`${entry.id}: no exported component in ${main.path}`);
+    const props = propsData[entry.id];
+    if (!props) throw new Error(`${entry.id}: no props in generated/design-props.json`);
+    const iconsEntry = item.files.find((f) => f.path.endsWith('/icons.tsx'));
+    const icons = iconsEntry
+      ? [
+          ...readFileSync(join(root, iconsEntry.path), 'utf8').matchAll(
+            /^export function (\w+Icon)\(/gm,
+          ),
+        ].map((m) => m[1] as string)
+      : [];
+    const loop = bar(`${entry.id}.mp4`);
+    const loopPoster = bar(`${entry.id}.jpg`);
+    const hasLoop = loop !== null && loopPoster !== null;
+    const stillList = stills(entry.id);
+    const fallbackPoster =
+      entry.kind === 'panel' && !hasLoop ? (stillList[1] ?? stillList[0] ?? null) : null;
+    const pairedId = PANEL_USAGE[entry.id]?.barId ?? PANEL_BARS[entry.id];
+    return {
+      id: entry.id,
+      ref: entry.ref,
+      title: entry.title,
+      kind: entry.kind,
+      description: item.description,
+      layout: entry.layout,
+      layoutLabel: LAYOUT_LABELS[entry.layout],
+      group: siteGroupOf(entry.layout),
+      background: demoBackground(entry.id),
+      component,
+      hasAction: /^\s+onActionPress: /m.test(source),
+      icons,
+      iconsFile: iconsEntry ? iconsEntry.target.replace(/\.tsx$/, '') : null,
+      video: media(`${entry.id}.mp4`),
+      poster: media(`${entry.id}.jpg`),
+      ogImage: ogImage(entry.id),
+      stills: stillList,
+      loop: hasLoop ? loop : null,
+      loopPoster: hasLoop ? loopPoster : null,
+      thumb: bar(`${entry.id}-thumb.jpg`) ?? (hasLoop ? loopPoster : fallbackPoster),
+      fallbackPoster,
+      isNew: index === catalog.length - 1,
+      pairedBar: pairedId ? (catalog.find((c) => c.id === pairedId)?.title ?? null) : null,
+      tabs: tabCount(entry.id),
+      props,
+    };
+  });
+}
+
+
+export const designs = load();
+
+const layoutOrder = Object.keys(LAYOUT_LABELS) as Layout[];
+
+/**
+ * The five site groups in SITE_GROUPS order. Inside a group, designs go layout by layout (in
+ * LAYOUT_LABELS order, each a sub-head in the sidebar), then in catalog order.
+ */
+export const groups = SITE_GROUPS.map(({ id, label }) => {
+  const layouts = layoutOrder
+    .filter((layout) => (GROUP_OF[layout] ?? 'panels') === id)
+    .map((layout) => ({
+      layout,
+      label: LAYOUT_LABELS[layout],
+      items: designs.filter((d) => d.layout === layout),
+    }))
+    .filter((l) => l.items.length > 0);
+  return { id, label, note: GROUP_NOTES[id], layouts, items: layouts.flatMap((l) => l.items) };
+}).filter((g) => g.items.length > 0);
+
+/** The reading order: the sidebar's and the catalogue's, which Previous / Next walk too. */
+export const ordered = groups.flatMap((g) => g.items);
+
+/** The groups with their counts, for the filter, sidebar and footer. */
+export const siteGroups = groups.map(({ id, label, items }) => ({ id, label, count: items.length }));
+
+export function groupLabel(id: SiteGroupId) {
+  return SITE_GROUPS.find((g) => g.id === id)?.label ?? id;
+}
+
+export function getDesign(id: string) {
+  return designs.find((d) => d.id === id);
+}
+
+export function neighbours(id: string) {
+  const i = ordered.findIndex((d) => d.id === id);
+  return {
+    previous: i > 0 ? ordered[i - 1] : undefined,
+    next: i >= 0 && i < ordered.length - 1 ? ordered[i + 1] : undefined,
+  };
+}
+
+export function summary({
+  id,
+  title,
+  description,
+  layout,
+  layoutLabel,
+  group,
+  thumb,
+  background,
+}: Design): DesignSummary {
+  return { id, title, description, layout, layoutLabel, group, thumb, background };
+}
 
 /** The Expo Router layout a user writes to use this design. */
 export function usageSnippet(d: Design) {

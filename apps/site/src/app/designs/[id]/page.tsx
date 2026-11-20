@@ -9,8 +9,8 @@ import { DesignPhone } from '@/components/phone';
 import { PropsTable } from '@/components/props-table';
 import { SiteHeader } from '@/components/site-header';
 import { cn } from '@/lib/cn';
-import { designs, getDesign, neighbours, usageSnippet } from '@/lib/designs';
-import { absoluteUrl, designPath, registryUrl, site, sourceUrl } from '@/lib/site';
+import { designs, getDesign, groupLabel, neighbours, usageSnippet } from '@/lib/designs';
+import { absoluteUrl, designPath, groupPath, registryUrl, site, sourceUrl } from '@/lib/site';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -59,8 +59,20 @@ export default async function DesignPage({ params }: Props) {
 
   return (
     <>
-      <SiteHeader title={design.title} />
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 pt-4 pb-4 sm:px-6 sm:pt-6">
+      <SiteHeader
+        crumb={{
+          title: design.title,
+          group: design.group,
+          groupLabel: groupLabel(design.group),
+          thumb: design.thumb,
+          background: design.background,
+        }}
+      />
+      <main
+        id="content"
+        tabIndex={-1}
+        className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 pt-4 pb-4 outline-hidden sm:px-6 sm:pt-6"
+      >
         {/* The stage: a quiet dotted canvas the phone sits on, so every design is shown the
             same way. (ui lab, MIT.) */}
         <div className="flex items-center justify-center overflow-x-clip rounded-3xl border border-border bg-[radial-gradient(color-mix(in_oklab,var(--foreground)_9%,transparent)_1px,transparent_1px)] [background-size:18px_18px] px-4 py-8 sm:py-12">
@@ -72,7 +84,7 @@ export default async function DesignPage({ params }: Props) {
             <h1 className="text-balance font-semibold text-2xl tracking-tight">{design.title}</h1>
             <p className="mt-2 max-w-xl text-pretty text-[15px] text-muted">{design.description}</p>
             <Link
-              href={`/?c=${design.layout}#designs`}
+              href={groupPath(design.group)}
               className="mt-3 inline-flex h-7 items-center rounded-full bg-surface px-3 font-medium text-muted text-xs outline-hidden transition-[color,background-color] duration-150 ease-out hover:bg-foreground/10 hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid"
             >
               {design.layoutLabel}
@@ -83,7 +95,7 @@ export default async function DesignPage({ params }: Props) {
             target="_blank"
             rel="noreferrer"
             aria-label={`View source of ${design.title} on GitHub`}
-            className="inline-flex h-10 shrink-0 items-center gap-2 self-start rounded-full bg-foreground px-4 font-medium text-background text-sm outline-hidden transition-[scale,opacity] duration-150 ease-out hover:opacity-90 focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:scale-[0.96]"
+            className="inline-flex h-10 shrink-0 items-center gap-2 self-start rounded-full bg-foreground px-4 font-medium text-background text-sm outline-hidden transition-[opacity] duration-150 ease-out hover:opacity-90 focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:opacity-80 active:duration-100"
           >
             <svg
               viewBox="0 0 16 16"
@@ -187,7 +199,7 @@ export default async function DesignPage({ params }: Props) {
 
         <OpenOnPhone id={design.id} title={design.title} />
 
-        {/* Walks the designs in the sidebar's order. */}
+        {/* Walks the designs in the sidebar's and the catalogue's order. */}
         <nav aria-label="More designs" className="grid grid-cols-2 gap-3">
           {[
             { entry: previous, label: 'Previous', align: 'items-start' },
@@ -198,7 +210,7 @@ export default async function DesignPage({ params }: Props) {
                 key={label}
                 href={designPath(entry.id)}
                 className={cn(
-                  'group/pager flex flex-col gap-1 rounded-2xl border border-border p-4 outline-hidden transition-[background-color,scale] duration-150 ease-out hover:bg-surface focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:scale-[0.99]',
+                  'group/pager flex flex-col gap-1 rounded-2xl border border-border p-4 outline-hidden transition-[background-color] duration-150 ease-out hover:bg-surface focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:bg-foreground/10 active:duration-100',
                   align,
                 )}
               >
