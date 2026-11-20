@@ -5,9 +5,11 @@ import { catalog, LAYOUT_LABELS } from '@/catalog';
 import { demos, designHref } from '@/demos';
 import { DesignPreview } from '@/preview';
 import { useColors } from '@/use-colors';
+import { useExpoGoLinks } from '@/use-expo-go-links';
 
 export default function Gallery() {
   const colors = useColors();
+  useExpoGoLinks();
   return (
     <FlatList
       contentInsetAdjustmentBehavior="automatic"

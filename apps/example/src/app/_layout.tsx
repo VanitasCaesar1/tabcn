@@ -2,7 +2,13 @@ import { Nunito_700Bold } from '@expo-google-fonts/nunito';
 import { Outfit_700Bold, Outfit_800ExtraBold, useFonts } from '@expo-google-fonts/outfit';
 import { PatrickHand_400Regular } from '@expo-google-fonts/patrick-hand';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
+
+// Keep the splash up until the demo fonts load. The navigator itself must mount right
+// away: returning null here would drop the deep link the app was opened with.
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const scheme = useColorScheme();
@@ -13,7 +19,9 @@ export default function RootLayout() {
     Nunito_700Bold,
     PatrickHand_400Regular,
   });
-  if (!fontsLoaded) return null;
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync();
+  }, [fontsLoaded]);
   return (
     <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>

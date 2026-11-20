@@ -39,6 +39,21 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "owner": "vanitascaesar",
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "10b950f2-937a-4203-9689-d81cc1e69d36"
+      }
+    },
+    "runtimeVersion": "exposdk:58.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/10b950f2-937a-4203-9689-d81cc1e69d36"
     }
   }
 }
