@@ -39,7 +39,7 @@ export const catalog: DesignEntry[] = [
     title: 'Glass Expand',
     layout: 'floating-pill',
     summary: 'Frosted pill; the active tab grows into a glass capsule that shows its label.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'top-notch',
@@ -72,7 +72,7 @@ export const catalog: DesignEntry[] = [
     title: 'Segment + Search',
     layout: 'pill-with-action',
     summary: 'Two-tab text segment control beside a separate round search button.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'pill-plus',
@@ -120,7 +120,7 @@ export const catalog: DesignEntry[] = [
     title: 'Soft Pill',
     layout: 'floating-pill',
     summary: 'Light pill with icons and labels; a grey capsule marks the active tab.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'dark-capsule',
@@ -136,7 +136,7 @@ export const catalog: DesignEntry[] = [
     title: 'Gradient Stickers',
     layout: 'floating-pill',
     summary: 'Gradient pill with sticker-style icons; the active one sits in a soft circle.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'light-icons',
@@ -176,7 +176,7 @@ export const catalog: DesignEntry[] = [
     title: 'Frosted Media',
     layout: 'floating-pill',
     summary: 'Blurred see-through pill over content; the active tab gets a raised glass capsule.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'glow-glass',
@@ -185,7 +185,7 @@ export const catalog: DesignEntry[] = [
     layout: 'pill-with-action',
     summary:
       'Dark glass pill with a coloured glow behind the active tab and a separate action button.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'mono-type',

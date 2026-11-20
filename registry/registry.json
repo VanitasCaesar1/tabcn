@@ -4,16 +4,54 @@
   "homepage": "https://github.com/OWNER/tabcn",
   "items": [
     {
+      "name": "glass-expand",
+      "type": "registry:component",
+      "title": "Glass Expand",
+      "description": "Frosted pill; the active tab grows into a glass capsule that shows its label.",
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/glass-expand/glass-expand.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/glass-expand.tsx"
+        },
+        {
+          "path": "registry/designs/glass-expand/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/glass-expand-icons.tsx"
+        }
+      ]
+    },
+    {
       "name": "top-notch",
       "type": "registry:component",
       "title": "Top Notch",
       "description": "Rounded card with icons and labels; a short bar slides along the top edge.",
-      "dependencies": ["tabcn", "expo-haptics"],
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
           "path": "registry/designs/top-notch/top-notch.tsx",
           "type": "registry:component",
           "target": "components/tabcn/top-notch.tsx"
+        },
+        {
+          "path": "registry/designs/top-notch/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/top-notch-icons.tsx"
+        }
+      ]
+    },
+    {
+      "name": "segment-search",
+      "type": "registry:component",
+      "title": "Segment + Search",
+      "description": "Two-tab text segment control beside a separate round search button.",
+      "dependencies": ["tabcn", "expo-haptics", "expo-linear-gradient"],
+      "files": [
+        {
+          "path": "registry/designs/segment-search/segment-search.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/segment-search.tsx"
         }
       ]
     },
@@ -22,12 +60,17 @@
       "type": "registry:component",
       "title": "Solid Dark",
       "description": "Black bar, icons only; each icon crossfades from outline to filled and a dot follows the active tab.",
-      "dependencies": ["tabcn", "expo-haptics"],
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
           "path": "registry/designs/solid-dark/solid-dark.tsx",
           "type": "registry:component",
           "target": "components/tabcn/solid-dark.tsx"
+        },
+        {
+          "path": "registry/designs/solid-dark/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/solid-dark-icons.tsx"
         }
       ]
     },
@@ -36,12 +79,36 @@
       "type": "registry:component",
       "title": "Outline Dark",
       "description": "Black bar with outline icons; the active icon brightens.",
-      "dependencies": ["tabcn", "expo-haptics"],
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
           "path": "registry/designs/outline-dark/outline-dark.tsx",
           "type": "registry:component",
           "target": "components/tabcn/outline-dark.tsx"
+        },
+        {
+          "path": "registry/designs/outline-dark/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/outline-dark-icons.tsx"
+        }
+      ]
+    },
+    {
+      "name": "soft-pill",
+      "type": "registry:component",
+      "title": "Soft Pill",
+      "description": "Light pill with icons and labels; a grey capsule marks the active tab.",
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/soft-pill/soft-pill.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/soft-pill.tsx"
+        },
+        {
+          "path": "registry/designs/soft-pill/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/soft-pill-icons.tsx"
         }
       ]
     },
@@ -50,12 +117,36 @@
       "type": "registry:component",
       "title": "Dark Capsule",
       "description": "Dark bar, icons only, an outlined capsule behind the active tab and an avatar tab.",
-      "dependencies": ["tabcn", "expo-haptics"],
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
           "path": "registry/designs/dark-capsule/dark-capsule.tsx",
           "type": "registry:component",
           "target": "components/tabcn/dark-capsule.tsx"
+        },
+        {
+          "path": "registry/designs/dark-capsule/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/dark-capsule-icons.tsx"
+        }
+      ]
+    },
+    {
+      "name": "gradient-stickers",
+      "type": "registry:component",
+      "title": "Gradient Stickers",
+      "description": "Gradient pill with sticker-style icons; the active one sits in a soft circle.",
+      "dependencies": ["tabcn", "expo-haptics", "expo-linear-gradient", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/gradient-stickers/gradient-stickers.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/gradient-stickers.tsx"
+        },
+        {
+          "path": "registry/designs/gradient-stickers/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/gradient-stickers-icons.tsx"
         }
       ]
     },
@@ -64,12 +155,17 @@
       "type": "registry:component",
       "title": "Light Icons",
       "description": "Light grey bar, icons only; the active icon switches to its filled version.",
-      "dependencies": ["tabcn", "expo-haptics"],
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
           "path": "registry/designs/light-icons/light-icons.tsx",
           "type": "registry:component",
           "target": "components/tabcn/light-icons.tsx"
+        },
+        {
+          "path": "registry/designs/light-icons/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/light-icons-icons.tsx"
         }
       ]
     },
@@ -78,12 +174,17 @@
       "type": "registry:component",
       "title": "Playful Tiles",
       "description": "White bar with colourful icons; the active tab gets a bordered tile.",
-      "dependencies": ["tabcn", "expo-haptics"],
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
           "path": "registry/designs/playful-tiles/playful-tiles.tsx",
           "type": "registry:component",
           "target": "components/tabcn/playful-tiles.tsx"
+        },
+        {
+          "path": "registry/designs/playful-tiles/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/playful-tiles-icons.tsx"
         }
       ]
     },
@@ -92,12 +193,17 @@
       "type": "registry:component",
       "title": "Sliding Capsule",
       "description": "White floating pill with icons and labels; a grey capsule slides to the active tab.",
-      "dependencies": ["tabcn", "expo-haptics"],
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
           "path": "registry/designs/sliding-capsule/sliding-capsule.tsx",
           "type": "registry:component",
           "target": "components/tabcn/sliding-capsule.tsx"
+        },
+        {
+          "path": "registry/designs/sliding-capsule/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/sliding-capsule-icons.tsx"
         }
       ]
     },
@@ -106,12 +212,61 @@
       "type": "registry:component",
       "title": "Labeled + Plus",
       "description": "Labelled pill with a sliding capsule beside a separate plus button that runs an action.",
-      "dependencies": ["tabcn", "expo-haptics"],
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
           "path": "registry/designs/labeled-plus/labeled-plus.tsx",
           "type": "registry:component",
           "target": "components/tabcn/labeled-plus.tsx"
+        },
+        {
+          "path": "registry/designs/labeled-plus/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/labeled-plus-icons.tsx"
+        }
+      ]
+    },
+    {
+      "name": "frosted-media",
+      "type": "registry:component",
+      "title": "Frosted Media",
+      "description": "Blurred see-through pill over content; the active tab gets a raised glass capsule.",
+      "dependencies": [
+        "tabcn",
+        "expo-haptics",
+        "expo-blur",
+        "expo-glass-effect",
+        "react-native-svg"
+      ],
+      "files": [
+        {
+          "path": "registry/designs/frosted-media/frosted-media.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/frosted-media.tsx"
+        },
+        {
+          "path": "registry/designs/frosted-media/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/frosted-media-icons.tsx"
+        }
+      ]
+    },
+    {
+      "name": "glow-glass",
+      "type": "registry:component",
+      "title": "Glow Glass",
+      "description": "Dark glass pill with a coloured glow behind the active tab and a separate action button.",
+      "dependencies": ["tabcn", "expo-haptics", "expo-blur", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/glow-glass/glow-glass.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/glow-glass.tsx"
+        },
+        {
+          "path": "registry/designs/glow-glass/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/glow-glass-icons.tsx"
         }
       ]
     },
@@ -120,12 +275,17 @@
       "type": "registry:component",
       "title": "Mono Type",
       "description": "White bar with line icons and uppercase monospace labels; the active tab takes the accent colour.",
-      "dependencies": ["tabcn", "expo-haptics"],
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {
           "path": "registry/designs/mono-type/mono-type.tsx",
           "type": "registry:component",
           "target": "components/tabcn/mono-type.tsx"
+        },
+        {
+          "path": "registry/designs/mono-type/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/mono-type-icons.tsx"
         }
       ]
     }

@@ -1,28 +1,19 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
-import { Alert, type ColorValue, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { tabBar } from 'tabcn/expo-router';
 
 import { findDesign, LAYOUT_LABELS } from '@/catalog';
-import { designs } from '@/designs';
+import { CurrentDemoProvider, demos, TAB_ROUTES } from '@/demos';
 import { useColors } from '@/use-colors';
-
-type IconName = keyof typeof Ionicons.glyphMap;
-
-function icon(outline: IconName, filled: IconName) {
-  return ({ focused, color, size }: { focused: boolean; color: ColorValue; size: number }) => (
-    <Ionicons name={focused ? filled : outline} color={color as string} size={size} />
-  );
-}
 
 export default function DesignLayout() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const design = findDesign(id);
-  const render = designs[id];
+  const demo = demos[id];
   const colors = useColors();
 
-  if (!design || !render) {
+  if (!design || !demo) {
     return (
       <View style={styles.center}>
         <Stack.Screen options={{ title: design?.title ?? id }} />
@@ -41,36 +32,38 @@ export default function DesignLayout() {
     );
   }
 
-  const bar = render({
+  const bar = demo.render({
     onActionPress: () => Alert.alert('Action', 'The action button ran its callback.'),
   });
 
   return (
-    <>
+    <CurrentDemoProvider value={demo}>
       <Stack.Screen options={{ title: design.title }} />
-      <Tabs tabBar={tabBar(bar)} screenOptions={{ headerShown: false }}>
-        <Tabs.Screen
-          name="index"
-          options={{ title: 'Home', tabBarIcon: icon('home-outline', 'home') }}
-        />
-        <Tabs.Screen
-          name="explore"
-          options={{ title: 'Explore', tabBarIcon: icon('compass-outline', 'compass') }}
-        />
-        <Tabs.Screen
-          name="inbox"
-          options={{
-            title: 'Inbox',
-            tabBarIcon: icon('chatbubble-outline', 'chatbubble'),
-            tabBarBadge: 3,
-          }}
-        />
-        <Tabs.Screen
-          name="profile"
-          options={{ title: 'Profile', tabBarIcon: icon('person-outline', 'person') }}
-        />
+      <Tabs
+        tabBar={tabBar(bar)}
+        screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: demo.background } }}
+      >
+        {TAB_ROUTES.map((name, i) => {
+          const tab = demo.tabs[i];
+          return (
+            <Tabs.Screen
+              key={name}
+              name={name}
+              options={
+                tab
+                  ? {
+                      title: tab.label,
+                      tabBarBadge: tab.badge,
+                      tabBarIcon: ({ focused, color, size }) =>
+                        tab.icon({ focused, color: String(color), size }),
+                    }
+                  : { href: null }
+              }
+            />
+          );
+        })}
       </Tabs>
-    </>
+    </CurrentDemoProvider>
   );
 }
 

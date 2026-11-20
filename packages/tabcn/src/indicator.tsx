@@ -14,8 +14,8 @@ import { useTabBar } from './state';
 import { useTabListContext } from './TabList';
 
 export interface TabIndicatorOptions {
-  /** Shrinks the indicator inside the tab's frame on every side. Default 0. */
-  inset?: number;
+  /** Shrinks the indicator inside the tab's frame: one value for every side, or `{ x, y }`. Default 0. */
+  inset?: number | { x: number; y: number };
   spring?: WithSpringConfig;
 }
 
@@ -36,6 +36,8 @@ export interface TabIndicatorValues {
  */
 export function useTabIndicator(options: TabIndicatorOptions = {}): TabIndicatorValues {
   const { inset = 0, spring = tabcnSpring } = options;
+  const insetX = typeof inset === 'number' ? inset : inset.x;
+  const insetY = typeof inset === 'number' ? inset : inset.y;
   const { activeIndex } = useTabBar();
   const { frames } = useTabListContext('useTabIndicator');
   const x = useSharedValue(0);
@@ -49,10 +51,10 @@ export function useTabIndicator(options: TabIndicatorOptions = {}): TabIndicator
     (frame) => {
       if (!frame) return;
       const next = {
-        x: frame.x + inset,
-        y: frame.y + inset,
-        width: Math.max(0, frame.width - inset * 2),
-        height: Math.max(0, frame.height - inset * 2),
+        x: frame.x + insetX,
+        y: frame.y + insetY,
+        width: Math.max(0, frame.width - insetX * 2),
+        height: Math.max(0, frame.height - insetY * 2),
       };
       if (!ready.value) {
         x.value = next.x;

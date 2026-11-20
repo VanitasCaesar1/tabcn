@@ -1,5 +1,5 @@
 import { DemoScreen } from '@/demo-screen';
 
-export default function HomeScreen() {
-  return <DemoScreen title="Home" />;
+export default function Tab1Screen() {
+  return <DemoScreen index={0} />;
 }

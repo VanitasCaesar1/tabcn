@@ -1,20 +1,12 @@
 /**
  * Solid Dark: a black bar with icons only. Each tab crossfades from its outline
- * icon to its filled one, and a small dot settles under the active tab.
+ * icon to its filled one.
  * Built on tabcn: https://github.com/OWNER/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
 import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
-import {
-  TabBarRoot,
-  TabButton,
-  type TabItem,
-  TabList,
-  useFocusProgress,
-  useTabBar,
-  useTabIndicator,
-} from 'tabcn';
+import { TabBarRoot, TabButton, type TabItem, TabList, useFocusProgress, useTabBar } from 'tabcn';
 
 const defaultColors = {
   background: '#0b0b0d',
@@ -38,24 +30,11 @@ export function SolidDark({ colors: custom, haptics = true }: SolidDarkProps) {
   return (
     <TabBarRoot placement="floating" style={styles.outer}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
-        <Dot color={colors.active} />
         {tabs.map((tab) => (
           <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
         ))}
       </TabList>
     </TabBarRoot>
-  );
-}
-
-/** A 4 pt dot that follows the active tab along the bottom edge. */
-function Dot({ color }: { color: string }) {
-  const { x, width, ready } = useTabIndicator();
-  const style = useAnimatedStyle(() => ({
-    opacity: ready.value ? 1 : 0,
-    transform: [{ translateX: x.value + width.value / 2 - 2 }],
-  }));
-  return (
-    <Animated.View pointerEvents="none" style={[styles.dot, { backgroundColor: color }, style]} />
   );
 }
 
@@ -123,14 +102,6 @@ const styles = StyleSheet.create({
   center: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  dot: {
-    position: 'absolute',
-    left: 0,
-    bottom: 7,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
   },
   badge: {
     position: 'absolute',

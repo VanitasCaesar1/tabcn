@@ -1,4 +1,4 @@
-import type { ComponentRef, ReactNode, Ref } from 'react';
+import type { ComponentProps, ComponentRef, ReactNode, Ref } from 'react';
 import {
   type GestureResponderEvent,
   Pressable,
@@ -15,10 +15,15 @@ import Animated, {
 } from 'react-native-reanimated';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+type AnimatedPressableProps = ComponentProps<typeof AnimatedPressable>;
 
 export interface PressableScaleProps extends Omit<PressableProps, 'style' | 'children'> {
   /** Scale while pressed. 1 turns press feedback off. Default 0.94. */
   scale?: number;
+  /** Reanimated layout animation, e.g. `LinearTransition` when the button changes size. */
+  layout?: AnimatedPressableProps['layout'];
+  entering?: AnimatedPressableProps['entering'];
+  exiting?: AnimatedPressableProps['exiting'];
   ref?: Ref<ComponentRef<typeof Pressable>>;
   style?: StyleProp<ViewStyle>;
   children?: ReactNode | ((state: { pressed: boolean }) => ReactNode);
