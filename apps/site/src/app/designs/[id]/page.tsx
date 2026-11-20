@@ -25,7 +25,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const design = getDesign(id);
   if (!design) return {};
   const shareAlt = `The ${design.title} tab bar from tabcn`;
-  const description = `${design.description} An animated ${design.layoutLabel.toLowerCase()} tab bar for React Native and Expo, from tabcn.`;
+  const description =
+    design.kind === 'panel'
+      ? `${design.description} An animated panel for tabcn tab bars in React Native and Expo.`
+      : `${design.description} An animated ${design.layoutLabel.toLowerCase()} tab bar for React Native and Expo, from tabcn.`;
   return {
     title: design.title,
     description,
@@ -37,12 +40,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: absoluteUrl(designPath(id)),
       title: `${design.title} · ${site.name}`,
       description,
-      images: [{ url: absoluteUrl(`/og/${id}.jpg`), width: 1200, height: 630, alt: shareAlt }],
+      images: [{ url: design.ogImage, width: 1200, height: 630, alt: shareAlt }],
     },
     twitter: {
       card: 'summary_large_image',
       creator: `@${site.x}`,
-      images: [{ url: absoluteUrl(`/og/${id}.jpg`), alt: shareAlt }],
+      images: [{ url: design.ogImage, alt: shareAlt }],
     },
   };
 }
@@ -104,9 +107,46 @@ export default async function DesignPage({ params }: Props) {
             Usage
           </h2>
           <p className="mt-1 mb-2.5 pl-1 text-pretty text-muted text-sm">
-            Pass it to Expo Router&rsquo;s tabs. Icons, labels and badges come from each
-            screen&rsquo;s options.
-            {design.hasAction && ' The separate button runs onActionPress.'}
+            {design.kind === 'panel' ? (
+              <>
+                A panel needs a <code className="font-mono text-[13px]">TabBarProvider</code> around
+                the tabs navigator.{' '}
+                {design.id === 'quick-create' ? (
+                  <>
+                    It slides out of the bar&rsquo;s + button, so it needs a bar that marks that
+                    button with{' '}
+                    <code className="font-mono text-[13px]">
+                      usePanelAnchor(&apos;action&apos;)
+                    </code>
+                    : Center CTA, Glow Glass, Labeled + Plus, Pill + Plus or Segment + Search.
+                  </>
+                ) : (
+                  'It works with any tabcn tab bar.'
+                )}
+                {design.id === 'mini-player' && (
+                  <>
+                    {' '}
+                    Dragging it needs{' '}
+                    <code className="font-mono text-[13px]">react-native-gesture-handler</code> and
+                    a{' '}
+                    <code className="font-mono text-[13px]">
+                      {'<GestureHandlerRootView style={{ flex: 1 }}>'}
+                    </code>{' '}
+                    around the app in <code className="font-mono text-[13px]">app/_layout.tsx</code>
+                    ; without it the panel throws in development.
+                  </>
+                )}{' '}
+                Here it is with the bar it&rsquo;s shown with.
+              </>
+            ) : (
+              <>
+                Pass it to Expo Router&rsquo;s tabs. Icons, labels and badges come from each
+                screen&rsquo;s options.
+                {design.id === 'side-rail' &&
+                  ' It draws a rail when the navigator’s tabBarPosition is left, and a bottom bar otherwise.'}
+                {design.hasAction && ' The separate button runs onActionPress.'}
+              </>
+            )}
           </p>
           <CodeBlock filename="app/(tabs)/_layout.tsx" code={usageSnippet(design)} />
         </section>

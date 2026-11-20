@@ -1,12 +1,27 @@
 /**
- * Solid Dark: a black bar with icons only. Each tab crossfades from its outline
- * icon to its filled one.
+ * Solid Dark: a black bar with icons only. On focus the active (filled) icon fades in over
+ * the inactive one, which stays put underneath so the glyph never dims mid-change. Nothing
+ * moves or scales: there is no indicator, and a press only gives a haptic tick.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
-import { TabBarRoot, TabButton, type TabItem, TabList, useFocusProgress, useTabBar } from 'tabcn';
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import {
+  TabBarRoot,
+  TabButton,
+  type TabItem,
+  TabList,
+  tabcnTiming,
+  useFocusProgress,
+  useTabBar,
+} from 'tabcn';
 
 const defaultColors = {
   background: '#131313',
@@ -48,10 +63,23 @@ function Tab({
   haptics: boolean;
 }) {
   const progress = useFocusProgress(tab);
-  const outline = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
-  const filled = useAnimatedStyle(() => ({
-    opacity: progress.value,
+  // The inactive icon stays fully opaque under the active one while it fades in, so the glyph
+  // never dips in brightness halfway (a symmetric 1 - p / p crossfade would). It drops out only
+  // over the last stretch, once the active icon covers it: invisible for this design's icons,
+  // which share one shape, and it keeps an outline that sticks out past a filled icon from
+  // lingering. Reduce motion makes the whole change instant (tabcnTiming).
+  const inactive = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.8, 1], [1, 0], 'clamp'),
   }));
+  const active = useAnimatedStyle(() => ({ opacity: progress.value }));
+
+  // The badge dot fades in and out (no scale pop). It stays mounted so it can fade out.
+  const hasBadge = tab.badge != null;
+  const badgeOpacity = useSharedValue(hasBadge ? 1 : 0);
+  useEffect(() => {
+    badgeOpacity.value = withTiming(hasBadge ? 1 : 0, tabcnTiming);
+  }, [hasBadge, badgeOpacity]);
+  const badge = useAnimatedStyle(() => ({ opacity: badgeOpacity.value }));
 
   return (
     <TabButton
@@ -60,20 +88,20 @@ function Tab({
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <View style={styles.iconBox}>
-        <Animated.View style={[StyleSheet.absoluteFill, styles.center, outline]}>
+        <Animated.View style={[StyleSheet.absoluteFill, styles.center, inactive]}>
           {tab.renderIcon?.({ focused: false, color: colors.inactive, size: 26 })}
         </Animated.View>
-        <Animated.View style={[StyleSheet.absoluteFill, styles.center, filled]}>
+        <Animated.View style={[StyleSheet.absoluteFill, styles.center, active]}>
           {tab.renderIcon?.({ focused: true, color: colors.active, size: 26 })}
         </Animated.View>
-        {tab.badge != null ? (
-          <View
-            style={[
-              styles.badge,
-              { backgroundColor: colors.badge, borderColor: colors.background },
-            ]}
-          />
-        ) : null}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.badge,
+            { backgroundColor: colors.badge, borderColor: colors.background },
+            badge,
+          ]}
+        />
       </View>
     </TabButton>
   );

@@ -13,6 +13,7 @@ export interface TabOptionsLike {
   tabBarButtonTestID?: string;
   tabBarHideOnKeyboard?: boolean;
   tabBarItemStyle?: unknown;
+  tabBarPosition?: string;
   /** Set by Expo Router for `href: null`. */
   hidden?: boolean;
 }
@@ -87,5 +88,6 @@ export function buildTabBarState(input: BuildInput): TabBarState {
     insets: input.insets,
     hideOnKeyboard: focusedOptions.tabBarHideOnKeyboard ?? false,
     reportHeight: input.reportHeight,
+    position: focusedOptions.tabBarPosition === 'left' ? 'left' : 'bottom',
   };
 }

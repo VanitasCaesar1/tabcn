@@ -5,7 +5,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import {
   TabBarRoot,
   TabButton,
@@ -63,7 +63,13 @@ function Tab({
   haptics: boolean;
 }) {
   const progress = useFocusProgress(tab);
-  const inactive = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
+  // Colour-only change: the inactive glyph stays fully opaque underneath while the active
+  // glyph fades in on top, then drops out over the last stretch so the active glyph rests
+  // alone (no grey outline or fringe left under a filled icon). Fading both layers against
+  // each other would dip the glyph darker mid-change and dim an icon that ignores `color`.
+  const inactive = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.8, 1], [1, 0], 'clamp'),
+  }));
   const active = useAnimatedStyle(() => ({ opacity: progress.value }));
   return (
     <TabButton

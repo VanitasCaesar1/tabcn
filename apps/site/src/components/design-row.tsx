@@ -11,7 +11,9 @@ export function DesignRow({ design }: { design: Design }) {
   const facts = [
     ...(design.tabs ? [['Tabs', String(design.tabs)]] : []),
     ['Layout', design.layoutLabel],
-    ['Action button', design.hasAction ? 'Yes' : 'No'],
+    design.kind === 'panel'
+      ? ['Needs', 'TabBarProvider']
+      : ['Action button', design.hasAction ? 'Yes' : 'No'],
   ];
   return (
     <li className="group/row grid gap-2 rounded-[20px] bg-background p-2 shadow-raised transition-[background-color] duration-150 ease-out hover:bg-surface md:grid-cols-[260px_minmax(0,1fr)]">
@@ -50,6 +52,12 @@ export function DesignRow({ design }: { design: Design }) {
           screen reader's list; the title is the link people find. */}
       <div className="min-w-0 overflow-x-auto rounded-xl bg-[radial-gradient(color-mix(in_oklab,var(--foreground)_7%,transparent)_1px,transparent_1px)] bg-surface [background-size:16px_16px] [scrollbar-width:none] transition-[background-color] duration-150 ease-out group-hover/row:bg-background [&::-webkit-scrollbar]:hidden">
         <Link href={href} tabIndex={-1} aria-hidden className="flex w-max gap-2 p-3 outline-hidden">
+          {design.stills.length === 0 && (
+            // Shown until the design's stills land in public/stills/.
+            <span className="grid aspect-[4/3] h-[150px] place-items-center rounded-lg bg-background text-muted text-xs shadow-raised md:h-[176px]">
+              Stills coming soon
+            </span>
+          )}
           {design.stills.map((src) => (
             // biome-ignore lint/performance/noImgElement: a static export of small, pre-sized JPGs.
             <img

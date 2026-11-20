@@ -2,9 +2,12 @@ import {
   BottomTabBarHeightCallbackContext,
   type BottomTabBarProps,
 } from '@react-navigation/bottom-tabs';
-import { type ReactElement, type ReactNode, use, useMemo } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { type ReactElement, type ReactNode, use, useCallback, useMemo, useState } from 'react';
 
+import { useAdapterBridge } from './adapter-bridge';
 import { buildTabBarState, type TabOptionsLike } from './build-state';
+import { useOverrideSlot } from './override';
 import { TabBarStateProvider } from './state';
 
 const noop = () => {};
@@ -35,6 +38,9 @@ function ReactNavigationTabBar({ nav, children }: { nav: BottomTabBarProps; chil
     [state, descriptors, navigation, insets, onHeightChange],
   );
 
+  const isFocused = useCallback(() => navigation.isFocused(), [navigation]);
+  useAdapterBridge(state, isFocused);
+
   return <TabBarStateProvider value={value}>{children}</TabBarStateProvider>;
 }
 
@@ -47,4 +53,25 @@ function ReactNavigationTabBar({ nav, children }: { nav: BottomTabBarProps; chil
  */
 export function tabBar(element: ReactElement): (props: BottomTabBarProps) => ReactNode {
   return (props) => <ReactNavigationTabBar nav={props}>{element}</ReactNavigationTabBar>;
+}
+
+/**
+ * Replaces the tab bar's tabs with `element` while the calling screen is focused, in the
+ * bar's own place and container, crossfading in and out. Pass `null` to show the tabs.
+ * The tabs stay mounted, hidden from screen readers, and navigation is unchanged.
+ * Needs a `TabBarProvider` around the navigator.
+ *
+ * ```tsx
+ * useTabBarOverride(<ContextTray label="Exploring" onClose={() => router.back()} />);
+ * ```
+ */
+export function useTabBarOverride(element: ReactNode | null): void {
+  const [focused, setFocused] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
+  useOverrideSlot(element, focused);
 }

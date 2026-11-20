@@ -16,6 +16,8 @@ import * as LabeledPlusIcons from '@registry/labeled-plus/icons';
 import { LabeledPlus } from '@registry/labeled-plus/labeled-plus';
 import * as LightIconsIcons from '@registry/light-icons/icons';
 import { LightIcons } from '@registry/light-icons/light-icons';
+import * as MaterialPillIcons from '@registry/material-pill/icons';
+import { MaterialPill } from '@registry/material-pill/material-pill';
 import * as MonoTypeIcons from '@registry/mono-type/icons';
 import { MonoType } from '@registry/mono-type/mono-type';
 import * as OrbsIcons from '@registry/orbs/icons';
@@ -27,20 +29,34 @@ import { PillPlus } from '@registry/pill-plus/pill-plus';
 import * as PlayfulTilesIcons from '@registry/playful-tiles/icons';
 import { PlayfulTiles } from '@registry/playful-tiles/playful-tiles';
 import { SegmentSearch } from '@registry/segment-search/segment-search';
+import * as SideRailIcons from '@registry/side-rail/icons';
+import { SideRail } from '@registry/side-rail/side-rail';
 import * as SlidingCapsuleIcons from '@registry/sliding-capsule/icons';
 import { SlidingCapsule } from '@registry/sliding-capsule/sliding-capsule';
 import * as SoftPillIcons from '@registry/soft-pill/icons';
 import { SoftPill } from '@registry/soft-pill/soft-pill';
 import * as SolidDarkIcons from '@registry/solid-dark/icons';
 import { SolidDark } from '@registry/solid-dark/solid-dark';
+import * as SplitSearchIcons from '@registry/split-search/icons';
+import { SplitSearch } from '@registry/split-search/split-search';
 import * as StickerTilesIcons from '@registry/sticker-tiles/icons';
 import { StickerTiles } from '@registry/sticker-tiles/sticker-tiles';
 import * as TopNotchIcons from '@registry/top-notch/icons';
 import { TopNotch } from '@registry/top-notch/top-notch';
 import type { Href } from 'expo-router';
-import { createContext, type ReactElement, type ReactNode, use } from 'react';
+import { type ComponentType, createContext, type ReactElement, type ReactNode, use } from 'react';
 import type { TabIconProps } from 'tabcn';
 
+import {
+  ContextTrayExtra,
+  type DemoExtraProps,
+  MinimizeList,
+  MiniPlayerControls,
+  MiniPlayerPanel,
+  QuickCreateBar,
+  QuickCreateControls,
+  QuickCreatePanel,
+} from '@/panel-demos';
 import type { PatternSpec } from '@/pattern';
 
 export interface DemoContext {
@@ -70,7 +86,19 @@ export interface Demo {
   barHeight?: number;
   /** Coloured shapes behind the bar (relative to its centre) for glass designs to blur. */
   blobs?: { dx: number; dy: number; r: number; color: string }[];
+  /**
+   * A panel demo's panel: declared once in the design layout, under its TabBarProvider beside
+   * the navigator, so it stays across tabs. `render` draws the bar it pairs with.
+   */
+  panel?: () => ReactElement;
+  /** Extra content under the demo screen's title: a panel's controls, a list to scroll. */
+  extra?: ComponentType<DemoExtraProps>;
+  /** Draw the bar as a rail on the left (`tabBarPosition: 'left'`) when the window is wide. */
+  railWhenWide?: boolean;
 }
+
+/** Window width (pt) from which a `railWhenWide` demo shows its rail: iPads, landscape. */
+export const RAIL_MIN_WIDTH = 600;
 
 /** Built designs, keyed by catalog id. */
 export const demos: Record<string, Demo> = {
@@ -356,6 +384,100 @@ export const demos: Record<string, Demo> = {
       { label: 'Charts', icon: MonoTypeIcons.WheelIcon },
       { label: 'Transits', icon: MonoTypeIcons.ClockIcon },
       { label: 'Audio', icon: MonoTypeIcons.HeadphonesIcon },
+    ],
+  },
+  'split-search': {
+    render: () => <SplitSearch />,
+    // Apple Store: the bar floats over a #f2f2f7 grouped page; product photos scroll under the glass.
+    background: '#f2f2f7',
+    initialTab: 1,
+    barHeight: 62,
+    blobs: [
+      { dx: -120, dy: -60, r: 55, color: '#e7c3d9' },
+      { dx: 40, dy: -70, r: 45, color: '#d9dde6' },
+      { dx: 150, dy: -40, r: 40, color: '#c9d6c4' },
+    ],
+    // A list to scroll, so the bar can be seen minimizing.
+    extra: MinimizeList,
+    tabs: [
+      { label: 'For You', icon: SplitSearchIcons.ForYouIcon },
+      { label: 'Products', icon: SplitSearchIcons.ProductsIcon },
+      { label: 'Go Further', icon: SplitSearchIcons.GoFurtherIcon },
+      { label: 'Bag', icon: SplitSearchIcons.BagIcon },
+      { label: 'Search', icon: SplitSearchIcons.SearchIcon },
+    ],
+  },
+  'material-pill': {
+    render: () => <MaterialPill />,
+    // Google Home: a white screen with off-white cards above the flat #f0f4f9 bar.
+    background: '#ffffff',
+    barHeight: 64,
+    tabs: [
+      { label: 'Home', icon: MaterialPillIcons.HomeIcon },
+      { label: 'Activity', icon: MaterialPillIcons.ActivityIcon },
+      { label: 'Automations', icon: MaterialPillIcons.AutomationsIcon },
+    ],
+  },
+  'side-rail': {
+    render: ({ onActionPress }) => (
+      <SideRail onMenuPress={onActionPress} onActionPress={onActionPress} />
+    ),
+    // Google Drive on a tablet: the rail is the app's own #f0f4f9 chrome, with no divider
+    // against the screens beside it. Phones get the same tabs as an 80 pt docked bar.
+    background: '#f0f4f9',
+    barHeight: 80,
+    railWhenWide: true,
+    tabs: [
+      { label: 'Home', icon: SideRailIcons.HomeIcon },
+      { label: 'Starred', icon: SideRailIcons.StarIcon },
+      { label: 'Shared', icon: SideRailIcons.SharedIcon },
+      { label: 'Files', icon: SideRailIcons.FolderIcon },
+    ],
+  },
+  'mini-player': {
+    // Paired with Soft Pill: the strip peeks out from behind the pill.
+    render: () => <SoftPill />,
+    panel: () => <MiniPlayerPanel />,
+    extra: MiniPlayerControls,
+    background: '#e5dfd4',
+    pattern: { kind: 'stripes', light: '#f4efe7', dark: '#e1dace', gap: 8 },
+    initialTab: 2,
+    barHeight: 58.5,
+    tabs: [
+      { label: 'Home', icon: SoftPillIcons.HomeIcon },
+      { label: 'Ideas', icon: SoftPillIcons.IdeasIcon },
+      { label: 'Explore', icon: SoftPillIcons.ExploreIcon },
+      { label: 'History', icon: SoftPillIcons.HistoryIcon },
+      { label: 'Trends', icon: SoftPillIcons.TrendsIcon },
+    ],
+  },
+  'context-tray': {
+    // Paired with Glass Expand. The Plan tab's screen puts the tray in the bar's place.
+    render: () => <GlassExpand />,
+    extra: ContextTrayExtra,
+    background: '#ebe9ff',
+    barHeight: 82,
+    tabs: [
+      { label: 'Steps', icon: GlassExpandIcons.SneakerIcon },
+      { label: 'Water', icon: GlassExpandIcons.DropIcon },
+      { label: 'Plan', icon: GlassExpandIcons.ListSparkleIcon },
+      { label: 'Settings', icon: GlassExpandIcons.HexNutIcon },
+    ],
+  },
+  'quick-create': {
+    // Paired with Labeled + Plus: tap + and the menu slides up from behind it.
+    render: () => <QuickCreateBar />,
+    panel: () => <QuickCreatePanel />,
+    extra: QuickCreateControls,
+    background: '#fcfcfc',
+    barHeight: 62,
+    blobs: [
+      { dx: -110, dy: -70, r: 60, color: '#c8dca0' },
+      { dx: 115, dy: -65, r: 60, color: '#b6d4bf' },
+    ],
+    tabs: [
+      { label: 'Home', icon: LabeledPlusIcons.HomeIcon },
+      { label: 'Creator', icon: LabeledPlusIcons.CreatorIcon },
     ],
   },
 };

@@ -6,6 +6,11 @@
  * tabs. The pair spans the screen with 20 pt side margins and sits 21 pt above the bottom
  * edge of the screen, inside the home-indicator area, as the system bar does.
  *
+ * Motion: the capsule glides on tabcnSpring with no overshoot or stretch, and icons and labels
+ * crossfade grey to near-black; nothing scales or lifts. The plus dims at once on touch and
+ * fades back on release. Reduce motion makes all of it instant. The plus is marked with
+ * `usePanelAnchor('action')`, so a `TabPanel` can open from it.
+ *
  * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS, and a
  * translucent light tint on Android (no blur there). Force one with `material`.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
@@ -15,10 +20,14 @@ import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { Platform, StyleSheet, View } from 'react-native';
 import Animated, {
+  Easing,
   FadeIn,
   FadeOut,
+  interpolate,
   interpolateColor,
   useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 import {
   PressableScale,
@@ -27,7 +36,9 @@ import {
   TabIndicator,
   type TabItem,
   TabList,
+  tabcnTiming,
   useFocusProgress,
+  usePanelAnchor,
   useTabBar,
 } from 'tabcn';
 
@@ -81,6 +92,10 @@ const BOTTOM = 21;
 const GAP = 8;
 const ICON = 22;
 const PLUS = 16;
+/** Plus glyph opacity while held. */
+const PRESSED_OPACITY = 0.6;
+/** The badge fades on tabcnTiming's ease-out curve. */
+const BADGE_EASING = Easing.bezier(0.25, 0.1, 0.25, 1);
 
 function resolveMaterial(material: LabeledPlusMaterial): Surface {
   if (material !== 'auto') return material;
@@ -99,6 +114,10 @@ export function LabeledPlus({
   const surface = resolveMaterial(material);
   const { tabs, insets } = useTabBar();
   const shadow = { boxShadow: `0 4px 24px ${colors.shadow}` };
+  const anchor = usePanelAnchor('action');
+  // The plus dims at once on touch (as a UIButton highlight does) and fades back on release.
+  const glyphOpacity = useSharedValue(1);
+  const glyph = useAnimatedStyle(() => ({ opacity: glyphOpacity.value }));
 
   return (
     // The offset is from the safe area, so subtract the inset to measure from the screen edge.
@@ -116,25 +135,26 @@ export function LabeledPlus({
         </TabList>
       </View>
       <PressableScale
+        {...anchor}
         scale={1}
         accessibilityLabel={actionLabel}
         onPress={onActionPress}
-        onPressIn={
-          haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) : undefined
-        }
+        onPressIn={() => {
+          glyphOpacity.value = PRESSED_OPACITY;
+          if (haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }}
+        onPressOut={() => {
+          glyphOpacity.value = withTiming(1, tabcnTiming);
+        }}
         style={[styles.action, shadow]}
       >
-        {({ pressed }) => (
-          <>
-            <Glass surface={surface} colors={colors} />
-            <View style={[styles.plus, pressed && styles.pressed]}>
-              <View style={[styles.plusBar, { backgroundColor: colors.action }]} />
-              <View
-                style={[styles.plusBar, styles.plusBarVertical, { backgroundColor: colors.action }]}
-              />
-            </View>
-          </>
-        )}
+        <Glass surface={surface} colors={colors} />
+        <Animated.View style={[styles.plus, glyph]}>
+          <View style={[styles.plusBar, { backgroundColor: colors.action }]} />
+          <View
+            style={[styles.plusBar, styles.plusBarVertical, { backgroundColor: colors.action }]}
+          />
+        </Animated.View>
       </PressableScale>
     </TabBarRoot>
   );
@@ -180,6 +200,11 @@ function Tab({
   // Grey to near-black crossfade; nothing moves or changes size.
   const progress = useFocusProgress(tab);
   const activeIcon = useAnimatedStyle(() => ({ opacity: progress.value }));
+  // The grey copy stays opaque under the near-black one until the last stretch (no dip in
+  // ink), then drops out so the active glyph rests alone with no outline or fringe under it.
+  const inactiveIcon = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.8, 1], [1, 0], 'clamp'),
+  }));
   const label = useAnimatedStyle(() => ({
     color: interpolateColor(progress.value, [0, 1], [colors.inactive, colors.foreground]),
   }));
@@ -191,14 +216,16 @@ function Tab({
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <View style={styles.icon}>
-        {tab.renderIcon?.({ focused: false, color: colors.inactive, size: ICON })}
+        <Animated.View style={[StyleSheet.absoluteFill, inactiveIcon]}>
+          {tab.renderIcon?.({ focused: false, color: colors.inactive, size: ICON })}
+        </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, activeIcon]}>
           {tab.renderIcon?.({ focused: true, color: colors.foreground, size: ICON })}
         </Animated.View>
         {tab.badge != null ? (
           <Animated.View
-            entering={FadeIn.duration(160)}
-            exiting={FadeOut.duration(120)}
+            entering={FadeIn.duration(160).easing(BADGE_EASING)}
+            exiting={FadeOut.duration(120).easing(BADGE_EASING)}
             style={[styles.badge, { backgroundColor: colors.badge }]}
           />
         ) : null}
@@ -275,9 +302,6 @@ const styles = StyleSheet.create({
     height: PLUS,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  pressed: {
-    opacity: 0.6,
   },
   plusBar: {
     position: 'absolute',

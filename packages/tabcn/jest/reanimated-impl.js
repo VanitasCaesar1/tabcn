@@ -1,7 +1,8 @@
 // Minimal stand-in for react-native-reanimated under Jest. tabcn's tests cover
 // navigation, accessibility and layout reporting, not animation curves, and
 // Reanimated 4.7's own Jest setup mixes its native and JS code paths. Animations
-// resolve to their end value immediately.
+// resolve to their end value immediately and call their completion callback with
+// `finished: true`.
 const React = require('react');
 const { View, Text, ScrollView, Image } = require('react-native');
 
@@ -62,14 +63,34 @@ module.exports = {
   useAnimatedStyle: () => ({}),
   useAnimatedReaction: () => {},
   useDerivedValue: (fn) => makeShared(fn()),
-  withSpring: (to) => to,
-  withTiming: (to) => to,
+  withSpring: (to, _config, callback) => {
+    callback?.(true);
+    return to;
+  },
+  withTiming: (to, _config, callback) => {
+    callback?.(true);
+    return to;
+  },
+  cancelAnimation: () => {},
+  // Used by react-native-gesture-handler when its callbacks are worklets.
+  useEvent: (callback) => callback,
+  useHandler: () => ({ context: {}, doDependenciesDiffer: true }),
+  useComposedEventHandler: (handlers) => (event) => {
+    for (const handler of handlers) handler?.(event);
+  },
+  isSharedValue: (value) =>
+    value != null && typeof value === 'object' && typeof value.modify === 'function',
+  // Calls `onScroll` with the event payload, as Reanimated does on the UI thread.
+  useAnimatedScrollHandler: (handlers) => (event) =>
+    handlers.onScroll?.(event?.nativeEvent ? event.nativeEvent : event),
   withDelay: (_d, a) => a,
   withSequence: (...steps) => steps[steps.length - 1],
   interpolate: (v, input, output) =>
     output[0] + ((v - input[0]) / (input[1] - input[0])) * (output[1] - output[0]),
   interpolateColor: (_v, _i, output) => output[0],
   runOnJS: (fn) => fn,
+  // The OS "reduce motion" setting: off under Jest.
+  useReducedMotion: () => false,
   FadeIn: builder(),
   FadeOut: builder(),
   ZoomIn: builder(),

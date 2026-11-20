@@ -38,6 +38,11 @@
       "types": "./lib/typescript/src/react-navigation.d.ts",
       "default": "./lib/module/react-navigation.js"
     },
+    "./gestures": {
+      "tabcn-source": "./src/gestures.tsx",
+      "types": "./lib/typescript/src/gestures.d.ts",
+      "default": "./lib/module/gestures.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -57,7 +62,9 @@
     "react-native": ">=0.81",
     "react-native-reanimated": ">=4",
     "expo-router": ">=58",
-    "@react-navigation/bottom-tabs": ">=7"
+    "@react-navigation/bottom-tabs": ">=7",
+    "@react-navigation/native": ">=7",
+    "react-native-gesture-handler": ">=2"
   },
   "devDependencies": {
     "@react-navigation/bottom-tabs": "7.22.0",
@@ -72,6 +79,7 @@
     "react": "19.3.0",
     "react-native": "0.88.1",
     "react-native-builder-bob": "^0.44.1",
+    "react-native-gesture-handler": "~3.3.0",
     "react-native-reanimated": "4.7.1",
     "react-native-safe-area-context": "~5.11.1",
     "react-native-screens": "~4.30.1",
@@ -105,6 +113,12 @@
     },
     "@react-navigation/bottom-tabs": {
       "optional": true
+    },
+    "@react-navigation/native": {
+      "optional": true
+    },
+    "react-native-gesture-handler": {
+      "optional": true
     }
   },
   "jest": {
@@ -118,7 +132,8 @@
     "moduleNameMapper": {
       "^react-native-reanimated$": "<rootDir>/jest/reanimated.js",
       "^react-native-reanimated/mock$": "<rootDir>/jest/reanimated-impl.js",
-      "^tabcn$": "<rootDir>/src/index.ts"
+      "^tabcn$": "<rootDir>/src/index.ts",
+      "^tabcn/gestures$": "<rootDir>/src/gestures.tsx"
     }
   }
 }

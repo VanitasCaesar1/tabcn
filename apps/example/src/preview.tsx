@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import { type TabBarState, TabBarStateProvider, type TabItem } from 'tabcn';
+import { TabBarProvider, type TabBarState, TabBarStateProvider, type TabItem } from 'tabcn';
 
 import type { Demo } from '@/demos';
 
@@ -38,9 +38,12 @@ export function DesignPreview({ demo }: { demo: Demo }) {
       style={[styles.frame, { height, backgroundColor: demo.background }]}
     >
       <View style={[styles.stage, { height }]}>
-        <TabBarStateProvider value={state}>
-          {demo.render({ onActionPress: noop })}
-        </TabBarStateProvider>
+        {/* Its own provider, for bars that use panel or minimize hooks (Quick Create's bar). */}
+        <TabBarProvider>
+          <TabBarStateProvider value={state}>
+            {demo.render({ onActionPress: noop })}
+          </TabBarStateProvider>
+        </TabBarProvider>
       </View>
     </View>
   );

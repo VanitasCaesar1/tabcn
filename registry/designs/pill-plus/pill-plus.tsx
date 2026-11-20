@@ -1,8 +1,12 @@
 /**
  * Pill + Plus: one floating white capsule, centred, holding icon-only tabs and a grey
  * plus action at its end, as in the corner app. No labels and no indicator: the active
- * icon crossfades to near-black, the others stay light grey. The capsule is slightly
- * domed (a soft inner shade at its edge) and casts a wide, soft shadow.
+ * icon fades from light grey to near-black (a near-black copy fades in over the grey one,
+ * which never fades, so the colour change is linear and a photo avatar never dims), the
+ * others stay light grey. Nothing moves or scales; with reduce motion the change is instant.
+ * The plus is marked with `usePanelAnchor('action')`, so a `TabPanel` can open from it.
+ * The capsule is slightly domed (a soft inner shade at its edge) and casts a wide, soft
+ * shadow.
  *
  * Measured on the app (App Store shot, 2.59 px/pt on a 402 pt screen), with three tabs:
  * the capsule is 247 x 54 pt, icon centres sit 39, 97, 155 and 209 pt from its left
@@ -11,7 +15,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import {
   PressableScale,
   TabBarRoot,
@@ -19,6 +23,7 @@ import {
   type TabItem,
   TabList,
   useFocusProgress,
+  usePanelAnchor,
   useTabBar,
 } from 'tabcn';
 
@@ -49,6 +54,7 @@ export function PillPlus({
 }: PillPlusProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
+  const anchor = usePanelAnchor('action');
   return (
     <TabBarRoot placement="floating">
       <View style={styles.raised}>
@@ -59,6 +65,7 @@ export function PillPlus({
             ))}
           </TabList>
           <PressableScale
+            {...anchor}
             accessibilityLabel={actionLabel}
             onPress={onActionPress}
             onPressIn={
@@ -80,7 +87,12 @@ export function PillPlus({
 
 function Tab({ tab, colors, haptics }: { tab: TabItem; colors: PillPlusColors; haptics: boolean }) {
   const progress = useFocusProgress(tab);
-  const dim = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
+  // The near-black copy fades in over the grey one, which stays at full opacity until the
+  // last stretch, so the icon passes through a true colour mix and a photo avatar (drawn the
+  // same in both) barely dips. The grey copy then drops out so the active glyph rests alone.
+  const inactive = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.8, 1], [1, 0], 'clamp'),
+  }));
   const lit = useAnimatedStyle(() => ({ opacity: progress.value }));
   return (
     <TabButton
@@ -89,7 +101,7 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: PillPlusColors; h
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <View style={styles.iconBox}>
-        <Animated.View style={[StyleSheet.absoluteFill, styles.center, dim]}>
+        <Animated.View style={[StyleSheet.absoluteFill, styles.center, inactive]}>
           {tab.renderIcon?.({ focused: false, color: colors.inactive, size: ICON })}
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, lit]}>

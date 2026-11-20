@@ -8,16 +8,7 @@ import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
-import {
-  TabBarRoot,
-  TabButton,
-  TabIndicator,
-  type TabItem,
-  TabList,
-  useFocusProgress,
-  useTabBar,
-} from 'tabcn';
+import { TabBarRoot, TabButton, TabIndicator, type TabItem, TabList, useTabBar } from 'tabcn';
 
 const defaultColors = {
   tint: 'rgba(120, 84, 56, 0.18)',
@@ -74,23 +65,21 @@ export function FrostedMedia({
   );
 }
 
+/** Every tab is the same white, active or not: only the capsule marks the active tab. */
 function Tab({ tab, color, haptics }: { tab: TabItem; color: string; haptics: boolean }) {
-  const progress = useFocusProgress(tab);
-  const content = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 1], [0.82, 1]),
-  }));
   return (
     <TabButton
       tab={tab}
       style={styles.tab}
-      onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
+      // No tick for the tab that's already active: nothing changes.
+      onPressIn={haptics && !tab.focused ? () => Haptics.selectionAsync() : undefined}
     >
-      <Animated.View style={[styles.content, content]}>
+      <View style={styles.content}>
         {tab.renderIcon?.({ focused: tab.focused, color, size: ICON })}
         <Text numberOfLines={1} style={[styles.label, { color }]}>
           {tab.label}
         </Text>
-      </Animated.View>
+      </View>
     </TabButton>
   );
 }

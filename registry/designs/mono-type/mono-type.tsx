@@ -2,7 +2,9 @@
  * Mono Type: CHANI's tab bar. A white bar docked flush to the bottom edge, topped by a
  * rough, hand-inked black rule across the full width. Five outline line icons sit over
  * uppercase monospace labels; the active tab only changes colour (icon and label turn
- * magenta). Nothing moves, grows or fills: the colours crossfade and that's it.
+ * magenta). Nothing moves, grows or fills: the colours change on tabcnTiming and that's it.
+ * The accent icon fades in over an always-opaque plain copy, so the icon never dims mid-way;
+ * the badge dot fades (no scale pop); presses show no dim or scale; reduce motion is instant.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  *
  * Measured on the app's App Store screenshots (iPhone 17 Pro, 402 pt wide, 2.211 px/pt):
@@ -12,10 +14,25 @@
  * Tabs are 76.2 pt apart with a 10.5 pt inset at each side.
  */
 import * as Haptics from 'expo-haptics';
+import { useEffect } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
-import Animated, { interpolateColor, useAnimatedStyle } from 'react-native-reanimated';
+import Animated, {
+  interpolate,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import { TabBarRoot, TabButton, type TabItem, TabList, useFocusProgress, useTabBar } from 'tabcn';
+import {
+  TabBarRoot,
+  TabButton,
+  type TabItem,
+  TabList,
+  tabcnTiming,
+  useFocusProgress,
+  useTabBar,
+} from 'tabcn';
 
 const defaultColors = {
   background: '#ffffff',
@@ -112,8 +129,21 @@ function Tab({
   const label = useAnimatedStyle(() => ({
     color: interpolateColor(progress.value, [0, 1], [colors.foreground, colors.accent]),
   }));
-  const plain = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
+  // The accent copy fades in over the plain one, which stays opaque until the last stretch
+  // (no dip in ink mid-change) and then drops out, so the accent icon rests with no dark
+  // anti-aliased fringe from the copy under it.
+  const inactive = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.8, 1], [1, 0], 'clamp'),
+  }));
   const accent = useAnimatedStyle(() => ({ opacity: progress.value }));
+
+  // The badge dot stays mounted so it can fade out as well as in (opacity only).
+  const hasBadge = tab.badge != null;
+  const badgeOpacity = useSharedValue(hasBadge ? 1 : 0);
+  useEffect(() => {
+    badgeOpacity.value = withTiming(hasBadge ? 1 : 0, tabcnTiming);
+  }, [hasBadge, badgeOpacity]);
+  const badge = useAnimatedStyle(() => ({ opacity: badgeOpacity.value }));
   return (
     <TabButton
       tab={tab}
@@ -121,15 +151,16 @@ function Tab({
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <View style={styles.iconBox}>
-        <Animated.View style={[StyleSheet.absoluteFill, styles.center, plain]}>
+        <Animated.View style={[StyleSheet.absoluteFill, styles.center, inactive]}>
           {tab.renderIcon?.({ focused: false, color: colors.foreground, size: ICON })}
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, accent]}>
           {tab.renderIcon?.({ focused: false, color: colors.accent, size: ICON })}
         </Animated.View>
-        {tab.badge != null ? (
-          <View style={[styles.badge, { backgroundColor: colors.badge }]} />
-        ) : null}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.badge, { backgroundColor: colors.badge }, badge]}
+        />
       </View>
       <Animated.Text numberOfLines={1} style={[styles.label, { fontFamily }, label]}>
         {tab.label.toUpperCase()}

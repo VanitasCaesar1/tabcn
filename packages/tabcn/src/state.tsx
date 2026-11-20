@@ -49,6 +49,12 @@ export interface TabBarState {
   hideOnKeyboard: boolean;
   /** Reports the space the bar covers to the navigator. Called by `TabBarRoot`. */
   reportHeight: (height: number) => void;
+  /**
+   * Where the navigator draws the bar: the focused screen's `tabBarPosition`, with every
+   * value other than `left` treated as `bottom`. Lets one design draw a bottom bar on phones
+   * and a rail on tablets. Both adapters set it; undefined means `bottom`.
+   */
+  position?: 'bottom' | 'left';
 }
 
 const TabBarStateContext = createContext<TabBarState | null>(null);

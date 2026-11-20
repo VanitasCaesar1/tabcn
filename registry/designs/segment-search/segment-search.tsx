@@ -1,13 +1,21 @@
 /**
  * Segment + Search: a gradient segment control of text tabs with a glass
  * capsule that slides between them, next to a separate round search button.
+ *
+ * Motion: only the capsule moves, sliding to the tapped tab on `tabcnSpring` (critically
+ * damped, no overshoot) when the press is released. Labels stay full white; touch-down on a
+ * tab gives a selection haptic and nothing visual. The round button never scales: while it is
+ * pressed a faint white highlight fades in (100 ms) and out (200 ms) on the `tabcnTiming`
+ * curve. With "reduce motion" on, everything is instant. The round button is the bar's
+ * `usePanelAnchor('action')` element, so a `TabPanel` such as Quick Create can open from it.
+ *
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
-import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
+import { StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import {
   PressableScale,
   TabBarRoot,
@@ -15,7 +23,8 @@ import {
   TabIndicator,
   type TabItem,
   TabList,
-  useFocusProgress,
+  tabcnTiming,
+  usePanelAnchor,
   useTabBar,
 } from 'tabcn';
 
@@ -51,6 +60,9 @@ export function SegmentSearch({
 }: SegmentSearchProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
+  const anchor = usePanelAnchor('action');
+  const highlight = useSharedValue(0);
+  const highlightStyle = useAnimatedStyle(() => ({ opacity: highlight.value }));
   return (
     <TabBarRoot placement="floating" style={styles.row}>
       <View style={[styles.well, wellShadow(colors.shadow)]}>
@@ -71,13 +83,20 @@ export function SegmentSearch({
       </View>
       <View style={[styles.well, wellShadow(colors.shadow)]}>
         <PressableScale
+          {...anchor}
+          scale={1}
           accessibilityLabel={actionLabel}
           onPress={onActionPress}
-          onPressIn={
-            haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) : undefined
-          }
+          onPressIn={() => {
+            highlight.value = withTiming(PRESSED_HIGHLIGHT, { ...tabcnTiming, duration: 100 });
+            if (haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+          onPressOut={() => {
+            highlight.value = withTiming(0, tabcnTiming);
+          }}
         >
           <LinearGradient colors={colors.gradient} locations={GRADIENT_STOPS} style={styles.round}>
+            <Animated.View pointerEvents="none" style={[styles.highlight, highlightStyle]} />
             {actionIcon ?? <Magnifier color={colors.text} />}
           </LinearGradient>
         </PressableScale>
@@ -86,20 +105,17 @@ export function SegmentSearch({
   );
 }
 
+/** Both labels stay full white: only the capsule marks the active tab. */
 function Tab({ tab, color, haptics }: { tab: TabItem; color: string; haptics: boolean }) {
-  const progress = useFocusProgress(tab);
-  const label = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 1], [0.85, 1]),
-  }));
   return (
     <TabButton
       tab={tab}
       style={styles.tab}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      <Animated.Text numberOfLines={1} style={[styles.label, { color }, label]}>
+      <Text numberOfLines={1} style={[styles.label, { color }]}>
         {tab.label}
-      </Animated.Text>
+      </Text>
     </TabButton>
   );
 }
@@ -115,6 +131,8 @@ function Magnifier({ color }: { color: string }) {
 
 const HEIGHT = 58;
 const GRADIENT_STOPS = [0, 0.45, 1] as const;
+/** Opacity of the white wash over the round button while it is pressed. */
+const PRESSED_HIGHLIGHT = 0.14;
 
 /** A soft shadow on every side, a little stronger below: the shapes look set into the page. */
 function wellShadow(color: string) {
@@ -135,6 +153,15 @@ const styles = StyleSheet.create({
     borderRadius: HEIGHT / 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  highlight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: HEIGHT / 2,
+    backgroundColor: '#ffffff',
   },
   magnifier: { width: 18, height: 18 },
   lens: {

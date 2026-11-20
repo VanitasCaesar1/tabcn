@@ -1,15 +1,37 @@
 /**
- * Smoke test for every design in registry/: each one renders with real tab state, exposes
- * one `tab` per route, and pressing a tab calls the navigator. Designs live outside this
- * package, so they're loaded from the registry by id.
+ * Smoke test for every design in registry/. Each tab bar renders with real tab state,
+ * exposes one `tab` per route, and pressing a tab calls the navigator. Each panel renders
+ * under a TabBarProvider with a test bar and shows when it is peeked, opened or set as the
+ * override. Designs live outside this package, so they're loaded from the registry by id;
+ * the example app's catalog says which are tab bars and which are panels.
  */
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import type { ComponentType } from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import type { ComponentType, ReactNode } from 'react';
+import { Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { type TabBarState, TabBarStateProvider, type TabIconProps, type TabItem } from '../index';
+import {
+  TabBarProvider,
+  TabBarRoot,
+  type TabBarState,
+  TabBarStateProvider,
+  TabButton,
+  type TabIconProps,
+  type TabItem,
+  TabList,
+  type TabPanelControls,
+  usePanelAnchor,
+  useTabBar,
+  useTabPanel,
+} from '../index';
+import { useOverrideSlot } from '../override';
+import { TestBar } from './fixtures';
 
 const registry = require('../../../../registry/registry.json') as {
   items: { name: string }[];
+};
+const { catalog } = require('../../../../apps/example/src/catalog') as {
+  catalog: { id: string; kind: 'bar' | 'panel' }[];
 };
 
 type Module = Record<string, unknown>;
@@ -32,7 +54,15 @@ function loadDesign(id: string) {
   return { Component, iconList };
 }
 
-function makeState(count: number, activeIndex: number, icons: ComponentType<TabIconProps>[]) {
+/** The navigator's bar position; undefined, as in state built by hand, means bottom. */
+type Position = TabBarState['position'] | undefined;
+
+function makeState(
+  count: number,
+  activeIndex: number,
+  icons: ComponentType<TabIconProps>[],
+  position?: Position,
+) {
   const press = jest.fn();
   const tabs: TabItem[] = Array.from({ length: count }, (_, index) => {
     const Icon = icons[index % Math.max(icons.length, 1)];
@@ -53,17 +83,34 @@ function makeState(count: number, activeIndex: number, icons: ComponentType<TabI
     insets: { top: 0, right: 0, bottom: 34, left: 0 },
     hideOnKeyboard: false,
     reportHeight: jest.fn(),
+    ...(position ? { position } : {}),
   };
   return { state, press };
 }
 
 const ids = registry.items.map((item) => item.name);
+const kindOf = (id: string) => catalog.find((entry) => entry.id === id)?.kind;
+const bars = ids.filter((id) => kindOf(id) === 'bar');
+const panels = ids.filter((id) => kindOf(id) === 'panel');
 
-test('the registry lists all 20 designs', () => {
-  expect(ids).toHaveLength(20);
+test('every registry item is a tab bar or a panel in the catalog', () => {
+  expect(bars.length + panels.length).toBe(ids.length);
+  expect(bars.length).toBe(catalog.filter((entry) => entry.kind === 'bar').length);
+  expect(panels.length).toBe(catalog.filter((entry) => entry.kind === 'panel').length);
+  expect(panels).toEqual(expect.arrayContaining(['mini-player', 'context-tray', 'quick-create']));
 });
 
-describe.each(ids)('%s', (id) => {
+/** Tab bars; Side Rail also as a rail (a navigator with `tabBarPosition: 'left'`). */
+const barCases: [string, string, Position][] = bars.flatMap((id): [string, string, Position][] =>
+  id === 'side-rail'
+    ? [
+        [`${id} (position bottom)`, id, 'bottom'],
+        [`${id} (position left)`, id, 'left'],
+      ]
+    : [[id, id, undefined]],
+);
+
+describe.each(barCases)('%s', (_name, id, position) => {
   const { Component, iconList } = loadDesign(id);
   // Designs with fewer icons than four (Orbs, Center CTA, Segment + Search) get that many tabs.
   const count = Math.max(2, Math.min(4, iconList.length || 2));
@@ -74,7 +121,7 @@ describe.each(ids)('%s', (id) => {
 
   it('renders one tab per route and presses through to the navigator', async () => {
     if (!Component) return;
-    const { state, press } = makeState(count, 0, iconList);
+    const { state, press } = makeState(count, 0, iconList, position);
     await render(
       <TabBarStateProvider value={state}>
         <Component onActionPress={jest.fn()} />
@@ -88,15 +135,33 @@ describe.each(ids)('%s', (id) => {
     expect(press).toHaveBeenCalledWith(1);
   });
 
+  it('works unchanged under a TabBarProvider', async () => {
+    if (!Component) return;
+    const { state, press } = makeState(count, 0, iconList, position);
+    await render(
+      <TabBarProvider>
+        <TabBarStateProvider value={state}>
+          <Component onActionPress={jest.fn()} />
+        </TabBarStateProvider>
+      </TabBarProvider>,
+    );
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs).toHaveLength(count);
+    const last = tabs[count - 1];
+    if (!last) throw new Error('expected a last tab');
+    await fireEvent.press(last);
+    expect(press).toHaveBeenCalledWith(count - 1);
+  });
+
   it('re-renders when the active tab changes', async () => {
     if (!Component) return;
-    const first = makeState(count, 0, iconList);
+    const first = makeState(count, 0, iconList, position);
     const view = await render(
       <TabBarStateProvider value={first.state}>
         <Component onActionPress={jest.fn()} />
       </TabBarStateProvider>,
     );
-    const next = makeState(count, count - 1, iconList);
+    const next = makeState(count, count - 1, iconList, position);
     await view.rerender(
       <TabBarStateProvider value={next.state}>
         <Component onActionPress={jest.fn()} />
@@ -106,5 +171,140 @@ describe.each(ids)('%s', (id) => {
       .getAllByRole('tab')
       .filter((t) => t.props.accessibilityState?.selected === true);
     expect(selected).toHaveLength(1);
+  });
+});
+
+// Panels ----------------------------------------------------------------------------------
+
+const controls: Record<string, TabPanelControls> = {};
+
+function Controls({ id }: { id: string }) {
+  controls[id] = useTabPanel(id);
+  return null;
+}
+
+/** A floating test bar with a + button marked as the 'action' anchor (for Quick Create). */
+function BarWithAction() {
+  const { tabs } = useTabBar();
+  const anchor = usePanelAnchor('action');
+  return (
+    <TabBarRoot placement="floating" testID="bar">
+      <TabList>
+        {tabs.map((tab) => (
+          <TabButton key={tab.key} tab={tab}>
+            <Text>{tab.label}</Text>
+          </TabButton>
+        ))}
+      </TabList>
+      <View {...anchor} testID="plus" />
+    </TabBarRoot>
+  );
+}
+
+function PanelApp({ bar, children }: { bar: ReactNode; children: ReactNode }) {
+  const { state } = makeState(3, 0, []);
+  // Mini Player drags with 'tabcn/gestures', which needs gesture handler's root view.
+  return (
+    <GestureHandlerRootView>
+      <TabBarProvider>
+        {children}
+        <TabBarStateProvider value={state}>{bar}</TabBarStateProvider>
+      </TabBarProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+/** What useTabBarOverride does while its screen is focused. */
+function OverrideScreen({ element }: { element: ReactNode }) {
+  useOverrideSlot(element, true);
+  return null;
+}
+
+/** Screen-reader visible text (hidden panels are left out of the query). */
+const shows = (text: string) => screen.queryAllByText(text).length > 0;
+
+describe('panels', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(controls)) delete controls[key];
+  });
+
+  it('lists the panel designs', () => {
+    expect(panels.length).toBeGreaterThan(0);
+  });
+
+  it('mini-player: registers its panel and shows on peek() and open()', async () => {
+    const MiniPlayer = loadDesign('mini-player').Component;
+    if (!MiniPlayer) throw new Error('mini-player exports no component');
+    await render(
+      <PanelApp bar={<TestBar placement="floating" />}>
+        <MiniPlayer
+          track={{ title: 'Slow Tide', artist: 'Harbor Lights', duration: 214 }}
+          playing
+          progress={0.25}
+          onPlayPause={jest.fn()}
+          onNext={jest.fn()}
+        />
+        <Controls id="player" />
+      </PanelApp>,
+    );
+    expect(controls.player?.state).toBe('hidden');
+    expect(shows('Slow Tide')).toBe(false);
+    await act(async () => controls.player?.peek());
+    expect(controls.player?.state).toBe('peek');
+    expect(shows('Slow Tide')).toBe(true);
+    await act(async () => controls.player?.open());
+    expect(controls.player?.state).toBe('open');
+    expect(shows('Slow Tide')).toBe(true);
+    await act(async () => controls.player?.hide());
+    expect(shows('Slow Tide')).toBe(false);
+  });
+
+  it('quick-create: opens from the bar’s action anchor and closes after an action', async () => {
+    const design = require('../../../../registry/designs/quick-create/quick-create') as {
+      QuickCreate: ComponentType<{
+        actions: { label: string; icon: () => ReactNode; onPress: () => void }[];
+      }>;
+    };
+    const onVoice = jest.fn();
+    await render(
+      <PanelApp bar={<BarWithAction />}>
+        <design.QuickCreate
+          actions={[
+            { label: 'Voice', icon: () => null, onPress: onVoice },
+            { label: 'Text', icon: () => null, onPress: jest.fn() },
+          ]}
+        />
+        <Controls id="create" />
+      </PanelApp>,
+    );
+    expect(shows('Voice')).toBe(false);
+    expect(screen.getByTestId('plus').props.accessibilityState).toEqual({ expanded: false });
+    await act(async () => controls.create?.open());
+    expect(controls.create?.state).toBe('open');
+    expect(shows('Voice')).toBe(true);
+    const voice = screen.getByText('Voice');
+    await act(async () => {
+      await fireEvent.press(voice);
+    });
+    expect(onVoice).toHaveBeenCalled();
+    expect(controls.create?.state).toBe('hidden');
+  });
+
+  it('context-tray: shows in the bar’s place as the override and runs onClose', async () => {
+    const ContextTray = loadDesign('context-tray').Component;
+    if (!ContextTray) throw new Error('context-tray exports no component');
+    const onClose = jest.fn();
+    await render(
+      <PanelApp bar={<TestBar placement="floating" />}>
+        <OverrideScreen
+          element={<ContextTray label="Explored" progress={0.5} onClose={onClose} />}
+        />
+      </PanelApp>,
+    );
+    expect(shows('Explored')).toBe(true);
+    await act(async () => {
+      await fireEvent.press(screen.getByRole('button', { name: 'Close' }));
+    });
+    expect(onClose).toHaveBeenCalled();
   });
 });

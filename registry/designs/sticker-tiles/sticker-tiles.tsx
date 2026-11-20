@@ -5,8 +5,16 @@
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
-import { TabBarRoot, TabButton, TabIndicator, type TabItem, TabList, useTabBar } from 'tabcn';
+import Animated, { Easing, FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
+import {
+  TabBarRoot,
+  TabButton,
+  TabIndicator,
+  type TabItem,
+  TabList,
+  tabcnTiming,
+  useTabBar,
+} from 'tabcn';
 
 const defaultColors = {
   background: '#27799f',
@@ -63,7 +71,8 @@ function Tab({
         {tab.renderIcon?.({ focused: tab.focused, color: colors.label, size: ICON })}
         {tab.badge != null ? (
           <Animated.View
-            entering={FadeIn.duration(160)}
+            entering={badgeIn}
+            exiting={badgeOut}
             style={[styles.badge, { backgroundColor: colors.badge }]}
           />
         ) : null}
@@ -81,6 +90,18 @@ function Tab({
     </TabButton>
   );
 }
+
+// Motion: only the tile moves, sliding on the foundation's default tabcnSpring. Icons and labels
+// look the same on every tab, and a press gives a haptic, not a scale. The badge dot fades in and
+// out on tabcnTiming, with no pop; with "reduce motion" on, it appears and disappears instantly.
+const BADGE_FADE_MS = tabcnTiming.duration ?? 200;
+const BADGE_EASING = tabcnTiming.easing ?? Easing.linear;
+const badgeIn = FadeIn.duration(BADGE_FADE_MS)
+  .easing(BADGE_EASING)
+  .reduceMotion(ReduceMotion.System);
+const badgeOut = FadeOut.duration(BADGE_FADE_MS)
+  .easing(BADGE_EASING)
+  .reduceMotion(ReduceMotion.System);
 
 /** The traced stickers' 40-unit box, in points, at the reference's scale. */
 const ICON = 33.5;
