@@ -99,6 +99,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and release process.
 
 ## Credits
 
+Made by Chakravarthi Chintapatla ([@phantommenace_x](https://x.com/phantommenace_x) on X).
+
 The 20 designs recreate the tab bars collected in the "tab bar pillars" post by [@jaimintf](https://x.com/jaimintf/status/2123071132224077889). The website's design is based on [ui lab](https://lab.xevrion.dev/) by xevrion (MIT).
 
 ## License
