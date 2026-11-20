@@ -2,7 +2,7 @@
   "bar": [968, 94, 2270, 325],
   "tabs": 5,
   "band": [0.16, 0.92],
-  "mode": 7,
+  "mode": "multi",
   "k": 14,
   "exclude": [[247, 224, 160]],
   "exclude_tol": 30,
@@ -12,8 +12,22 @@
   "turd": 400,
   "opt": 1.3,
   "tab": {
-    "4": { "k": 9, "mode": 11, "turd": 600, "opt": 1.5 },
-    "1": { "k": 9, "mode": 11, "turd": 600, "opt": 1.5 },
-    "2": { "mode": 11, "turd": 600 }
-  }
+    "4": {
+      "k": 9,
+      "turd": 600,
+      "opt": 1.5,
+      "modefilter": 11
+    },
+    "1": {
+      "k": 9,
+      "turd": 600,
+      "opt": 1.5,
+      "modefilter": 11
+    },
+    "2": {
+      "turd": 600,
+      "modefilter": 11
+    }
+  },
+  "modefilter": 7
 }

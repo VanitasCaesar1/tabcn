@@ -10,6 +10,17 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 spec = json.load(open(sys.argv[1]))
 f = sorted(glob.glob(os.path.join(ROOT, 'references', '%02d-*.jpg' % spec['ref'])))[0]
 arr = np.array(Image.open(f).convert('RGB').rotate(-90, expand=True))
+# Erase rectangles (e.g. notification badges baked into the reference) with nearby colour.
+for e in spec.get('erase', []):
+    if isinstance(e, dict):
+        # Paint a rectangle with `inside` colour within a circle and `outside` colour beyond it.
+        x0e, y0e, x1e, y1e = e['rect']; cx, cy, r = e['circle']
+        yy, xx = np.mgrid[y0e:y1e, x0e:x1e]
+        inside = (xx - cx) ** 2 + (yy - cy) ** 2 <= r * r
+        arr[y0e:y1e, x0e:x1e][inside] = e['inside']; arr[y0e:y1e, x0e:x1e][~inside] = e['outside']
+    else:
+        ex0, ey0, ex1, ey1 = e
+        arr[ey0:ey1, ex0:ex1] = arr[ey0 - 4:ey0 - 2, ex0:ex1].mean(axis=(0,)).astype(arr.dtype)
 UP = spec.get('up', 6)
 bx0, by0, bx1, by1 = spec['bar']; tabs = spec['tabs']; lo, hi = spec['band']
 
@@ -109,7 +120,7 @@ for b in boxes:
         base = a.copy(); base[~fg] = np.median(a[fg], axis=0)
         q = Image.fromarray(base).quantize(colors=k, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
         pal = q.getpalette()[:k * 3]
-        lab = np.array(q.filter(ImageFilter.ModeFilter(o.get('mode', 9))))
+        lab = np.array(q.filter(ImageFilter.ModeFilter(o.get('modefilter', 9))))
         cols = [tuple(pal[i * 3:i * 3 + 3]) for i in range(k)]
         area = {i: int((fg & (lab == i)).sum()) for i in range(k)}
         used = [i for i in range(k) if area[i] > fg.sum() * 0.004]

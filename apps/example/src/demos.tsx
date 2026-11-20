@@ -1,3 +1,7 @@
+import { CenterCta } from '@registry/center-cta/center-cta';
+import * as CenterCtaIcons from '@registry/center-cta/icons';
+import { ChipRail } from '@registry/chip-rail/chip-rail';
+import * as ChipRailIcons from '@registry/chip-rail/icons';
 import { DarkCapsule } from '@registry/dark-capsule/dark-capsule';
 import * as DarkCapsuleIcons from '@registry/dark-capsule/icons';
 import { FrostedMedia } from '@registry/frosted-media/frosted-media';
@@ -14,8 +18,12 @@ import * as LightIconsIcons from '@registry/light-icons/icons';
 import { LightIcons } from '@registry/light-icons/light-icons';
 import * as MonoTypeIcons from '@registry/mono-type/icons';
 import { MonoType } from '@registry/mono-type/mono-type';
+import * as OrbsIcons from '@registry/orbs/icons';
+import { Orbs } from '@registry/orbs/orbs';
 import * as OutlineDarkIcons from '@registry/outline-dark/icons';
 import { OutlineDark } from '@registry/outline-dark/outline-dark';
+import * as PillPlusIcons from '@registry/pill-plus/icons';
+import { PillPlus } from '@registry/pill-plus/pill-plus';
 import * as PlayfulTilesIcons from '@registry/playful-tiles/icons';
 import { PlayfulTiles } from '@registry/playful-tiles/playful-tiles';
 import { SegmentSearch } from '@registry/segment-search/segment-search';
@@ -25,6 +33,8 @@ import * as SoftPillIcons from '@registry/soft-pill/icons';
 import { SoftPill } from '@registry/soft-pill/soft-pill';
 import * as SolidDarkIcons from '@registry/solid-dark/icons';
 import { SolidDark } from '@registry/solid-dark/solid-dark';
+import * as StickerTilesIcons from '@registry/sticker-tiles/icons';
+import { StickerTiles } from '@registry/sticker-tiles/sticker-tiles';
 import * as TopNotchIcons from '@registry/top-notch/icons';
 import { TopNotch } from '@registry/top-notch/top-notch';
 import type { Href } from 'expo-router';
@@ -64,6 +74,71 @@ export interface Demo {
 
 /** Built designs, keyed by catalog id. */
 export const demos: Record<string, Demo> = {
+  'chip-rail': {
+    render: () => (
+      <ChipRail leading={<ChipRailIcons.AvatarIcon focused={false} color="" size={37} />} />
+    ),
+    background: '#ab9ff1',
+    pattern: { kind: 'waves', color: '#a296ec', gap: 9.6, amp: 1.2, wavelength: 18 },
+    barHeight: 52,
+    tabs: [
+      { label: 'Home', icon: () => null },
+      { label: 'Trade', icon: () => null },
+      { label: 'Predict', icon: () => null },
+      { label: 'Explore', icon: () => null },
+      { label: 'Leaders', icon: () => null },
+    ],
+  },
+  'sticker-tiles': {
+    render: () => <StickerTiles fontFamily="Nunito_800ExtraBold" />,
+    background: '#d5ebf6',
+    pattern: { kind: 'plus', color: '#bfdcec', gap: 24, size: 4, stroke: 1 },
+    barHeight: 68,
+    tabs: [
+      { label: 'Home', icon: StickerTilesIcons.HomeIcon },
+      { label: 'Quests', icon: StickerTilesIcons.QuestsIcon },
+      { label: 'Shop', icon: StickerTilesIcons.ShopIcon },
+      { label: 'Friends', icon: StickerTilesIcons.FriendsIcon, badge: 1 },
+      { label: 'Bag', icon: StickerTilesIcons.BagIcon },
+      { label: 'Sun', icon: StickerTilesIcons.SunIcon },
+    ],
+  },
+  'pill-plus': {
+    render: ({ onActionPress }) => <PillPlus onActionPress={onActionPress} />,
+    background: '#dce3eb',
+    pattern: { kind: 'grid', color: '#cfd7e1', gap: 24 },
+    barHeight: 53,
+    tabs: [
+      { label: 'People', icon: PillPlusIcons.PeopleIcon },
+      { label: 'Map', icon: PillPlusIcons.MapIcon },
+      { label: 'Search', icon: PillPlusIcons.SearchIcon },
+      { label: 'Me', icon: PillPlusIcons.AvatarIcon },
+    ],
+  },
+  orbs: {
+    render: () => <Orbs />,
+    background: '#fff2df',
+    pattern: { kind: 'dots', color: '#f6e3c6', gap: 9, r: 0.6 },
+    initialTab: 1,
+    barHeight: 76,
+    tabs: [
+      { label: 'Scratch', icon: OrbsIcons.ScratchIcon, badge: 1 },
+      { label: 'Chat', icon: OrbsIcons.ChatIcon },
+      { label: 'Places', icon: OrbsIcons.PlacesIcon, badge: 1 },
+    ],
+  },
+  'center-cta': {
+    render: ({ onActionPress }) => (
+      <CenterCta onActionPress={onActionPress} fontFamily="PatrickHand_400Regular" />
+    ),
+    background: '#ece5d3',
+    pattern: { kind: 'capsules', color: '#e3dbc6', gap: 44 },
+    barHeight: 69,
+    tabs: [
+      { label: 'City', icon: CenterCtaIcons.BuildingIcon },
+      { label: 'Steps', icon: CenterCtaIcons.StepIcon },
+    ],
+  },
   'glass-expand': {
     render: () => <GlassExpand />,
     background: '#3324f1',

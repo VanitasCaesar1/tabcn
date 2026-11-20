@@ -21,7 +21,9 @@ export type PatternSpec =
   | { kind: 'contours'; color: string }
   | { kind: 'waves'; color: string; gap: number; amp: number; wavelength: number }
   | { kind: 'wood'; light: string; dark: string }
-  | { kind: 'rays'; color: string; count: number };
+  | { kind: 'rays'; color: string; count: number }
+  | { kind: 'capsules'; color: string; gap: number }
+  | { kind: 'grid'; color: string; gap: number };
 
 /** Small deterministic PRNG so generated patterns look the same on every render. */
 function rng(seed: number) {
@@ -76,6 +78,43 @@ export function Pattern({ spec, centerY }: { spec: PatternSpec; centerY: number 
             />
           ),
         ),
+      );
+    }
+    case 'capsules': {
+      const g = spec.gap;
+      return svg(
+        <>
+          <Defs>
+            <SvgPattern id="bg-tile" width={g * 2} height={g} patternUnits="userSpaceOnUse">
+              <Path
+                d={`M${g * 0.2} ${g * 0.25}H${g * 0.75}A${g * 0.25} ${g * 0.25} 0 0 1 ${g * 0.75} ${g * 0.75}H${g * 0.2}Z`}
+                fill={spec.color}
+              />
+              <Path
+                d={`M${g * 1.2} ${g * -0.25}H${g * 1.75}A${g * 0.25} ${g * 0.25} 0 0 1 ${g * 1.75} ${g * 0.25}H${g * 1.2}Z`}
+                fill={spec.color}
+              />
+              <Path
+                d={`M${g * 1.2} ${g * 0.75}H${g * 1.75}A${g * 0.25} ${g * 0.25} 0 0 1 ${g * 1.75} ${g * 1.25}H${g * 1.2}Z`}
+                fill={spec.color}
+              />
+            </SvgPattern>
+          </Defs>
+          <Rect width="100%" height="100%" fill="url(#bg-tile)" />
+        </>,
+      );
+    }
+    case 'grid': {
+      const g = spec.gap;
+      return svg(
+        <>
+          <Defs>
+            <SvgPattern id="bg-tile" width={g} height={g} patternUnits="userSpaceOnUse">
+              <Path d={`M${g} 0V${g}M0 ${g}H${g}`} stroke={spec.color} strokeWidth={1} />
+            </SvgPattern>
+          </Defs>
+          <Rect width="100%" height="100%" fill="url(#bg-tile)" />
+        </>,
       );
     }
     case 'plus':

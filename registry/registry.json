@@ -42,6 +42,44 @@
       ]
     },
     {
+      "name": "chip-rail",
+      "type": "registry:component",
+      "title": "Chip Rail",
+      "description": "Dark rail with an avatar and text-only chips that scroll sideways.",
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/chip-rail/chip-rail.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/chip-rail.tsx"
+        },
+        {
+          "path": "registry/designs/chip-rail/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/chip-rail-icons.tsx"
+        }
+      ]
+    },
+    {
+      "name": "sticker-tiles",
+      "type": "registry:component",
+      "title": "Sticker Tiles",
+      "description": "Illustrated icons with labels; the active tab sits on a lighter tile, with a dot badge.",
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/sticker-tiles/sticker-tiles.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/sticker-tiles.tsx"
+        },
+        {
+          "path": "registry/designs/sticker-tiles/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/sticker-tiles-icons.tsx"
+        }
+      ]
+    },
+    {
       "name": "segment-search",
       "type": "registry:component",
       "title": "Segment + Search",
@@ -52,6 +90,25 @@
           "path": "registry/designs/segment-search/segment-search.tsx",
           "type": "registry:component",
           "target": "components/tabcn/segment-search.tsx"
+        }
+      ]
+    },
+    {
+      "name": "pill-plus",
+      "type": "registry:component",
+      "title": "Pill + Plus",
+      "description": "White icon-only pill with an avatar tab and a separate plus button.",
+      "dependencies": ["tabcn", "expo-haptics", "expo-linear-gradient", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/pill-plus/pill-plus.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/pill-plus.tsx"
+        },
+        {
+          "path": "registry/designs/pill-plus/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/pill-plus-icons.tsx"
         }
       ]
     },
@@ -90,6 +147,44 @@
           "path": "registry/designs/outline-dark/icons.tsx",
           "type": "registry:component",
           "target": "components/tabcn/outline-dark-icons.tsx"
+        }
+      ]
+    },
+    {
+      "name": "orbs",
+      "type": "registry:component",
+      "title": "Orbs",
+      "description": "Separate floating circles with live content and badges; the center one is larger.",
+      "dependencies": ["tabcn", "expo-haptics", "expo-linear-gradient", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/orbs/orbs.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/orbs.tsx"
+        },
+        {
+          "path": "registry/designs/orbs/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/orbs-icons.tsx"
+        }
+      ]
+    },
+    {
+      "name": "center-cta",
+      "type": "registry:component",
+      "title": "Center CTA",
+      "description": "Dark bar with a wide text button in the middle and image tabs on each side.",
+      "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/center-cta/center-cta.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/center-cta.tsx"
+        },
+        {
+          "path": "registry/designs/center-cta/icons.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/center-cta-icons.tsx"
         }
       ]
     },

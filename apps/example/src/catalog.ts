@@ -55,7 +55,7 @@ export const catalog: DesignEntry[] = [
     title: 'Chip Rail',
     layout: 'chip-rail',
     summary: 'Dark rail with an avatar and text-only chips that scroll sideways.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'sticker-tiles',
@@ -64,7 +64,7 @@ export const catalog: DesignEntry[] = [
     layout: 'docked-bar',
     summary:
       'Illustrated icons with labels; the active tab sits on a lighter tile, with a dot badge.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'segment-search',
@@ -80,7 +80,7 @@ export const catalog: DesignEntry[] = [
     title: 'Pill + Plus',
     layout: 'pill-with-action',
     summary: 'White icon-only pill with an avatar tab and a separate plus button.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'solid-dark',
@@ -104,7 +104,7 @@ export const catalog: DesignEntry[] = [
     title: 'Orbs',
     layout: 'floating-buttons',
     summary: 'Separate floating circles with live content and badges; the center one is larger.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'center-cta',
@@ -112,7 +112,7 @@ export const catalog: DesignEntry[] = [
     title: 'Center CTA',
     layout: 'center-action',
     summary: 'Dark bar with a wide text button in the middle and image tabs on each side.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'soft-pill',
