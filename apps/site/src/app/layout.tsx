@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     'shadcn',
   ],
   openGraph: { type: 'website', siteName: site.name, locale: site.locale, url: './' },
-  twitter: { card: 'summary' },
+  twitter: { card: 'summary', creator: `@${site.x}` },
 };
 
 export const viewport: Viewport = {

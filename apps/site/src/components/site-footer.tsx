@@ -20,6 +20,10 @@ const COLUMNS = [
       { label: 'License (MIT)', href: `${site.repo}/blob/main/LICENSE`, out: true },
     ],
   },
+  {
+    title: 'Elsewhere',
+    links: [{ label: `X @${site.x}`, href: `https://x.com/${site.x}`, out: true }],
+  },
 ];
 
 const linkClass =
@@ -32,7 +36,7 @@ const outArrow =
 export function SiteFooter() {
   return (
     <footer className="relative isolate mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6">
-      <div className="grid grid-cols-2 gap-x-6 gap-y-10 border-border border-t pt-12 pb-12 sm:grid-cols-[1fr_auto_auto] sm:gap-16">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-10 border-border border-t pt-12 pb-12 sm:grid-cols-[1fr_auto_auto_auto] sm:gap-16">
         <div className="col-span-2 sm:col-span-1">
           <Link
             href="/"
@@ -72,7 +76,18 @@ export function SiteFooter() {
         ))}
       </div>
       <div className="flex flex-col gap-1 border-border border-t py-6 text-muted text-xs sm:flex-row sm:justify-between">
-        <p>MIT licensed. Made with Next.js, Motion and Tailwind CSS.</p>
+        <p>
+          Made by{' '}
+          <a
+            href={`https://x.com/${site.x}`}
+            target="_blank"
+            rel="noreferrer"
+            className="underline decoration-border underline-offset-4 transition-[color,text-decoration-color] duration-150 ease-out hover:text-foreground hover:decoration-foreground"
+          >
+            @{site.x}
+          </a>
+          . MIT licensed. Made with Next.js, Motion and Tailwind CSS.
+        </p>
         <p>
           Design based on{' '}
           <a
