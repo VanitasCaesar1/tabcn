@@ -96,7 +96,6 @@ function Chip({
     <TabButton
       tab={tab}
       style={styles.chip}
-      scale={0.96}
       onLayout={(e) => onX(e.nativeEvent.layout.x)}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >

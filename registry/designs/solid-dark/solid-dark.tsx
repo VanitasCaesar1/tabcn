@@ -5,7 +5,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
-import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { TabBarRoot, TabButton, type TabItem, TabList, useFocusProgress, useTabBar } from 'tabcn';
 
 const defaultColors = {
@@ -28,7 +28,7 @@ export function SolidDark({ colors: custom, haptics = true }: SolidDarkProps) {
   const { tabs } = useTabBar();
 
   return (
-    <TabBarRoot placement="floating" style={styles.outer}>
+    <TabBarRoot placement="docked" style={[styles.dock, { backgroundColor: colors.background }]}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
         {tabs.map((tab) => (
           <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
@@ -51,7 +51,6 @@ function Tab({
   const outline = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
   const filled = useAnimatedStyle(() => ({
     opacity: progress.value,
-    transform: [{ scale: interpolate(progress.value, [0, 1], [0.9, 1]) }],
   }));
 
   return (
@@ -81,13 +80,13 @@ function Tab({
 }
 
 const styles = StyleSheet.create({
-  outer: {
-    alignSelf: 'stretch',
+  // Docked like the app it comes from: full width and flush with the bottom edge, with the
+  // background running under the home indicator. Side padding keeps the reference's tab spacing.
+  dock: {
     paddingHorizontal: 16,
   },
   bar: {
     height: 45,
-    borderRadius: 14,
     alignItems: 'stretch',
   },
   tab: {

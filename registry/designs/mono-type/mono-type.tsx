@@ -28,7 +28,7 @@ export function MonoType({ colors: custom, haptics = true }: MonoTypeProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
   return (
-    <TabBarRoot placement="floating" style={styles.outer}>
+    <TabBarRoot placement="docked" style={[styles.dock, { backgroundColor: colors.background }]}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
         {tabs.map((tab) => (
           <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
@@ -71,12 +71,15 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: MonoTypeColors; h
 }
 
 const styles = StyleSheet.create({
-  outer: { alignSelf: 'stretch', paddingHorizontal: 16 },
+  // Docked like the app it comes from: full width and flush with the bottom edge, with the
+  // background running under the home indicator. Side padding keeps the reference's tab spacing.
+  dock: {
+    paddingHorizontal: 16,
+    boxShadow: '0 -6px 26px rgba(0, 0, 0, 0.10)',
+  },
   bar: {
-    borderRadius: 20,
     height: 54,
     justifyContent: 'center',
-    boxShadow: '0 8px 26px rgba(0, 0, 0, 0.12)',
   },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
   iconBox: { width: 29, height: 29 },

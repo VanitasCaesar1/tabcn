@@ -1,5 +1,5 @@
 /**
- * Top Notch: a rounded card with icons and labels; a short pill slides along
+ * Top Notch: a white docked bar with icons and labels; a short pill slides along
  * the top edge to the active tab, and icon and label colours crossfade.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
@@ -43,7 +43,7 @@ export function TopNotch({
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
   return (
-    <TabBarRoot placement="floating" style={styles.outer}>
+    <TabBarRoot placement="docked" style={[styles.dock, { backgroundColor: colors.background }]}>
       <TabList style={[styles.card, { backgroundColor: colors.background }]}>
         <Notch color={colors.active} />
         {tabs.map((tab) => (
@@ -121,12 +121,15 @@ function Tab({
 }
 
 const styles = StyleSheet.create({
-  outer: { width: 338, maxWidth: '100%' },
+  // Docked like the app it comes from: full width and flush with the bottom edge, with the
+  // background running under the home indicator. Side padding keeps the reference's tab spacing.
+  dock: {
+    paddingHorizontal: 32,
+    boxShadow: '0 -6px 24px rgba(30, 20, 120, 0.14)',
+  },
   card: {
     height: 75,
-    borderRadius: 19,
     paddingHorizontal: 6,
-    boxShadow: '0 8px 24px rgba(30, 20, 120, 0.18)',
   },
   notch: {
     position: 'absolute',

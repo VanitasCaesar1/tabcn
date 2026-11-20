@@ -6,12 +6,11 @@ import {
 } from 'react-native-reanimated';
 
 /**
- * Default spring for indicators: close to critically damped, so the indicator glides
- * into place in about 350 ms and settles without a visible overshoot or wobble.
- * With "reduce motion" on, it finishes instantly.
+ * Default spring for indicators: critically damped, so the indicator glides into place in
+ * about 350 ms and stops without any overshoot. With "reduce motion" on, it finishes instantly.
  */
 export const tabcnSpring: WithSpringConfig = {
-  damping: 40,
+  damping: 41,
   stiffness: 420,
   mass: 1,
   reduceMotion: ReduceMotion.System,

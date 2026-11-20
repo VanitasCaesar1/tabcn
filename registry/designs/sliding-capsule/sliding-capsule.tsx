@@ -4,7 +4,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { ZoomIn, ZoomOut } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { TabBarRoot, TabButton, TabIndicator, type TabItem, TabList, useTabBar } from 'tabcn';
 
 const defaultColors = {
@@ -57,8 +57,8 @@ function Tab({
         {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: 21 })}
         {tab.badge != null ? (
           <Animated.View
-            entering={ZoomIn.springify().dampingRatio(0.8).duration(320)}
-            exiting={ZoomOut}
+            entering={FadeIn.duration(160)}
+            exiting={FadeOut.duration(120)}
             style={[styles.badge, { backgroundColor: colors.badge }]}
           >
             <Text style={styles.badgeText}>{tab.badge}</Text>

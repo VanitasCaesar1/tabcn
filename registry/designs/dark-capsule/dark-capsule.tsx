@@ -36,7 +36,7 @@ export function DarkCapsule({ colors: custom, haptics = true }: DarkCapsuleProps
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
   return (
-    <TabBarRoot placement="floating" style={styles.outer}>
+    <TabBarRoot placement="docked" style={[styles.dock, { backgroundColor: colors.background }]}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
         <TabIndicator
           inset={{ x: 11, y: 12.5 }}
@@ -92,7 +92,11 @@ function Tab({
 }
 
 const styles = StyleSheet.create({
-  outer: { alignSelf: 'stretch', paddingHorizontal: 16 },
+  // Docked like the app it comes from: full width and flush with the bottom edge, with the
+  // background running under the home indicator. Side padding keeps the reference's tab spacing.
+  dock: {
+    paddingHorizontal: 16,
+  },
   bar: { height: 62, borderRadius: 21 },
   capsule: { borderRadius: 999, borderWidth: 1 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },

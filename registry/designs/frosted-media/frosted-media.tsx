@@ -57,8 +57,9 @@ export function FrostedMedia({
         <BlurView intensity={intensity} tint="dark" style={StyleSheet.absoluteFill} />
         <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.tint }]} />
         <TabList style={styles.list}>
+          {/* Wider than its tab and nearly the pill's full height, as in the reference. */}
           <TabIndicator
-            inset={5}
+            inset={{ x: -3.5, y: 0 }}
             style={[
               styles.capsule,
               { backgroundColor: colors.capsule, borderColor: colors.capsuleBorder },
@@ -77,8 +78,6 @@ function Tab({ tab, color, haptics }: { tab: TabItem; color: string; haptics: bo
   const progress = useFocusProgress(tab);
   const content = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 1], [0.82, 1]),
-    // A small swell during the change only; both resting states are the reference's size.
-    transform: [{ scale: 1 + 0.04 * Math.sin(Math.PI * progress.value) }],
   }));
   return (
     <TabButton
@@ -87,7 +86,7 @@ function Tab({ tab, color, haptics }: { tab: TabItem; color: string; haptics: bo
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <Animated.View style={[styles.content, content]}>
-        {tab.renderIcon?.({ focused: tab.focused, color, size: 24 })}
+        {tab.renderIcon?.({ focused: tab.focused, color, size: ICON })}
         <Text numberOfLines={1} style={[styles.label, { color }]}>
           {tab.label}
         </Text>
@@ -96,6 +95,9 @@ function Tab({ tab, color, haptics }: { tab: TabItem; color: string; haptics: bo
   );
 }
 
+/** The traced icons' 40-unit box, in points, at the reference's scale. */
+const ICON = 23.6;
+
 const styles = StyleSheet.create({
   pill: {
     borderRadius: 999,
@@ -103,9 +105,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     boxShadow: '0 12px 30px rgba(0, 0, 0, 0.35)',
   },
-  list: { padding: 4 },
-  capsule: { borderRadius: 999, borderWidth: 1.2 },
-  tab: { width: 84.5, height: 50, alignItems: 'center', justifyContent: 'center' },
-  content: { alignItems: 'center', gap: 2 },
-  label: { fontSize: 12, fontWeight: '600' },
+  list: { paddingHorizontal: 5.2, paddingVertical: 2.55 },
+  capsule: { borderRadius: 999, borderWidth: 1 },
+  tab: { width: 82.5, height: 51.2, alignItems: 'center', justifyContent: 'center' },
+  content: { alignItems: 'center', gap: 3.5 },
+  label: { fontSize: 9.8, fontWeight: '600' },
 });

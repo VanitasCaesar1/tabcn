@@ -1,19 +1,11 @@
 /**
  * Light Icons: a light grey bar with icons only. The active icon switches to
- * its filled version with a small spring pop.
+ * its filled version with a crossfade.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, {
-  ReduceMotion,
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { TabBarRoot, TabButton, type TabItem, TabList, useFocusProgress, useTabBar } from 'tabcn';
 
 const defaultColors = {
@@ -34,7 +26,7 @@ export function LightIcons({ colors: custom, haptics = true }: LightIconsProps) 
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
   return (
-    <TabBarRoot placement="floating" style={styles.outer}>
+    <TabBarRoot placement="docked" style={[styles.dock, { backgroundColor: colors.background }]}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
         {tabs.map((tab) => (
           <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
@@ -54,16 +46,6 @@ function Tab({
   haptics: boolean;
 }) {
   const progress = useFocusProgress(tab);
-  const pop = useSharedValue(1);
-  useEffect(() => {
-    if (tab.focused) {
-      pop.value = withSequence(
-        withTiming(0.82, { duration: 90, reduceMotion: ReduceMotion.System }),
-        withSpring(1, { damping: 9, stiffness: 260, reduceMotion: ReduceMotion.System }),
-      );
-    }
-  }, [tab.focused, pop]);
-  const box = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
   const inactive = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
   const active = useAnimatedStyle(() => ({ opacity: progress.value }));
   return (
@@ -72,7 +54,7 @@ function Tab({
       style={styles.tab}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      <Animated.View style={[styles.iconBox, box]}>
+      <View style={styles.iconBox}>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, inactive]}>
           {tab.renderIcon?.({ focused: false, color: colors.inactive, size: 30 })}
         </Animated.View>
@@ -87,17 +69,20 @@ function Tab({
             ]}
           />
         ) : null}
-      </Animated.View>
+      </View>
     </TabButton>
   );
 }
 
 const styles = StyleSheet.create({
-  outer: { alignSelf: 'stretch', paddingHorizontal: 16 },
+  // Docked like the app it comes from: full width and flush with the bottom edge, with the
+  // background running under the home indicator. Side padding keeps the reference's tab spacing.
+  dock: {
+    paddingHorizontal: 16,
+    boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.06)',
+  },
   bar: {
     height: 55,
-    borderRadius: 18,
-    boxShadow: '0 6px 20px rgba(0, 0, 0, 0.08)',
   },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   iconBox: { width: 34, height: 34 },

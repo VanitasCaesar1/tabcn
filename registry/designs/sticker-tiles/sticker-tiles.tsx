@@ -5,7 +5,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { TabBarRoot, TabButton, TabIndicator, type TabItem, TabList, useTabBar } from 'tabcn';
 
 const defaultColors = {
@@ -28,7 +28,7 @@ export function StickerTiles({ colors: custom, fontFamily, haptics = true }: Sti
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
   return (
-    <TabBarRoot placement="floating" style={styles.outer}>
+    <TabBarRoot placement="docked" style={[styles.dock, { backgroundColor: colors.background }]}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
         <TabIndicator
           inset={{ x: 0, y: 3.9 }}
@@ -63,7 +63,7 @@ function Tab({
         {tab.renderIcon?.({ focused: tab.focused, color: colors.label, size: ICON })}
         {tab.badge != null ? (
           <Animated.View
-            entering={ZoomIn.springify().dampingRatio(0.8).duration(320)}
+            entering={FadeIn.duration(160)}
             style={[styles.badge, { backgroundColor: colors.badge }]}
           />
         ) : null}
@@ -86,8 +86,12 @@ function Tab({
 const ICON = 33.5;
 
 const styles = StyleSheet.create({
-  outer: { width: 370, maxWidth: '100%' },
-  bar: { height: 68.4, borderRadius: 14, borderCurve: 'continuous', paddingHorizontal: 3.5 },
+  // Docked like the app it comes from: full width and flush with the bottom edge, with the
+  // background running under the home indicator. Side padding keeps the reference's tab spacing.
+  dock: {
+    paddingHorizontal: 16,
+  },
+  bar: { height: 68.4, paddingHorizontal: 3.5 },
   tile: { borderRadius: 16, borderCurve: 'continuous' },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1, paddingTop: 1 },
   label: { fontSize: 10.6 },

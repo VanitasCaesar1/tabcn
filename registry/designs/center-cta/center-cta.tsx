@@ -1,6 +1,6 @@
 /**
  * Center CTA: a dark bar with a wide text button in the middle and image tabs
- * on either side. Inactive tabs dim; the active one brightens and lifts.
+ * on either side. Inactive tabs dim; the active one brightens.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
@@ -83,11 +83,6 @@ function Tab({ tab, haptics }: { tab: TabItem; haptics: boolean }) {
   const progress = useFocusProgress(tab);
   const icon = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 1], [0.85, 1]),
-    // A small lift during the change only; both resting states are the reference's size.
-    transform: [
-      { translateY: -1.5 * Math.sin(Math.PI * progress.value) },
-      { scale: 1 + 0.05 * Math.sin(Math.PI * progress.value) },
-    ],
   }));
   return (
     <TabButton

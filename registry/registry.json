@@ -26,7 +26,7 @@
       "name": "top-notch",
       "type": "registry:component",
       "title": "Top Notch",
-      "description": "Rounded card with icons and labels; a short bar slides along the top edge.",
+      "description": "White docked bar with icons and labels; a short pill slides along the top edge.",
       "dependencies": ["tabcn", "expo-haptics", "react-native-svg"],
       "files": [
         {

@@ -6,7 +6,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet } from 'react-native';
-import Animated, { interpolate, useAnimatedStyle, ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeIn, interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import { TabBarRoot, TabButton, type TabItem, TabList, useFocusProgress, useTabBar } from 'tabcn';
 
 const defaultColors = {
@@ -52,7 +52,6 @@ function Orb({ tab, colors, haptics }: { tab: TabItem; colors: OrbsColors; hapti
     <TabButton
       tab={tab}
       style={styles.slot}
-      scale={0.92}
       onPressIn={
         haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium) : undefined
       }
@@ -67,7 +66,7 @@ function Orb({ tab, colors, haptics }: { tab: TabItem; colors: OrbsColors; hapti
       </Animated.View>
       {tab.badge != null ? (
         <Animated.View
-          entering={ZoomIn.springify().dampingRatio(0.8).duration(320)}
+          entering={FadeIn.duration(160)}
           style={[styles.badge, { backgroundColor: colors.badge }]}
         >
           <Animated.View style={styles.gloss} />

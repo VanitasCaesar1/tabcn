@@ -1,19 +1,10 @@
 /**
  * Playful Tiles: a white bar with a colour per tab; a bordered tile slides to
- * the active tab and its icon bounces.
+ * the active tab.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, {
-  ReduceMotion,
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
 import { TabBarRoot, TabButton, TabIndicator, type TabItem, TabList, useTabBar } from 'tabcn';
 
 const defaultColors = {
@@ -42,7 +33,7 @@ export function PlayfulTiles({
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
   return (
-    <TabBarRoot placement="floating" style={styles.outer}>
+    <TabBarRoot placement="docked" style={[styles.dock, { backgroundColor: colors.background }]}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
         <TabIndicator
           inset={{ x: 9, y: 11 }}
@@ -73,37 +64,27 @@ function Tab({
   badgeColor: string;
   haptics: boolean;
 }) {
-  const bounce = useSharedValue(0);
-  useEffect(() => {
-    if (tab.focused) {
-      bounce.value = withSequence(
-        withTiming(-3, { duration: 110, reduceMotion: ReduceMotion.System }),
-        withSpring(0, { damping: 18, stiffness: 300, reduceMotion: ReduceMotion.System }),
-      );
-    }
-  }, [tab.focused, bounce]);
-  const icon = useAnimatedStyle(() => ({ transform: [{ translateY: bounce.value }] }));
   return (
     <TabButton
       tab={tab}
       style={styles.tab}
-      scale={0.94}
       onPressIn={haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) : undefined}
     >
-      <Animated.View style={icon}>
-        {tab.renderIcon?.({ focused: true, color, size: 36 })}
-      </Animated.View>
+      {tab.renderIcon?.({ focused: true, color, size: 36 })}
       {tab.badge != null ? <View style={[styles.badge, { backgroundColor: badgeColor }]} /> : null}
     </TabButton>
   );
 }
 
 const styles = StyleSheet.create({
-  outer: { alignSelf: 'stretch', paddingHorizontal: 16 },
+  // Docked like the app it comes from: full width and flush with the bottom edge, with the
+  // background running under the home indicator. Side padding keeps the reference's tab spacing.
+  dock: {
+    paddingHorizontal: 16,
+    boxShadow: '0 -6px 24px rgba(0, 0, 0, 0.08)',
+  },
   bar: {
     height: 66,
-    borderRadius: 20,
-    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.10)',
   },
   tile: { borderRadius: 12, borderWidth: 2.5 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },

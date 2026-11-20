@@ -11,7 +11,6 @@ import Animated, {
   ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -19,7 +18,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 type AnimatedPressableProps = ComponentProps<typeof AnimatedPressable>;
 
 export interface PressableScaleProps extends Omit<PressableProps, 'style' | 'children'> {
-  /** Scale while pressed. 1 turns press feedback off. Default 0.94. */
+  /** Scale while pressed. 1 turns press feedback off. Default 0.96. */
   scale?: number;
   /** Reanimated layout animation, e.g. `LinearTransition` when the button changes size. */
   layout?: AnimatedPressableProps['layout'];
@@ -30,9 +29,9 @@ export interface PressableScaleProps extends Omit<PressableProps, 'style' | 'chi
   children?: ReactNode | ((state: { pressed: boolean }) => ReactNode);
 }
 
-/** A pressable that shrinks slightly while pressed. Use it for action buttons. */
+/** A pressable that dips slightly while pressed and eases back. Use it for action buttons. */
 export function PressableScale({
-  scale = 0.94,
+  scale = 0.96,
   style,
   onPressIn,
   onPressOut,
@@ -54,10 +53,10 @@ export function PressableScale({
   };
   const handlePressOut = (e: GestureResponderEvent) => {
     if (scale !== 1) {
-      // Releases with a soft settle, not a bounce.
-      pressed.value = withSpring(1, {
-        damping: 30,
-        stiffness: 380,
+      // Eases back with no overshoot: no bounce.
+      pressed.value = withTiming(1, {
+        duration: 160,
+        easing: Easing.out(Easing.quad),
         reduceMotion: ReduceMotion.System,
       });
     }

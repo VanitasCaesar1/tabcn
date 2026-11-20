@@ -1,6 +1,6 @@
 /**
- * Outline Dark: a black bar with outline icons. The active icon brightens and
- * lifts slightly; the others dim.
+ * Outline Dark: a black bar with outline icons. The active icon brightens;
+ * the others dim.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
@@ -25,7 +25,7 @@ export function OutlineDark({ colors: custom, haptics = true }: OutlineDarkProps
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
   return (
-    <TabBarRoot placement="floating" style={styles.outer}>
+    <TabBarRoot placement="docked" style={[styles.dock, { backgroundColor: colors.background }]}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
         {tabs.map((tab) => (
           <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
@@ -47,11 +47,6 @@ function Tab({
   const progress = useFocusProgress(tab);
   const icon = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 1], [0.42, 1]),
-    // A small lift during the change only; both resting states are the reference's size.
-    transform: [
-      { translateY: -1.5 * Math.sin(Math.PI * progress.value) },
-      { scale: 1 + 0.05 * Math.sin(Math.PI * progress.value) },
-    ],
   }));
   return (
     <TabButton
@@ -72,7 +67,11 @@ function Tab({
 }
 
 const styles = StyleSheet.create({
-  outer: { alignSelf: 'stretch', paddingHorizontal: 16 },
+  // Docked like the app it comes from: full width and flush with the bottom edge, with the
+  // background running under the home indicator. Side padding keeps the reference's tab spacing.
+  dock: {
+    paddingHorizontal: 16,
+  },
   bar: { height: 46, borderRadius: 15 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   badge: {

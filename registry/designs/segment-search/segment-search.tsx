@@ -90,7 +90,6 @@ function Tab({ tab, color, haptics }: { tab: TabItem; color: string; haptics: bo
   const progress = useFocusProgress(tab);
   const label = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 1], [0.85, 1]),
-    transform: [{ scale: interpolate(progress.value, [0, 1], [0.96, 1]) }],
   }));
   return (
     <TabButton

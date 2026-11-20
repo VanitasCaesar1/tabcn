@@ -1,11 +1,11 @@
 /**
  * Soft Pill: a white pill with icons and labels. The active tab's grey capsule
- * fades and swells in place (it doesn't slide), and the label turns bold.
+ * fades in place (it doesn't slide), and the label turns bold.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, Text } from 'react-native';
-import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { TabBarRoot, TabButton, type TabItem, TabList, useFocusProgress, useTabBar } from 'tabcn';
 
 const defaultColors = {
@@ -39,7 +39,6 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: SoftPillColors; h
   const progress = useFocusProgress(tab);
   const capsule = useAnimatedStyle(() => ({
     opacity: progress.value,
-    transform: [{ scale: interpolate(progress.value, [0, 1], [0.92, 1]) }],
   }));
   return (
     <TabButton

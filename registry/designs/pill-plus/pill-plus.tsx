@@ -1,11 +1,11 @@
 /**
  * Pill + Plus: a raised white pill of icon-only tabs beside a matching round
- * plus button. The active icon turns dark and lifts; the others stay grey.
+ * plus button. The active icon crossfades to dark; the others stay grey.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
-import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import {
   PressableScale,
   TabBarRoot,
@@ -76,23 +76,20 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: PillPlusColors; h
   const progress = useFocusProgress(tab);
   const dim = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
   const lit = useAnimatedStyle(() => ({ opacity: progress.value }));
-  const box = useAnimatedStyle(() => ({
-    transform: [{ translateY: interpolate(progress.value, [0, 1], [0, -1]) }],
-  }));
   return (
     <TabButton
       tab={tab}
       style={styles.tab}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      <Animated.View style={[styles.iconBox, box]}>
+      <View style={styles.iconBox}>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, dim]}>
           {tab.renderIcon?.({ focused: false, color: colors.inactive, size: ICON })}
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, lit]}>
           {tab.renderIcon?.({ focused: true, color: colors.active, size: ICON })}
         </Animated.View>
-      </Animated.View>
+      </View>
     </TabButton>
   );
 }
