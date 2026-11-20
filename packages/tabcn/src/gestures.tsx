@@ -18,6 +18,8 @@ import Animated, {
   type AnimatedScrollViewProps,
   runOnJS,
   type SharedValue,
+  useAnimatedScrollHandler,
+  useComposedEventHandler,
   useReducedMotion,
   useSharedValue,
   withSpring,
@@ -143,12 +145,24 @@ export function PanelScrollView({
   panel: id,
   contentContainerStyle,
   scrollViewOffset,
+  onScroll,
   ...rest
 }: PanelScrollViewProps) {
   const { panel, handle, context } = usePanelHandle('PanelScrollView', id);
   const ownOffset = useSharedValue(0);
   // The content's scroll offset, tracked on the UI thread (the caller's, if it passes one).
   const offset = scrollViewOffset ?? ownOffset;
+  // Tracked with a scroll handler, not Animated.ScrollView's `scrollViewOffset`: that one
+  // needs the scroll view's own animated ref, and GestureDetector puts its ref there instead
+  // (it crashes with "animatedRef.observe is not a function"). A caller's `onScroll` made
+  // with useAnimatedScrollHandler still runs.
+  const track = useAnimatedScrollHandler((e) => {
+    offset.value = e.contentOffset.y;
+  });
+  const handleScroll = useComposedEventHandler([
+    track,
+    (onScroll ?? null) as Parameters<typeof useComposedEventHandler>[0][number],
+  ]);
   const start = useSharedValue(0);
   const mode = useSharedValue(UNDECIDED);
   const touchX = useSharedValue(0);
@@ -230,7 +244,7 @@ export function PanelScrollView({
       <Animated.ScrollView
         scrollEventThrottle={16}
         {...rest}
-        scrollViewOffset={offset}
+        onScroll={handleScroll}
         contentContainerStyle={[contentContainerStyle, { paddingBottom }]}
       />
     </GestureDetector>

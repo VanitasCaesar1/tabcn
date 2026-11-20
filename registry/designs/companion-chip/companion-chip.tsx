@@ -76,7 +76,7 @@ const darkColors: CompanionChipColors = {
 
 export function CompanionChip({
   variant = 'round',
-  icon,
+  icon: Icon,
   label,
   count,
   onPress,
@@ -108,7 +108,8 @@ export function CompanionChip({
               { backgroundColor: pressed ? colors.pressed : colors.surface },
             ]}
           />
-          {icon ? icon({ color: colors.foreground, size: variant === 'count' ? 14 : 20 }) : null}
+          {/* An element, not a call: icon components may use hooks (or the React Compiler's). */}
+          {Icon ? <Icon color={colors.foreground} size={variant === 'count' ? 14 : 20} /> : null}
           {variant !== 'round' && label ? (
             <Text
               numberOfLines={1}
