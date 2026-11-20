@@ -24,7 +24,7 @@ const defaultColors = {
   text: '#ffffff',
   capsule: 'rgba(255, 255, 255, 0.2)',
   capsuleBorder: 'rgba(255, 255, 255, 0.6)',
-  halo: 'rgba(124, 182, 255, 0.18)',
+  halo: 'rgba(150, 175, 210, 0.22)',
 };
 
 export type SegmentSearchColors = typeof defaultColors;

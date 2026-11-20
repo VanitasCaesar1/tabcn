@@ -20,7 +20,7 @@ import {
 } from 'tabcn';
 
 const defaultColors = {
-  tint: 'rgba(40, 30, 24, 0.28)',
+  tint: 'rgba(120, 84, 56, 0.18)',
   border: 'rgba(255, 255, 255, 0.28)',
   capsule: 'rgba(255, 255, 255, 0.14)',
   capsuleBorder: 'rgba(255, 255, 255, 0.42)',
@@ -38,7 +38,7 @@ export interface FrostedMediaProps {
 
 export function FrostedMedia({
   colors: custom,
-  intensity = 40,
+  intensity = 60,
   haptics = true,
 }: FrostedMediaProps) {
   const colors = { ...defaultColors, ...custom };
@@ -49,13 +49,13 @@ export function FrostedMedia({
       <View style={[styles.pill, { borderColor: colors.border }]}>
         {glass ? (
           <GlassView
-            glassEffectStyle="regular"
+            glassEffectStyle="clear"
             tintColor={colors.tint}
             style={StyleSheet.absoluteFill}
           />
-        ) : (
-          <BlurView intensity={intensity} tint="dark" style={StyleSheet.absoluteFill} />
-        )}
+        ) : null}
+        <BlurView intensity={intensity} tint="dark" style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.tint }]} />
         <TabList style={styles.list}>
           <TabIndicator
             inset={5}

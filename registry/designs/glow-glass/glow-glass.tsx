@@ -96,7 +96,9 @@ function Capsule({ colors }: { colors: GlowGlassColors }) {
       <View
         style={[
           styles.glow,
-          { backgroundColor: colors.glow, boxShadow: `0 0 24px 18px ${colors.glow}55` },
+          {
+            experimental_backgroundImage: `radial-gradient(circle, ${colors.glow}cc 0%, ${colors.glow}55 38%, ${colors.glow}00 70%)`,
+          },
         ]}
       />
     </Animated.View>
@@ -146,7 +148,7 @@ const styles = StyleSheet.create({
   pill: { height: HEIGHT, borderRadius: 999, borderWidth: 1, overflow: 'hidden' },
   list: { flex: 1, alignItems: 'stretch', paddingHorizontal: 2 },
   capsule: { borderRadius: 999, borderWidth: 1, overflow: 'hidden', alignItems: 'center' },
-  glow: { marginTop: 4, width: 34, height: 34, borderRadius: 17, opacity: 0.32 },
+  glow: { marginTop: -8, width: 66, height: 66, borderRadius: 33 },
   tab: {
     width: 65,
     alignItems: 'center',
