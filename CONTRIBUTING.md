@@ -19,7 +19,7 @@ Changes to the public API of `packages/tabcn`, or to how designs are installed, 
 2. Show it in the example app and set its `status` in `apps/example/src/catalog.ts`.
 3. Check it on iOS and Android, in light and dark mode, with "Reduce Motion" on, and with VoiceOver/TalkBack.
 
-Designs must not include another app's logos, mascots, illustrations or name. Use generic icons, or let users pass their own.
+A design's `icons.tsx` is traced from its reference image so the demo matches one to one (project owner's decision, 2026-11-20). These icons copy the original apps' artwork; don't add app names or logos, and keep the design file itself icon-agnostic so users can pass their own.
 
 ## Releases
 

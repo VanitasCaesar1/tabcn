@@ -6,4 +6,4 @@ To restore them locally, download the post's 20 images into this folder as `01-*
 
 The images are rotated 90°: each one shows a horizontal tab bar standing on its end.
 
-Use these images for layout and proportions only. Don't copy icons, illustrations, mascots or brand names from them.
+The icon sets in `registry/designs/*/icons.tsx` are traced from these images (project owner's decision, 2026-11-20). The tracing scripts work from this folder, so keep the images here to re-trace. Don't copy app names or logos.

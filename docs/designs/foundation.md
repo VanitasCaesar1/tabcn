@@ -75,7 +75,7 @@ A second problem is specific to this model. Copied code freezes at the version i
 
 -   **Being a navigator.** tabcn does not keep its own tab state, define routes, or replace `<Tabs>`. It only draws the bar.
 -   **Native tab bars.** Designs don't use the platform's native tab bar, so iOS liquid glass system behaviour and minimise-on-scroll from native tabs are not provided in v1.
--   **Icons or brand assets.** No bundled icon set. Designs never include another app's logos, mascots, illustrations or names.
+-   **A bundled general-purpose icon set.** The core ships no icons. Each design's optional `icons.tsx` holds the icons traced from that design's reference image (decision by the project owner, 2026-11-20, accepting that these copy the original apps' artwork). App names and logos are not used.
 -   **A shared theme system.** There is no theme provider or design tokens shared across designs. Each design takes the few colours it needs as props and owns the rest of its styles.
 -   **Other tab layouts.** Top tabs, side rails, iPad sidebars and drawers are out of scope for v1.
 -   **Updating copies automatically.** No tool to merge upstream changes into a user's edited copy in v1. Users can re-run the install command to overwrite.
