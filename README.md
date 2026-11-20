@@ -1,6 +1,8 @@
-<img src="assets/icon.svg" width="64" height="64" alt="">
+<img src="assets/tabcn-mark.svg" width="64" height="64" alt="tabcn">
 
 # tabcn
+
+<a href="https://vanitascaesar1.github.io/tabcn/"><img src="assets/readme/glass-expand.gif" width="480" alt="Glass Expand tab bar switching tabs"></a>
 
 Animated tab bars for React Native and Expo, in the style of shadcn/ui: install a small foundation package, then copy the design you want into your app and make it yours.
 
@@ -47,28 +49,20 @@ Icons, labels, badges and the number of tabs come from the screens' options, as 
 
 ## The 20 designs
 
-| #   | Design            | Layout               |
-| --- | ----------------- | -------------------- |
-| 1   | Glass Expand      | Floating pill        |
-| 2   | Top Notch         | Docked bar           |
-| 3   | Chip Rail         | Chip rail            |
-| 4   | Sticker Tiles     | Docked bar           |
-| 5   | Segment + Search  | Pill + action button |
-| 6   | Pill + Plus       | Pill + action button |
-| 7   | Solid Dark        | Docked bar           |
-| 8   | Outline Dark      | Docked bar           |
-| 9   | Orbs              | Floating buttons     |
-| 10  | Center CTA        | Center action        |
-| 11  | Soft Pill         | Floating pill        |
-| 12  | Dark Capsule      | Docked bar           |
-| 13  | Gradient Stickers | Floating pill        |
-| 14  | Light Icons       | Docked bar           |
-| 15  | Playful Tiles     | Docked bar           |
-| 16  | Sliding Capsule   | Floating pill        |
-| 17  | Labeled + Plus    | Pill + action button |
-| 18  | Frosted Media     | Floating pill        |
-| 19  | Glow Glass        | Pill + action button |
-| 20  | Mono Type         | Docked bar           |
+Every design animates: tap to see the active tab move. Click one to open its page, with the install command and a QR code for Expo Go.
+
+<table>
+<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/glass-expand/"><img src="assets/readme/glass-expand.gif" width="400" alt="Glass Expand tab bar"></a><br><b>01 · Glass Expand</b><br><sub>Floating pill</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/top-notch/"><img src="assets/readme/top-notch.gif" width="400" alt="Top Notch tab bar"></a><br><b>02 · Top Notch</b><br><sub>Docked bar</sub></td></tr>
+<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/chip-rail/"><img src="assets/readme/chip-rail.gif" width="400" alt="Chip Rail tab bar"></a><br><b>03 · Chip Rail</b><br><sub>Chip rail</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/sticker-tiles/"><img src="assets/readme/sticker-tiles.gif" width="400" alt="Sticker Tiles tab bar"></a><br><b>04 · Sticker Tiles</b><br><sub>Docked bar</sub></td></tr>
+<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/segment-search/"><img src="assets/readme/segment-search.gif" width="400" alt="Segment + Search tab bar"></a><br><b>05 · Segment + Search</b><br><sub>Pill + action button</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/pill-plus/"><img src="assets/readme/pill-plus.gif" width="400" alt="Pill + Plus tab bar"></a><br><b>06 · Pill + Plus</b><br><sub>Pill + action button</sub></td></tr>
+<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/solid-dark/"><img src="assets/readme/solid-dark.gif" width="400" alt="Solid Dark tab bar"></a><br><b>07 · Solid Dark</b><br><sub>Docked bar</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/outline-dark/"><img src="assets/readme/outline-dark.gif" width="400" alt="Outline Dark tab bar"></a><br><b>08 · Outline Dark</b><br><sub>Docked bar</sub></td></tr>
+<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/orbs/"><img src="assets/readme/orbs.gif" width="400" alt="Orbs tab bar"></a><br><b>09 · Orbs</b><br><sub>Floating buttons</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/center-cta/"><img src="assets/readme/center-cta.gif" width="400" alt="Center CTA tab bar"></a><br><b>10 · Center CTA</b><br><sub>Center action</sub></td></tr>
+<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/soft-pill/"><img src="assets/readme/soft-pill.gif" width="400" alt="Soft Pill tab bar"></a><br><b>11 · Soft Pill</b><br><sub>Floating pill</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/dark-capsule/"><img src="assets/readme/dark-capsule.gif" width="400" alt="Dark Capsule tab bar"></a><br><b>12 · Dark Capsule</b><br><sub>Docked bar</sub></td></tr>
+<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/gradient-stickers/"><img src="assets/readme/gradient-stickers.gif" width="400" alt="Gradient Stickers tab bar"></a><br><b>13 · Gradient Stickers</b><br><sub>Floating pill</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/light-icons/"><img src="assets/readme/light-icons.gif" width="400" alt="Light Icons tab bar"></a><br><b>14 · Light Icons</b><br><sub>Docked bar</sub></td></tr>
+<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/playful-tiles/"><img src="assets/readme/playful-tiles.gif" width="400" alt="Playful Tiles tab bar"></a><br><b>15 · Playful Tiles</b><br><sub>Docked bar</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/sliding-capsule/"><img src="assets/readme/sliding-capsule.gif" width="400" alt="Sliding Capsule tab bar"></a><br><b>16 · Sliding Capsule</b><br><sub>Floating pill</sub></td></tr>
+<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/labeled-plus/"><img src="assets/readme/labeled-plus.gif" width="400" alt="Labeled + Plus tab bar"></a><br><b>17 · Labeled + Plus</b><br><sub>Pill + action button</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/frosted-media/"><img src="assets/readme/frosted-media.gif" width="400" alt="Frosted Media tab bar"></a><br><b>18 · Frosted Media</b><br><sub>Floating pill</sub></td></tr>
+<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/glow-glass/"><img src="assets/readme/glow-glass.gif" width="400" alt="Glow Glass tab bar"></a><br><b>19 · Glow Glass</b><br><sub>Pill + action button</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/mono-type/"><img src="assets/readme/mono-type.gif" width="400" alt="Mono Type tab bar"></a><br><b>20 · Mono Type</b><br><sub>Docked bar</sub></td></tr>
+</table>
 
 Names are working names. The source of truth is [`apps/example/src/catalog.ts`](apps/example/src/catalog.ts).
 

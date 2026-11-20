@@ -10,3 +10,4 @@ Monorepo (Bun workspaces, hoisted `node_modules`). Read README.md for the layout
 - Native `ios/` and `android/` folders are generated; never edit them by hand.
 
 Before declaring work done: `bun run check`. For example-app changes, also `cd apps/example && bunx expo-doctor`.
+- The README shows every design moving (`assets/readme/<id>.gif`, linked to its page on the site). Adding a design or changing how one looks means updating its GIF (and the site's recording in `apps/site/public/videos/`) in the same change.
