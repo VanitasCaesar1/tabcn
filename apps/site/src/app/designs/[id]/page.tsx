@@ -24,6 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const design = getDesign(id);
   if (!design) return {};
+  const shareAlt = `The ${design.title} tab bar from tabcn`;
   const description = `${design.description} An animated ${design.layoutLabel.toLowerCase()} tab bar for React Native and Expo, from tabcn.`;
   return {
     title: design.title,
@@ -36,7 +37,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: absoluteUrl(designPath(id)),
       title: `${design.title} · ${site.name}`,
       description,
-      ...(design.poster && { images: [absoluteUrl(design.poster.replace(/^\/tabcn/, ''))] }),
+      images: [{ url: absoluteUrl(`/og/${id}.jpg`), width: 1200, height: 630, alt: shareAlt }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      creator: `@${site.x}`,
+      images: [{ url: absoluteUrl(`/og/${id}.jpg`), alt: shareAlt }],
     },
   };
 }

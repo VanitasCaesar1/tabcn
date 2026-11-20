@@ -8,7 +8,7 @@ Monorepo (Bun workspaces, hoisted `node_modules`). Read README.md for the layout
 - Expo Router 58 ships its own fork of React Navigation's bottom tabs (`expo-router/js-tabs`, types from `expo-router/react-navigation`). The foundation must work with both that fork and `@react-navigation/bottom-tabs`.
 - New public API or install-flow changes start as a doc in `docs/designs/`.
 - Native `ios/` and `android/` folders are generated; never edit them by hand.
-- The README shows every design moving (`assets/readme/<id>.gif`, linked to its page on the site). Adding a design or changing how one looks means updating its GIF (and the site's recording in `apps/site/public/videos/`) in the same change.
+- The README shows every design moving (`assets/readme/<id>.gif`, linked to its page on the site). Adding a design or changing how one looks means updating its GIF, the site's recording in `apps/site/public/videos/`, and its link-preview image (`python3 apps/site/scripts/og-images.py <recordings dir>`) in the same change.
 - `main` is protected: work on a short-lived branch and open a pull request; CI's `check` must pass before it merges.
 
 Before declaring work done: `bun run check`. For example-app changes, also `cd apps/example && bunx expo-doctor`.
