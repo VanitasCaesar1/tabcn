@@ -14,6 +14,10 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Releasing needs an npm token. Until the NPM_TOKEN secret is added, skip instead of failing
+    # every push to main (changesets would otherwise try to publish the unpublished package).
+    env:
+      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
@@ -26,6 +30,7 @@ jobs:
       - run: bun install --frozen-lockfile
       # Opens a "Version packages" PR from pending changesets; publishes to npm when that PR is merged.
       - uses: changesets/action@v1
+        if: env.HAS_NPM_TOKEN == 'true'
         with:
           version: bun run version-packages
           publish: bun run release
