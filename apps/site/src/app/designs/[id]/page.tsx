@@ -1,0 +1,150 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { Arrow } from '@/components/arrow';
+import { CodeBlock } from '@/components/code-block';
+import { InstallCommand } from '@/components/install-command';
+import { OpenOnPhone } from '@/components/open-on-phone';
+import { DesignPhone } from '@/components/phone';
+import { SiteHeader } from '@/components/site-header';
+import { cn } from '@/lib/cn';
+import { designs, getDesign, neighbours, usageSnippet } from '@/lib/designs';
+import { absoluteUrl, designPath, registryUrl, site, sourceUrl } from '@/lib/site';
+
+type Props = { params: Promise<{ id: string }> };
+
+export function generateStaticParams() {
+  return designs.map(({ id }) => ({ id }));
+}
+
+// Every id is known at build; any other is a plain 404.
+export const dynamicParams = false;
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const design = getDesign(id);
+  if (!design) return {};
+  const description = `${design.description} An animated ${design.layoutLabel.toLowerCase()} tab bar for React Native and Expo, from tabcn.`;
+  return {
+    title: design.title,
+    description,
+    alternates: { canonical: absoluteUrl(designPath(id)) },
+    openGraph: {
+      type: 'article',
+      siteName: site.name,
+      locale: site.locale,
+      url: absoluteUrl(designPath(id)),
+      title: `${design.title} · ${site.name}`,
+      description,
+      ...(design.poster && { images: [absoluteUrl(design.poster.replace(/^\/tabcn/, ''))] }),
+    },
+  };
+}
+
+export default async function DesignPage({ params }: Props) {
+  const { id } = await params;
+  const design = getDesign(id);
+  if (!design) notFound();
+  const { previous, next } = neighbours(design.id);
+
+  return (
+    <>
+      <SiteHeader title={design.title} />
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 pt-4 pb-4 sm:px-6 sm:pt-6">
+        {/* The stage: a quiet dotted canvas the phone sits on, so every design is shown the
+            same way. (ui lab, MIT.) */}
+        <div className="flex items-center justify-center overflow-x-clip rounded-3xl border border-border bg-[radial-gradient(color-mix(in_oklab,var(--foreground)_9%,transparent)_1px,transparent_1px)] [background-size:18px_18px] px-4 py-8 sm:py-12">
+          <DesignPhone media={design} className="w-[230px] sm:w-[270px]" />
+        </div>
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-balance font-semibold text-2xl tracking-tight">{design.title}</h1>
+            <p className="mt-2 max-w-xl text-pretty text-[15px] text-muted">{design.description}</p>
+            <Link
+              href={`/?c=${design.layout}#designs`}
+              className="mt-3 inline-flex h-7 items-center rounded-full bg-surface px-3 font-medium text-muted text-xs outline-hidden transition-[color,background-color] duration-150 ease-out hover:bg-foreground/10 hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid"
+            >
+              {design.layoutLabel}
+            </Link>
+          </div>
+          <a
+            href={sourceUrl(design.id)}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`View source of ${design.title} on GitHub`}
+            className="inline-flex h-10 shrink-0 items-center gap-2 self-start rounded-full bg-foreground px-4 font-medium text-background text-sm outline-hidden transition-[scale,opacity] duration-150 ease-out hover:opacity-90 focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:scale-[0.96]"
+          >
+            <svg
+              viewBox="0 0 16 16"
+              className="size-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="m5.5 4.5-3.5 3.5 3.5 3.5M10.5 4.5l3.5 3.5-3.5 3.5" />
+            </svg>
+            View source
+          </a>
+        </div>
+
+        <InstallCommand url={registryUrl(design.id)} />
+
+        <section aria-labelledby="usage-heading">
+          <h2 id="usage-heading" className="pl-1 font-medium text-[13px]">
+            Usage
+          </h2>
+          <p className="mt-1 mb-2.5 pl-1 text-pretty text-muted text-sm">
+            Pass it to Expo Router&rsquo;s tabs. Icons, labels and badges come from each
+            screen&rsquo;s options.
+            {design.hasAction && ' The separate button runs onActionPress.'}
+          </p>
+          <CodeBlock filename="app/(tabs)/_layout.tsx" code={usageSnippet(design)} />
+        </section>
+
+        <OpenOnPhone id={design.id} title={design.title} />
+
+        {/* Walks the designs in the sidebar's order. */}
+        <nav aria-label="More designs" className="grid grid-cols-2 gap-3">
+          {[
+            { entry: previous, label: 'Previous', align: 'items-start' },
+            { entry: next, label: 'Next', align: 'items-end text-right' },
+          ].map(({ entry, label, align }) =>
+            entry ? (
+              <Link
+                key={label}
+                href={designPath(entry.id)}
+                className={cn(
+                  'group/pager flex flex-col gap-1 rounded-2xl border border-border p-4 outline-hidden transition-[background-color,scale] duration-150 ease-out hover:bg-surface focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:scale-[0.99]',
+                  align,
+                )}
+              >
+                <span className="flex items-center gap-1 text-muted text-xs">
+                  {label === 'Previous' && (
+                    <Arrow
+                      direction="left"
+                      className="size-3 transition-[translate] duration-150 ease-out group-hover/pager:-translate-x-0.5 motion-reduce:transition-none"
+                    />
+                  )}
+                  {label}
+                  {label === 'Next' && (
+                    <Arrow
+                      direction="right"
+                      className="size-3 transition-[translate] duration-150 ease-out group-hover/pager:translate-x-0.5 motion-reduce:transition-none"
+                    />
+                  )}
+                </span>
+                <span className="truncate font-medium text-sm">{entry.title}</span>
+              </Link>
+            ) : (
+              <span key={label} />
+            ),
+          )}
+        </nav>
+      </main>
+    </>
+  );
+}

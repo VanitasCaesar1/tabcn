@@ -1,8 +1,8 @@
 # tabcn website
 
-* **Status:** approved by the owner on 2026-11-20 ("finish it and publish the site and repo at my github.io"). The decisions below were made in conversation before this doc was written.
-* **URL:** https://vanitascaesar1.github.io/tabcn/
-* **Source:** `apps/site`
+- **Status:** approved by the owner on 2026-11-20 ("finish it and publish the site and repo at my github.io"). The decisions below were made in conversation before this doc was written.
+- **URL:** https://vanitascaesar1.github.io/tabcn/
+- **Source:** `apps/site`
 
 ## Goal
 
@@ -18,11 +18,11 @@ One place to see every tabcn design move, and to install one. A visitor should b
 
 ## Pages
 
-| Path | Content |
-| --- | --- |
-| `/` | Hero, the newest designs playing in a showcase, a grid of all 20 with posters, how it works (foundation + copy-in designs), quick start |
+| Path             | Content                                                                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/`              | Hero, the newest designs playing in a showcase, a grid of all 20 with posters, how it works (foundation + copy-in designs), quick start    |
 | `/designs/<id>/` | Stage with the recording in a phone frame, title, description, layout pill, View source, install, Expo Go QR, usage snippet, Previous/Next |
-| `/r/<id>.json` | shadcn registry item with file contents inlined |
+| `/r/<id>.json`   | shadcn registry item with file contents inlined                                                                                            |
 
 ## Out of scope
 
