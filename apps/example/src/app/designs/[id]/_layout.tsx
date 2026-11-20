@@ -5,7 +5,7 @@ import { TabBarProvider } from 'tabcn';
 import { tabBar } from 'tabcn/expo-router';
 
 import { findDesign, LAYOUT_LABELS } from '@/catalog';
-import { CurrentDemoProvider, demos, RAIL_MIN_WIDTH, TAB_ROUTES } from '@/demos';
+import { CurrentDemoProvider, demos, RAIL_MIN_WIDTH, screenBackground, TAB_ROUTES } from '@/demos';
 import { useColors } from '@/use-colors';
 
 export default function DesignLayout() {
@@ -34,15 +34,17 @@ export default function DesignLayout() {
     );
   }
 
-  const bar = demo.render({
+  const ctx = {
     onActionPress: () => Alert.alert('Action', 'The action button ran its callback.'),
-  });
+    routes: TAB_ROUTES,
+  };
+  const bar = demo.render(ctx);
   // Side Rail: a rail on the left on wide windows (iPad, landscape), a bottom bar otherwise.
   const tabBarPosition = demo.railWhenWide && width >= RAIL_MIN_WIDTH ? 'left' : 'bottom';
 
   return (
     <CurrentDemoProvider value={demo}>
-      <Stack.Screen options={{ title: design.title }} />
+      <Stack.Screen options={{ title: design.title, headerShown: !demo.fullScreen }} />
       {/* Lets screens drive the bar: panels, the override slot, minimize on scroll. */}
       <TabBarProvider>
         <Tabs
@@ -50,6 +52,7 @@ export default function DesignLayout() {
           screenOptions={{
             headerShown: false,
             tabBarPosition,
+            tabBarHideOnKeyboard: demo.hideOnKeyboard,
             sceneStyle: { backgroundColor: demo.background },
           }}
         >
@@ -63,6 +66,7 @@ export default function DesignLayout() {
                   tab
                     ? {
                         title: tab.label,
+                        sceneStyle: { backgroundColor: screenBackground(demo, i) },
                         tabBarBadge: tab.badge,
                         tabBarIcon: ({ focused, color, size }) =>
                           tab.icon({ focused, color: String(color), size }),
@@ -74,7 +78,7 @@ export default function DesignLayout() {
           })}
         </Tabs>
         {/* A panel demo's panel, declared once here so it stays across tabs. */}
-        {demo.panel?.()}
+        {demo.panel?.(ctx)}
       </TabBarProvider>
     </CurrentDemoProvider>
   );

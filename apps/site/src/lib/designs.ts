@@ -5,6 +5,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { catalog, type DesignKind, LAYOUT_LABELS, type Layout } from '../../../example/src/catalog';
 import registry from '../../../../registry/registry.json';
+import type { DesignProps } from '../../../../scripts/design-props';
 import { asset } from './base-path';
 import { absoluteUrl } from './site';
 
@@ -37,6 +38,8 @@ export interface Design {
   stills: string[];
   /** How many tabs the example app's demo shows, or null if it can't be read. */
   tabs: number | null;
+  /** The component's props, read from its source by scripts/design-props.ts. */
+  props: DesignProps;
 }
 
 /** The part of a design the client components need. */
@@ -87,6 +90,14 @@ function tabCount(id: string) {
   return n > 0 ? n : null;
 }
 
+// Written by scripts/build-props.ts before `next build` (it needs the TypeScript compiler,
+// which the site doesn't bundle).
+const propsFile = join(process.cwd(), 'generated/design-props.json');
+if (!existsSync(propsFile)) {
+  throw new Error('generated/design-props.json is missing: run `bun scripts/build-props.ts`');
+}
+const propsData = JSON.parse(readFileSync(propsFile, 'utf8')) as Record<string, DesignProps>;
+
 function load(): Design[] {
   return catalog.map((entry) => {
     const item = registry.items.find((i) => i.name === entry.id);
@@ -96,6 +107,8 @@ function load(): Design[] {
     const source = readFileSync(join(root, main.path), 'utf8');
     const component = source.match(/^export function (\w+)\(/m)?.[1];
     if (!component) throw new Error(`${entry.id}: no exported component in ${main.path}`);
+    const props = propsData[entry.id];
+    if (!props) throw new Error(`${entry.id}: no props in generated/design-props.json`);
     const iconsEntry = item.files.find((f) => f.path.endsWith('/icons.tsx'));
     const icons = iconsEntry
       ? [
@@ -121,6 +134,7 @@ function load(): Design[] {
       ogImage: ogImage(entry.id),
       stills: stills(entry.id),
       tabs: tabCount(entry.id),
+      props,
     };
   });
 }
@@ -158,8 +172,10 @@ export function summary({ id, title, description, layout, layoutLabel }: Design)
 }
 
 /** The tab bar each panel's page shows it with (the pairing in the example app). */
-const PANEL_USAGE: Record<string, { bar: string; barId: string; lines: string[]; imports: string[] }> =
-  {
+const PANEL_USAGE: Record<
+  string,
+  { bar: string; barId: string; lines: string[]; imports: string[]; tabcn?: string[] }
+> = {
     'mini-player': {
       bar: 'SoftPill',
       barId: 'soft-pill',
@@ -189,14 +205,143 @@ const PANEL_USAGE: Record<string, { bar: string; barId: string; lines: string[];
         '      />',
       ],
     },
+    'bar-sheet': {
+      bar: 'SoftPill',
+      barId: 'soft-pill',
+      imports: ["import { BarSheet } from '@/components/tabcn/bar-sheet';"],
+      lines: [
+        '      {/* Dragging needs <GestureHandlerRootView style={{ flex: 1 }}> around the',
+        '          app, in app/_layout.tsx (react-native-gesture-handler). */}',
+        '      {/* Declared once beside <Tabs>. Open it from any screen with',
+        '          useBarSheet().open, or move it with snapTo(index). */}',
+        '      <BarSheet title="Comments" subtitle="128 replies">',
+        '        <CommentList />',
+        '      </BarSheet>',
+      ],
+    },
+    'companion-chip': {
+      bar: 'SplitSearch',
+      barId: 'split-search',
+      tabcn: ['TabBarCompanion', 'TabBarProvider'],
+      imports: ["import { CompanionChip } from '@/components/tabcn/companion-chip';"],
+      lines: [
+        '      {/* Sits above the bar’s end and moves with it. From a screen, pass',
+        '          visible={useIsFocused()} to show it on that screen only. */}',
+        '      <TabBarCompanion position="above-end">',
+        '        <CompanionChip',
+        '          variant="round"',
+        '          icon={LocateIcon}',
+        '          accessibilityLabel="Locate me"',
+        '          onPress={recenter}',
+        '        />',
+        '      </TabBarCompanion>',
+      ],
+    },
   };
 
 /** The Expo Router layout a user writes to use this design. */
 export function usageSnippet(d: Design) {
+  if (d.id === 'sub-tabs') return SUB_TABS_SNIPPET;
   if (d.kind === 'panel') return panelSnippet(d);
   if (d.id === 'side-rail') return railSnippet(d);
+  if (d.id === 'section-sheet') return SECTION_SHEET_SNIPPET;
+  if (d.id === 'live-tabs') return LIVE_TABS_SNIPPET;
   return barSnippet(d);
 }
+
+/** Sub-Tabs has two parts: `useSubTabs` on one tab inside the bar, and the drawer beside it. */
+const SUB_TABS_SNIPPET = `${[
+  '// In your bar design (a copy of any tabcn bar): the tab that owns the drawer.',
+  "import { View } from 'react-native';",
+  "import { TabButton, type TabItem } from 'tabcn';",
+  "import { useSubTabs } from '@/components/tabcn/sub-tabs';",
+  '',
+  'function LibraryTab({ tab }: { tab: TabItem }) {',
+  "  const sub = useSubTabs('library', { width: 168 });",
+  '  return (',
+  '    <TabButton tab={tab} {...sub.tabProps}>',
+  '      {tab.renderIcon?.({ focused: tab.focused, color, size: 22 })}',
+  '      <View {...sub.anchorProps} />',
+  '    </TabButton>',
+  '  );',
+  '}',
+  '',
+  '// app/(tabs)/_layout.tsx: the drawer, declared once beside <Tabs>',
+  "import { router } from 'expo-router';",
+  "import { Tabs } from 'expo-router/js-tabs';",
+  "import { TabBarProvider } from 'tabcn';",
+  "import { tabBar } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'",
+  "import { SubTabs } from '@/components/tabcn/sub-tabs';",
+  "import { MyTabBar } from '@/components/tabcn/my-tab-bar';",
+  '',
+  'export default function TabLayout() {',
+  '  return (',
+  '    <TabBarProvider>',
+  '      <Tabs tabBar={tabBar(<MyTabBar />)} screenOptions={{ headerShown: false }} />',
+  '      <SubTabs',
+  '        name="library"',
+  '        items={[',
+  "          { label: 'Albums', onPress: () => router.navigate('/library/albums') },",
+  "          { label: 'Artists', onPress: () => router.navigate('/library/artists') },",
+  '        ]}',
+  '      />',
+  '    </TabBarProvider>',
+  '  );',
+  '}',
+].join('\n')}\n`;
+
+/** Section Sheet is the tab bar; each section's sheet body comes from `sections`. */
+const SECTION_SHEET_SNIPPET = `${[
+  "import { Tabs } from 'expo-router/js-tabs';",
+  "import { TabBarProvider } from 'tabcn';",
+  "import { tabBar } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'",
+  "import { SectionSheet } from '@/components/tabcn/section-sheet';",
+  '',
+  'export default function TabLayout() {',
+  '  return (',
+  '    // Needs the provider, and <GestureHandlerRootView style={{ flex: 1 }}> around the app.',
+  '    <TabBarProvider>',
+  '      <Tabs',
+  '        backBehavior="history"',
+  '        tabBar={tabBar(',
+  '          <SectionSheet',
+  '            sections={{ index: <ExploreList />, guides: <GuideList />, saved: <SavedList /> }}',
+  '          />,',
+  '        )}',
+  '        screenOptions={{ headerShown: false }}',
+  '      >',
+  "        <Tabs.Screen name=\"index\" options={{ title: 'Explore' }} />",
+  "        <Tabs.Screen name=\"guides\" options={{ title: 'Guides' }} />",
+  "        <Tabs.Screen name=\"saved\" options={{ title: 'Saved' }} />",
+  '      </Tabs>',
+  '    </TabBarProvider>',
+  '  );',
+  '}',
+].join('\n')}\n`;
+
+/** Live Tabs draws what screens write with `useLiveTab`. */
+const LIVE_TABS_SNIPPET = `${[
+  '// app/(tabs)/_layout.tsx',
+  "import { Tabs } from 'expo-router/js-tabs';",
+  "import { TabBarProvider } from 'tabcn';",
+  "import { tabBar } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'",
+  "import { LiveTabs } from '@/components/tabcn/live-tabs';",
+  '',
+  'export default function TabLayout() {',
+  '  return (',
+  '    <TabBarProvider>',
+  '      <Tabs tabBar={tabBar(<LiveTabs />)} screenOptions={{ headerShown: false }} />',
+  '    </TabBarProvider>',
+  '  );',
+  '}',
+  '',
+  '// Anywhere under the provider, such as the Timer screen, once a second:',
+  "import { useLiveTab } from 'tabcn';",
+  '',
+  "const timer = useLiveTab('timer'); // the tab's route name",
+  'timer.progress.value = elapsed / duration; // fills the ring; 0 or 1 hides it',
+  "timer.setText(remaining > 0 ? format(remaining) : undefined); // replaces the label",
+].join('\n')}\n`;
 
 /**
  * Panels need a `TabBarProvider` around the navigator. Mini Player and Quick Create are
@@ -237,7 +382,7 @@ function panelSnippet(d: Design) {
   const barProps = d.id === 'quick-create' ? ' onActionPress={toggleCreate}' : '';
   const lines = [
     "import { Tabs } from 'expo-router/js-tabs';",
-    "import { TabBarProvider } from 'tabcn';",
+    `import { ${(usage?.tabcn ?? ['TabBarProvider']).join(', ')} } from 'tabcn';`,
     "import { tabBar } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'",
     `import { ${bar} } from '@/components/tabcn/${usage?.barId ?? 'my-tab-bar'}';`,
     ...(usage?.imports ?? []),

@@ -6,10 +6,13 @@ import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
+import { TIMING_EASE, TIMING_MS } from './motion';
 
 type Status = 'idle' | 'copied' | 'failed';
 
-const ICON_SWAP = { type: 'spring', duration: 0.3, bounce: 0 } as const;
+// tabcnTiming (200 ms on bezier 0.25, 0.1, 0.25, 1): the icons and the tooltip only crossfade.
+// Nothing grows, shrinks or lifts.
+const SWAP = { duration: TIMING_MS / 1000, ease: TIMING_EASE };
 
 export function CopyButton({
   value,
@@ -67,7 +70,7 @@ export function CopyButton({
         aria-label={label}
         onClick={copy}
         className={cn(
-          'relative flex size-8 touch-manipulation items-center justify-center rounded-full text-muted outline-hidden transition-[scale,color,background-color] duration-150 ease-out select-none hover:bg-background hover:text-foreground focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-foreground active:scale-[0.96] motion-reduce:transition-[color,background-color]',
+          'relative flex size-8 touch-manipulation items-center justify-center rounded-full text-muted outline-hidden transition-[color,background-color] duration-150 ease-out select-none hover:bg-background hover:text-foreground focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-foreground motion-reduce:transition-none',
           // Grows the hit area to 40px without growing the visible circle.
           'after:absolute after:-inset-1 after:rounded-full',
           visible && 'text-foreground',
@@ -80,16 +83,14 @@ export function CopyButton({
         </span>
       </button>
 
-      {/* Out of flow, so appearing never nudges the row. Enters in 150ms,
-          leaves in 100ms: the exit should never hold the eye. */}
+      {/* Out of flow, so appearing never nudges the row. It fades in and out on tabcnTiming;
+          with reduced motion it appears and goes at once. */}
       <span
         aria-hidden
         className={cn(
-          'pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 origin-bottom rounded-full bg-foreground px-2 py-1 text-xs font-medium whitespace-nowrap text-background',
-          'transition-[opacity,translate,scale] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-[opacity]',
-          visible
-            ? 'translate-y-0 scale-100 opacity-100 duration-150'
-            : 'translate-y-1 scale-[0.97] opacity-0 duration-100 motion-reduce:translate-y-0 motion-reduce:scale-100',
+          'pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-full bg-foreground px-2 py-1 text-xs font-medium whitespace-nowrap text-background',
+          'transition-opacity duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)] motion-reduce:transition-none',
+          visible ? 'opacity-100' : 'opacity-0',
         )}
       >
         {message}
@@ -112,49 +113,17 @@ const GLYPH = {
   strokeLinejoin: 'round',
 } as const;
 
-// The front sheet is offset from the back one by 2.5 units each way, so
-// sliding it back by exactly that lays it over the rear outline.
-const SHEET_OFFSET = 2.5;
-const MERGE = { duration: 0.12, ease: [0.77, 0, 0.175, 1] } as const;
-
-// The copy icon acts the copy out: the front sheet slides onto the back one
-// until the two pages are one, and only then does that page give way to a
-// check that draws itself in. Returning, the page splits back into two.
+// The copy icon and the check share one cell and crossfade. With reduced motion they swap at once.
 function CopyGlyph({ copied, reduceMotion }: { copied: boolean; reduceMotion: boolean | null }) {
-  const shown = { scale: 1, opacity: 1, filter: 'blur(0px)' };
   return (
     <motion.svg
       {...GLYPH}
       initial={false}
-      animate={
-        copied
-          ? reduceMotion
-            ? { opacity: 0 }
-            : {
-                scale: 0.25,
-                opacity: 0,
-                filter: 'blur(4px)',
-                // Waits for the sheets to merge before it leaves.
-                transition: { ...ICON_SWAP, delay: MERGE.duration },
-              }
-          : { ...shown, transition: ICON_SWAP }
-      }
+      animate={{ opacity: copied ? 0 : 1 }}
+      transition={reduceMotion ? { duration: 0 } : SWAP}
     >
       <path d="M10.75 5.25V4.5a1.75 1.75 0 0 0-1.75-1.75H4.5A1.75 1.75 0 0 0 2.75 4.5V9a1.75 1.75 0 0 0 1.75 1.75h.75" />
-      <motion.rect
-        x="5.25"
-        y="5.25"
-        width="8"
-        height="8"
-        rx="1.75"
-        initial={false}
-        animate={
-          copied && !reduceMotion
-            ? { x: -SHEET_OFFSET, y: -SHEET_OFFSET, transition: MERGE }
-            : // Splits a beat after the page has faded back in.
-              { x: 0, y: 0, transition: { ...MERGE, delay: 0.1 } }
-        }
-      />
+      <rect x="5.25" y="5.25" width="8" height="8" rx="1.75" />
     </motion.svg>
   );
 }
@@ -164,29 +133,10 @@ function CheckGlyph({ copied, reduceMotion }: { copied: boolean; reduceMotion: b
     <motion.svg
       {...GLYPH}
       initial={false}
-      animate={
-        copied
-          ? { opacity: 1, transition: { duration: 0.1, delay: MERGE.duration } }
-          : // Softer than the entrance: fades rather than un-draws.
-            { opacity: 0, transition: { duration: 0.12 } }
-      }
+      animate={{ opacity: copied ? 1 : 0 }}
+      transition={reduceMotion ? { duration: 0 } : SWAP}
     >
-      <motion.path
-        d="m3.5 8.5 3 3 6-7"
-        initial={false}
-        animate={
-          copied || reduceMotion
-            ? {
-                pathLength: 1,
-                transition: reduceMotion
-                  ? { duration: 0 }
-                  : // A pen stroke: fast off the mark, easing into the tip.
-                    { duration: 0.22, delay: MERGE.duration, ease: [0.65, 0, 0.35, 1] },
-              }
-            : // Rewinds only once invisible, ready for the next copy.
-              { pathLength: 0, transition: { duration: 0, delay: 0.12 } }
-        }
-      />
+      <path d="m3.5 8.5 3 3 6-7" />
     </motion.svg>
   );
 }

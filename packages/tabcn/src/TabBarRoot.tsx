@@ -1,5 +1,22 @@
-import { type ComponentRef, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard, Platform, type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
+import {
+  type ComponentRef,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  Keyboard,
+  Platform,
+  type StyleProp,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import Animated, {
   ReduceMotion,
   runOnJS,
@@ -9,10 +26,18 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { CompanionLayer } from './companions';
 import { useRestoreOnFocusChange } from './minimize';
 import { tabcnTiming } from './motion';
-import { PanelLayer } from './PanelLayer';
-import { anyPanelOpen, type Snapshot, useStoreSelector, useTabBarProvider } from './provider';
+import { PanelLayer, type SheetGeometry } from './PanelLayer';
+import {
+  anyPanelOpen,
+  modalPanel,
+  type Snapshot,
+  useStoreSelector,
+  useTabBarProvider,
+} from './provider';
+import { ScreenFrameContext } from './screen-frame';
 import { useTabBar } from './state';
 import type { TabFrame } from './TabList';
 
@@ -127,37 +152,48 @@ function useOverride(override: ReactNode | null) {
   };
 }
 
+interface Size {
+  width: number;
+  height: number;
+}
+
+const sameSize = (a: Size | null, b: Size) => !!a && a.width === b.width && a.height === b.height;
+
 /**
- * The height `TabBarRoot` reports. While the bar minimizes or restores, a design that
- * animates its size lays out on every frame; reporting each of those would re-render every
- * screen that reads the bar height and shift its padding mid-scroll. So while a minimize
- * change is in flight, layouts are held and only the settled height is applied.
+ * The root's size, which sets the height `TabBarRoot` reports and the room sheets resolve
+ * against. While the bar minimizes or restores, a design that animates its size lays out on
+ * every frame; applying each of those would re-render every screen that reads the bar height
+ * (shifting its padding mid-scroll) and re-resolve every sheet on every frame. So while a
+ * minimize change is in flight, layouts are held and only the settled size is applied.
  */
-function useSettledHeight(holdWhileMinimizing: boolean) {
-  const [height, setHeight] = useState<number | null>(null);
+function useSettledSize(holdWhileMinimizing: boolean) {
+  const [size, setSize] = useState<Size | null>(null);
   const minimize = useTabBarProvider()?.minimize;
   const fallback = useSharedValue(0);
   const progress = minimize?.progress ?? fallback;
   const target = minimize?.target ?? fallback;
-  const pending = useRef<number | null>(null);
+  const pending = useRef<Size | null>(null);
 
-  const onHeight = useCallback(
-    (next: number) => {
+  const apply = useCallback((next: Size) => {
+    setSize((current) => (sameSize(current, next) ? current : next));
+  }, []);
+  const onSize = useCallback(
+    (next: Size) => {
       if (holdWhileMinimizing && progress.value !== target.value) {
-        pending.current = next;
+        pending.current = { width: next.width, height: next.height };
         return;
       }
       pending.current = null;
-      setHeight(next);
+      apply({ width: next.width, height: next.height });
     },
-    [holdWhileMinimizing, progress, target],
+    [holdWhileMinimizing, progress, target, apply],
   );
   const flush = useCallback(() => {
     const next = pending.current;
     if (next === null) return;
     pending.current = null;
-    setHeight(next);
-  }, []);
+    apply(next);
+  }, [apply]);
   useAnimatedReaction(
     () => progress.value === target.value,
     (settled, previous) => {
@@ -165,7 +201,7 @@ function useSettledHeight(holdWhileMinimizing: boolean) {
     },
     [flush],
   );
-  return [height, onHeight] as const;
+  return [size, onSize] as const;
 }
 
 /**
@@ -188,10 +224,28 @@ export function TabBarRoot({
   const store = provider?.store;
   const snapshot = useStoreSelector(store, selectSnapshot);
   const rail = placement === 'rail';
-  const keyboardVisible = useKeyboardVisible(hideOnKeyboard && !rail);
+  const floating = placement === 'floating';
+  // The keyboard is tracked when the screen hides the bar for it, and under a provider for
+  // useTabBarInset(), which is 0 while the keyboard is up either way.
+  const keyboardUp = useKeyboardVisible((hideOnKeyboard || !!provider) && !rail);
+  const keyboardVisible = hideOnKeyboard && keyboardUp;
   const minimizes = !!provider && minimizeBehavior === 'onScrollDown';
-  const [height, onHeight] = useSettledHeight(minimizes);
-  const [barFrame, setBarFrame] = useState<TabFrame | null>(null);
+  const [rootSize, onRootSize] = useSettledSize(minimizes);
+  const height = rootSize?.height ?? null;
+  // The floating bar box's frame; a docked bar's is the root's own (settled) size.
+  const [floatingFrame, setFloatingFrame] = useState<TabFrame | null>(null);
+  const barFrame = useMemo<TabFrame | null>(
+    () =>
+      floating
+        ? floatingFrame
+        : rootSize
+          ? { x: 0, y: 0, width: rootSize.width, height: rootSize.height }
+          : null,
+    [floating, floatingFrame, rootSize],
+  );
+  // The screen's size: the navigator's safe-area frame, or the window's without an adapter.
+  const windowSize = useWindowDimensions();
+  const screenHeight = use(ScreenFrameContext)?.height ?? windowSize.height;
   // Anchors (`usePanelAnchor`) measure themselves against this view.
   const rootRef = useCallback(
     (node: ComponentRef<typeof View> | null) => {
@@ -224,12 +278,12 @@ export function TabBarRoot({
   useRestoreOnFocusChange(items[activeIndex]?.key);
 
   // Anchors measure against this root, so they re-measure whenever it or the bar moves.
-  const onRootLayout = (h: number) => {
-    onHeight(h);
+  const onRootLayout = (size: Size) => {
+    onRootSize(size);
     store?.measureAnchors();
   };
 
-  const bottomGap = placement === 'floating' ? insets.bottom + offset : 0;
+  const bottomGap = floating ? insets.bottom + offset : 0;
   // Peeking and open panels reserve their peek height; open panels overlay the screen.
   let peek = 0;
   if (!rail) {
@@ -248,9 +302,34 @@ export function TabBarRoot({
     transform: [{ translateY: hidden.value * ((height ?? 0) + bottomGap) }],
   }));
 
-  // While a panel is open it is modal: the bar's root hides its siblings (the screens) from
-  // VoiceOver, and the tabs and the override are hidden inside it.
-  const panelOpen = !rail && anyPanelOpen(snapshot);
+  // While a panel is open at its highest height it is modal: the bar's root hides its
+  // siblings (the screens) from VoiceOver, and the tabs and the override are hidden inside it.
+  // A sheet open lower down leaves them readable.
+  const panelOpen = !rail && modalPanel(snapshot);
+
+  // Companions: above-positions ride the peek of the last bar panel that showed.
+  const [companionsAbove, setCompanionsAbove] = useState(0);
+  const liftPanel = useRef<string | null>(null);
+  const shownBarPanel = snapshot.panels.find(
+    (p) => p.anchorKey === 'bar' && p.state !== 'hidden' && !p.leaving,
+  );
+  if (shownBarPanel) liftPanel.current = shownBarPanel.id;
+  else if (!snapshot.panels.some((p) => p.id === liftPanel.current)) liftPanel.current = null;
+
+  // useTabBarInset(): the reported height plus companions above, or 0 when the bar isn't
+  // what's at the bottom: a rail, a covered navigator, or the keyboard up (toast libraries
+  // add the keyboard's height themselves, whether or not the bar hides for it).
+  const inset =
+    !store || rail || keyboardUp || !snapshot.navigatorFocused || reported === null
+      ? 0
+      : reported + companionsAbove;
+  useEffect(() => {
+    store?.setInset(inset);
+  }, [store, inset]);
+  useEffect(() => {
+    if (!store) return;
+    return () => store.setInset(0);
+  }, [store]);
 
   // The padding of the box the design's children sit in: the root's, or for a floating bar
   // the design's own `style`.
@@ -260,6 +339,27 @@ export function TabBarRoot({
       : rail
         ? { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left }
         : {};
+
+  const flatStyle = (StyleSheet.flatten(style) ?? {}) as ViewStyle;
+
+  // A floating bar's rounded ends hide the join; a docked bar's top edge is straight. An
+  // empty floating bar (zero height, as under a sheet that stands in for the bar) hides
+  // nothing, so panels meet its top edge exactly and the visible strip matches the height
+  // the bar reports.
+  const overlap = floating && (barFrame === null || barFrame.height > 0) ? 16 : 0;
+  // Sheets size themselves from where the root sits on screen. The root's size is the settled
+  // one, so a minimizing bar doesn't move a sheet's heights on every frame.
+  const geometry: SheetGeometry | null = rootSize
+    ? {
+        width: rootSize.width,
+        height: rootSize.height,
+        left: floating ? 0 : insets.left,
+        right: floating ? 0 : insets.right,
+        roomAboveRoot: screenHeight - bottomGap - rootSize.height - insets.top,
+        belowRoot: bottomGap,
+        docked: !floating,
+      }
+    : null;
 
   // Under a provider, the design's children sit in a wrapper that can fade out for an
   // override. The wrapper is always a box and takes over the root's padding, so the root's
@@ -320,8 +420,22 @@ export function TabBarRoot({
         store={store}
         snapshot={snapshot}
         barFrame={barFrame}
-        // A floating bar's rounded ends hide the join; a docked bar's top edge is straight.
-        overlap={placement === 'floating' ? 16 : 0}
+        overlap={overlap}
+        geometry={geometry}
+      />
+    ) : null;
+
+  const companions =
+    store && !rail ? (
+      <CompanionLayer
+        store={store}
+        docked={!floating}
+        side={Math.max(insets.left, insets.right)}
+        hidden={anyPanelOpen(snapshot)}
+        liftPanel={liftPanel.current}
+        overlap={overlap}
+        clipped={flatStyle.overflow === 'hidden'}
+        onAboveHeight={setCompanionsAbove}
       />
     ) : null;
 
@@ -331,7 +445,7 @@ export function TabBarRoot({
         ref={rootRef}
         testID={testID}
         style={[basePadding, style, boxPadding]}
-        onLayout={(e) => onRootLayout(e.nativeEvent.layout.height)}
+        onLayout={(e) => onRootLayout(e.nativeEvent.layout)}
       >
         {tabs}
         {overlay}
@@ -339,7 +453,7 @@ export function TabBarRoot({
     );
   }
 
-  if (placement === 'floating') {
+  if (floating) {
     return (
       <Animated.View
         ref={rootRef}
@@ -356,7 +470,7 @@ export function TabBarRoot({
           },
           animatedStyle,
         ]}
-        onLayout={(e) => onRootLayout(e.nativeEvent.layout.height)}
+        onLayout={(e) => onRootLayout(e.nativeEvent.layout)}
       >
         {panels}
         <View
@@ -364,12 +478,22 @@ export function TabBarRoot({
           onLayout={
             store
               ? (e) => {
-                  setBarFrame(e.nativeEvent.layout);
+                  const { x, y, width, height: h } = e.nativeEvent.layout;
+                  setFloatingFrame((current) =>
+                    current &&
+                    current.x === x &&
+                    current.y === y &&
+                    current.width === width &&
+                    current.height === h
+                      ? current
+                      : { x, y, width, height: h },
+                  );
                   store.measureAnchors();
                 }
               : undefined
           }
         >
+          {companions}
           {tabs}
           {overlay}
         </View>
@@ -390,13 +514,10 @@ export function TabBarRoot({
         style,
         boxPadding,
       ]}
-      onLayout={(e) => {
-        const { width, height: h } = e.nativeEvent.layout;
-        if (store) setBarFrame({ x: 0, y: 0, width, height: h });
-        onRootLayout(h);
-      }}
+      onLayout={(e) => onRootLayout(e.nativeEvent.layout)}
     >
       {panels}
+      {companions}
       {tabs}
       {overlay}
     </Animated.View>

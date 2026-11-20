@@ -25,7 +25,7 @@ import { TabBarProvider } from 'tabcn';
 import { tabBar } from 'tabcn/react-navigation';
 
 import { catalog } from '@/catalog';
-import { type Demo, demos, RAIL_MIN_WIDTH } from '@/demos';
+import { type Demo, demos, RAIL_MIN_WIDTH, screenBackground } from '@/demos';
 import { Pattern } from '@/pattern';
 
 const Tab = createBottomTabNavigator();
@@ -34,13 +34,16 @@ export default function ReactNavigationDemo() {
   const [id, setId] = useState('sliding-capsule');
   const demo = demos[id] as Demo;
   const { width } = useWindowDimensions();
-  const bar = demo.render({
+  const ctx = {
     onActionPress: () => Alert.alert('Action', 'The action button ran its callback.'),
-  });
+    // This navigator's route names, for designs keyed by route (Colour Flood, Live Tabs).
+    routes: demo.tabs.map((_, i) => `tab-${i}`),
+  };
+  const bar = demo.render(ctx);
 
   return (
     <View style={styles.flex}>
-      <Stack.Screen options={{ title: 'React Navigation' }} />
+      <Stack.Screen options={{ title: 'React Navigation', headerShown: !demo.fullScreen }} />
       <NavigationIndependentTree>
         {/* A new container per design, so each starts on its own initial tab. */}
         <NavigationContainer key={id}>
@@ -52,6 +55,7 @@ export default function ReactNavigationDemo() {
                 headerShown: false,
                 // Side Rail: a rail on the left on wide windows, a bottom bar otherwise.
                 tabBarPosition: demo.railWhenWide && width >= RAIL_MIN_WIDTH ? 'left' : 'bottom',
+                tabBarHideOnKeyboard: demo.hideOnKeyboard,
                 sceneStyle: { backgroundColor: demo.background },
               }}
             >
@@ -61,6 +65,7 @@ export default function ReactNavigationDemo() {
                   name={`tab-${i}`}
                   options={{
                     title: tab.label,
+                    sceneStyle: { backgroundColor: screenBackground(demo, i) },
                     tabBarBadge: tab.badge,
                     tabBarIcon: ({ focused, color, size }) =>
                       tab.icon({ focused, color: String(color), size }),
@@ -70,8 +75,8 @@ export default function ReactNavigationDemo() {
                 </Tab.Screen>
               ))}
             </Tab.Navigator>
-            {/* A panel demo's panel (Mini Player, Quick Create), beside the navigator. */}
-            {demo.panel?.()}
+            {/* A panel demo's panel (Mini Player, Quick Create, Bar Sheet…), beside the navigator. */}
+            {demo.panel?.(ctx)}
           </TabBarProvider>
         </NavigationContainer>
       </NavigationIndependentTree>
@@ -98,9 +103,10 @@ function Screen({
   const chip = demo.dark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.06)';
   const built = catalog.filter((d) => demos[d.id]);
   const Extra = demo.extra;
+  const background = screenBackground(demo, index);
   return (
     // The stack header is transparent on iOS 26, so clear it by hand.
-    <View style={[styles.flex, { backgroundColor: demo.background, paddingTop: insets.top + 44 }]}>
+    <View style={[styles.flex, { backgroundColor: background, paddingTop: insets.top + 44 }]}>
       {demo.pattern ? (
         <Pattern spec={demo.pattern} centerY={height - barHeight + (demo.barHeight ?? 58) / 2} />
       ) : null}
@@ -122,7 +128,7 @@ function Screen({
             onPress={() => onPick(d.id)}
             style={[styles.chip, { backgroundColor: d.id === id ? text : chip }]}
           >
-            <Text style={{ color: d.id === id ? demo.background : text, fontWeight: '600' }}>
+            <Text style={{ color: d.id === id ? background : text, fontWeight: '600' }}>
               {d.title}
             </Text>
           </Pressable>

@@ -1,11 +1,23 @@
+import { AccentDark } from '@registry/accent-dark/accent-dark';
+import * as AccentDarkIcons from '@registry/accent-dark/icons';
+import { BadgeDock } from '@registry/badge-dock/badge-dock';
+import * as BadgeDockIcons from '@registry/badge-dock/icons';
+import { ButtonRow } from '@registry/button-row/button-row';
+import * as ButtonRowIcons from '@registry/button-row/icons';
+import { CartPill } from '@registry/cart-pill/cart-pill';
+import * as CartPillIcons from '@registry/cart-pill/icons';
 import { CenterCta } from '@registry/center-cta/center-cta';
 import * as CenterCtaIcons from '@registry/center-cta/icons';
 import { ChipRail } from '@registry/chip-rail/chip-rail';
 import * as ChipRailIcons from '@registry/chip-rail/icons';
+import { ColorFlood, colorFloodGreen } from '@registry/color-flood/color-flood';
+import * as ColorFloodIcons from '@registry/color-flood/icons';
 import { DarkCapsule } from '@registry/dark-capsule/dark-capsule';
 import * as DarkCapsuleIcons from '@registry/dark-capsule/icons';
 import { FrostedMedia } from '@registry/frosted-media/frosted-media';
 import * as FrostedMediaIcons from '@registry/frosted-media/icons';
+import { GlassBadges } from '@registry/glass-badges/glass-badges';
+import * as GlassBadgesIcons from '@registry/glass-badges/icons';
 import { GlassExpand } from '@registry/glass-expand/glass-expand';
 import * as GlassExpandIcons from '@registry/glass-expand/icons';
 import { GlowGlass } from '@registry/glow-glass/glow-glass';
@@ -16,10 +28,13 @@ import * as LabeledPlusIcons from '@registry/labeled-plus/icons';
 import { LabeledPlus } from '@registry/labeled-plus/labeled-plus';
 import * as LightIconsIcons from '@registry/light-icons/icons';
 import { LightIcons } from '@registry/light-icons/light-icons';
+import { LiveTabs } from '@registry/live-tabs/live-tabs';
 import * as MaterialPillIcons from '@registry/material-pill/icons';
 import { MaterialPill } from '@registry/material-pill/material-pill';
 import * as MonoTypeIcons from '@registry/mono-type/icons';
 import { MonoType } from '@registry/mono-type/mono-type';
+import * as OffsetPlusIcons from '@registry/offset-plus/icons';
+import { OffsetPlus } from '@registry/offset-plus/offset-plus';
 import * as OrbsIcons from '@registry/orbs/icons';
 import { Orbs } from '@registry/orbs/orbs';
 import * as OutlineDarkIcons from '@registry/outline-dark/icons';
@@ -28,6 +43,10 @@ import * as PillPlusIcons from '@registry/pill-plus/icons';
 import { PillPlus } from '@registry/pill-plus/pill-plus';
 import * as PlayfulTilesIcons from '@registry/playful-tiles/icons';
 import { PlayfulTiles } from '@registry/playful-tiles/playful-tiles';
+import { ScrubPill } from '@registry/scrub-pill/scrub-pill';
+import * as SearchDockIcons from '@registry/search-dock/icons';
+import { SearchDock } from '@registry/search-dock/search-dock';
+import { SectionSheet } from '@registry/section-sheet/section-sheet';
 import { SegmentSearch } from '@registry/segment-search/segment-search';
 import * as SideRailIcons from '@registry/side-rail/icons';
 import { SideRail } from '@registry/side-rail/side-rail';
@@ -41,6 +60,10 @@ import * as SplitSearchIcons from '@registry/split-search/icons';
 import { SplitSearch } from '@registry/split-search/split-search';
 import * as StickerTilesIcons from '@registry/sticker-tiles/icons';
 import { StickerTiles } from '@registry/sticker-tiles/sticker-tiles';
+import * as TilePlusIcons from '@registry/tile-plus/icons';
+import { TilePlus } from '@registry/tile-plus/tile-plus';
+import * as TintedIconsIcons from '@registry/tinted-icons/icons';
+import { TintedIcons, tintedIconsDark } from '@registry/tinted-icons/tinted-icons';
 import * as TopNotchIcons from '@registry/top-notch/icons';
 import { TopNotch } from '@registry/top-notch/top-notch';
 import type { Href } from 'expo-router';
@@ -48,19 +71,36 @@ import { type ComponentType, createContext, type ReactElement, type ReactNode, u
 import type { TabIconProps } from 'tabcn';
 
 import {
+  BarSheetControls,
+  BarSheetPanel,
+  CompanionChipExtra,
+  CompanionChipPanel,
   ContextTrayExtra,
   type DemoExtraProps,
+  LiveTabsControls,
+  LiveTabsFeed,
   MinimizeList,
   MiniPlayerControls,
   MiniPlayerPanel,
   QuickCreateBar,
   QuickCreateControls,
   QuickCreatePanel,
+  SectionRows,
+  SubTabsBar,
+  SubTabsNote,
+  SubTabsPanel,
 } from '@/panel-demos';
 import type { PatternSpec } from '@/pattern';
 
 export interface DemoContext {
   onActionPress: () => void;
+  /**
+   * The navigator's route name for each tab, in order. Expo Router's demo names them
+   * `index`, `t2`, `t3`…; React Navigation's `tab-0`, `tab-1`…. Designs that key things by
+   * route name (Colour Flood's `surfaces`, Section Sheet's `sections`, `useLiveTab`) read
+   * them from here, so one demo works under both.
+   */
+  routes: readonly string[];
 }
 
 export interface DemoTab {
@@ -76,6 +116,11 @@ export interface Demo {
   tabs: DemoTab[];
   /** Screen background behind the bar, taken from the reference. */
   background: string;
+  /**
+   * A screen colour per tab, in tab order, for designs whose bar takes each screen's colour
+   * (Colour Flood). A tab without an entry uses `background`.
+   */
+  backgrounds?: (string | undefined)[];
   /** Light text on the demo screens. */
   dark?: boolean;
   /** Background pattern from the reference image. */
@@ -90,11 +135,23 @@ export interface Demo {
    * A panel demo's panel: declared once in the design layout, under its TabBarProvider beside
    * the navigator, so it stays across tabs. `render` draws the bar it pairs with.
    */
-  panel?: () => ReactElement;
+  panel?: (ctx: DemoContext) => ReactElement;
   /** Extra content under the demo screen's title: a panel's controls, a list to scroll. */
   extra?: ComponentType<DemoExtraProps>;
   /** Draw the bar as a rail on the left (`tabBarPosition: 'left'`) when the window is wide. */
   railWhenWide?: boolean;
+  /** Hide the bar while the keyboard is up (`tabBarHideOnKeyboard`). */
+  hideOnKeyboard?: boolean;
+  /**
+   * Hide the stack header above the tabs. Sheets size themselves as if the tab navigator
+   * filled the screen, so a header above it would cover a sheet raised to full height.
+   */
+  fullScreen?: boolean;
+}
+
+/** The screen colour of a demo's tab: its own entry in `backgrounds`, or the demo's `background`. */
+export function screenBackground(demo: Demo, index: number) {
+  return demo.backgrounds?.[index] ?? demo.background;
 }
 
 /** Window width (pt) from which a `railWhenWide` demo shows its rail: iPads, landscape. */
@@ -434,6 +491,238 @@ export const demos: Record<string, Demo> = {
       { label: 'Files', icon: SideRailIcons.FolderIcon },
     ],
   },
+  'search-dock': {
+    // Pinterest's search results ("Emerald eyeshadow"). The feed is a white page of photo pins,
+    // and photos scroll under the three white tiles and show in the gaps between them. Home
+    // is the active tab (filled house) and the field shows the live query.
+    render: () => <SearchDock query="Emerald eyeshadow" />,
+    background: '#ffffff',
+    initialTab: 0,
+    barHeight: 55,
+    // Photo pins behind the dock: mint eyeshadow at the left, dark hair and a grey wall at
+    // the right.
+    blobs: [
+      { dx: -110, dy: -10, r: 70, color: '#a9c4a0' },
+      { dx: -30, dy: 20, r: 45, color: '#8fae88' },
+      { dx: 110, dy: -20, r: 60, color: '#2b2b2b' },
+      { dx: 160, dy: 30, r: 40, color: '#b9b9b6' },
+    ],
+    // A list to scroll, so the dock can be seen sliding away and back.
+    extra: MinimizeList,
+    tabs: [
+      { label: 'Home', icon: SearchDockIcons.HomeIcon },
+      { label: 'Search', icon: SearchDockIcons.SearchIcon },
+      { label: 'Profile', icon: SearchDockIcons.AvatarIcon },
+    ],
+  },
+  'button-row': {
+    render: () => <ButtonRow />,
+    // Uber Eats: a white store page; food photos scroll under the row and fade into white.
+    background: '#ffffff',
+    initialTab: 0,
+    barHeight: 49,
+    // Warm food-photo colours behind the row, so the white fade can be seen.
+    blobs: [
+      { dx: -105, dy: -75, r: 62, color: '#d9a35b' },
+      { dx: 125, dy: -70, r: 60, color: '#c4643a' },
+    ],
+    tabs: [
+      { label: 'Home', icon: ButtonRowIcons.HomeIcon },
+      { label: 'Pickup', icon: ButtonRowIcons.MapIcon },
+      { label: 'Search', icon: ButtonRowIcons.SearchIcon },
+      { label: 'Carts', icon: ButtonRowIcons.CartIcon },
+      { label: 'Account', icon: ButtonRowIcons.AccountIcon },
+    ],
+  },
+  'color-flood': {
+    // Cash App: on the Pay tab (the second route) the whole screen and the bar are Cash green;
+    // the other tabs fall back to white. The reference shows Pay active.
+    render: ({ routes }) => <ColorFlood surfaces={{ [routes[1] ?? 't2']: colorFloodGreen }} />,
+    background: colorFloodGreen,
+    // Each screen is painted the colour the bar gives its tab: white, green, white.
+    backgrounds: ['#ffffff', colorFloodGreen, '#ffffff'],
+    initialTab: 1,
+    barHeight: 50,
+    tabs: [
+      { label: 'Money', icon: ColorFloodIcons.MoneyIcon },
+      { label: 'Pay', icon: ColorFloodIcons.PayIcon },
+      { label: 'Activity', icon: ColorFloodIcons.ActivityIcon },
+    ],
+  },
+  'accent-dark': {
+    // Strava: Record opens a full-screen recorder, so it is the bar's action slot, not a tab.
+    render: ({ onActionPress }) => (
+      <AccentDark
+        onActionPress={onActionPress}
+        actionIcon={<AccentDarkIcons.RecordIcon focused={false} color="#ffffff" size={24} />}
+      />
+    ),
+    // Strava's dark screens: flat #141414 above the one-step-lighter #212220 bar.
+    background: '#141414',
+    dark: true,
+    initialTab: 0,
+    // 49 pt of tabs plus the hairline on top.
+    barHeight: 49.5,
+    tabs: [
+      { label: 'Home', icon: AccentDarkIcons.HomeIcon },
+      { label: 'Maps', icon: AccentDarkIcons.MapsIcon },
+      { label: 'Groups', icon: AccentDarkIcons.GroupsIcon },
+      { label: 'You', icon: AccentDarkIcons.YouIcon },
+    ],
+  },
+  'tile-plus': {
+    render: ({ onActionPress }) => <TilePlus onActionPress={onActionPress} />,
+    // Threads: a white feed of posts that stops cleanly at the bar's top edge (no hairline).
+    background: '#ffffff',
+    initialTab: 0,
+    barHeight: 51,
+    tabs: [
+      { label: 'Home', icon: TilePlusIcons.HomeIcon },
+      { label: 'Messages', icon: TilePlusIcons.MessagesIcon },
+      { label: 'Activity', icon: TilePlusIcons.ActivityIcon },
+      { label: 'Profile', icon: TilePlusIcons.ProfileIcon },
+    ],
+  },
+  'offset-plus': {
+    render: ({ onActionPress }) => <OffsetPlus onActionPress={onActionPress} />,
+    // TikTok: the For You video (a dark, warm frame in the store shot) runs right down to the
+    // bar's hard top edge.
+    background: '#3c0e01',
+    dark: true,
+    initialTab: 0,
+    barHeight: 49,
+    tabs: [
+      { label: 'Home', icon: OffsetPlusIcons.HomeIcon },
+      { label: 'Friends', icon: OffsetPlusIcons.FriendsIcon },
+      { label: 'Inbox', icon: OffsetPlusIcons.InboxIcon },
+      { label: 'Profile', icon: OffsetPlusIcons.ProfileIcon },
+    ],
+  },
+  'tinted-icons': {
+    // Snapchat's Spotlight tab (fifth) turns the bar dark grey, as in the app.
+    render: () => <TintedIcons surfaces={{ 4: tintedIconsDark }} />,
+    // Snapchat Stories: a white page of story cards right above the solid black bar.
+    background: '#ffffff',
+    initialTab: 3,
+    barHeight: 48,
+    tabs: [
+      { label: 'Map', icon: TintedIconsIcons.MapIcon },
+      { label: 'Chat', icon: TintedIconsIcons.ChatIcon },
+      { label: 'Camera', icon: TintedIconsIcons.CameraIcon },
+      { label: 'Stories', icon: TintedIconsIcons.StoriesIcon },
+      { label: 'Spotlight', icon: TintedIconsIcons.SpotlightIcon },
+    ],
+  },
+  'badge-dock': {
+    render: () => <BadgeDock />,
+    // Reddit (dark): the feed is the same #171717 as the bar, so the bar doesn't stand out.
+    background: '#171717',
+    dark: true,
+    initialTab: 0,
+    barHeight: 49,
+    tabs: [
+      { label: 'Home', icon: BadgeDockIcons.HomeIcon },
+      { label: 'Communities', icon: BadgeDockIcons.CommunitiesIcon },
+      { label: 'Create', icon: BadgeDockIcons.CreateIcon },
+      { label: 'Chat', icon: BadgeDockIcons.ChatIcon, badge: 2 },
+      { label: 'Inbox', icon: BadgeDockIcons.InboxIcon, badge: 3 },
+    ],
+  },
+  'cart-pill': {
+    // The full row of the store shot: back disc, pill, purple cart disc with 2 items.
+    render: ({ onActionPress }) => (
+      <CartPill onBackPress={onActionPress} onCartPress={onActionPress} cartCount={2} />
+    ),
+    // Shop: a white product grid (shirts on light grey photo cards) scrolls under the frosted pill.
+    background: '#ffffff',
+    initialTab: 0,
+    barHeight: 57,
+    blobs: [
+      { dx: -120, dy: -55, r: 55, color: '#c9aeb4' },
+      { dx: 10, dy: -60, r: 50, color: '#b8946f' },
+      { dx: 150, dy: -50, r: 45, color: '#3d4350' },
+    ],
+    tabs: [
+      { label: 'Home', icon: CartPillIcons.HomeIcon },
+      { label: 'Search', icon: CartPillIcons.SearchIcon },
+      { label: 'Explore', icon: CartPillIcons.ExploreIcon },
+      { label: 'Orders', icon: CartPillIcons.OrdersIcon },
+    ],
+  },
+  'glass-badges': {
+    render: ({ onActionPress }) => <GlassBadges onActionPress={onActionPress} />,
+    // Telegram: a white chat list scrolls under the glass bar; a yellow avatar sits behind the
+    // pill's left end.
+    background: '#ffffff',
+    initialTab: 2,
+    barHeight: 62,
+    blobs: [
+      { dx: -160, dy: -30, r: 30, color: '#f2e36c' },
+      { dx: 150, dy: -75, r: 28, color: '#8ab8f0' },
+      { dx: -20, dy: -80, r: 26, color: '#e9b7a4' },
+    ],
+    tabs: [
+      { label: 'Contacts', icon: GlassBadgesIcons.ContactsIcon },
+      { label: 'Calls', icon: GlassBadgesIcons.CallsIcon },
+      { label: 'Chats', icon: GlassBadgesIcons.ChatsIcon, badge: 8 },
+      { label: 'Settings', icon: GlassBadgesIcons.SettingsIcon },
+    ],
+  },
+  'section-sheet': {
+    // No tab bar: the sections live in a sheet over a full-screen map. Each section's body is
+    // a real list, so the sheet can be raised to half or full height and scrolled.
+    render: ({ routes }) => (
+      <SectionSheet
+        sections={{
+          [routes[0] ?? 'index']: <SectionRows title="Explore" />,
+          [routes[1] ?? 't2']: <SectionRows title="Guides" />,
+          [routes[2] ?? 't3']: <SectionRows title="Saved" />,
+        }}
+      />
+    ),
+    // A light topographic map stands in for the full-screen content behind the sheet.
+    background: '#e8eee4',
+    fullScreen: true,
+    pattern: { kind: 'contours', color: '#cfd8c8' },
+    initialTab: 0,
+    barHeight: 76,
+    tabs: [
+      { label: 'Explore', icon: () => null },
+      { label: 'Guides', icon: () => null },
+      { label: 'Saved', icon: () => null },
+    ],
+  },
+  'scrub-pill': {
+    // Press and slide along the pill: the lens follows the finger, and lifting chooses.
+    render: () => <ScrubPill />,
+    background: '#eef1f6',
+    pattern: { kind: 'grid', color: '#e2e7ef', gap: 24 },
+    initialTab: 0,
+    barHeight: 62,
+    tabs: [
+      { label: 'Home', icon: SoftPillIcons.HomeIcon },
+      { label: 'Ideas', icon: SoftPillIcons.IdeasIcon },
+      { label: 'Explore', icon: SoftPillIcons.ExploreIcon },
+      { label: 'History', icon: SoftPillIcons.HistoryIcon },
+      { label: 'Trends', icon: SoftPillIcons.TrendsIcon },
+    ],
+  },
+  'live-tabs': {
+    // The Timer tab counts down and the Downloads tab fills a ring, both fed from outside
+    // the bar by `useLiveTab` (LiveTabsFeed, declared once beside the navigator).
+    render: () => <LiveTabs />,
+    panel: ({ routes }) => <LiveTabsFeed timer={routes[1] ?? 't2'} download={routes[2] ?? 't3'} />,
+    extra: LiveTabsControls,
+    background: '#f6f5f3',
+    initialTab: 0,
+    barHeight: 56,
+    tabs: [
+      { label: 'Home', icon: MaterialPillIcons.HomeIcon },
+      { label: 'Timer', icon: SoftPillIcons.HistoryIcon },
+      { label: 'Downloads', icon: SideRailIcons.FolderIcon },
+      { label: 'Profile', icon: LightIconsIcons.PersonIcon },
+    ],
+  },
   'mini-player': {
     // Paired with Soft Pill: the strip peeks out from behind the pill.
     render: () => <SoftPill />,
@@ -478,6 +767,67 @@ export const demos: Record<string, Demo> = {
     tabs: [
       { label: 'Home', icon: LabeledPlusIcons.HomeIcon },
       { label: 'Creator', icon: LabeledPlusIcons.CreatorIcon },
+    ],
+  },
+  'bar-sheet': {
+    // Paired with Soft Pill: a comments sheet rises from the bottom edge, behind the pill, to
+    // 60%; drag its header to full height, where the body scrolls.
+    render: () => <SoftPill />,
+    panel: () => <BarSheetPanel />,
+    extra: BarSheetControls,
+    background: '#e5dfd4',
+    fullScreen: true,
+    pattern: { kind: 'stripes', light: '#f4efe7', dark: '#e1dace', gap: 8 },
+    initialTab: 2,
+    barHeight: 58.5,
+    tabs: [
+      { label: 'Home', icon: SoftPillIcons.HomeIcon },
+      { label: 'Ideas', icon: SoftPillIcons.IdeasIcon },
+      { label: 'Explore', icon: SoftPillIcons.ExploreIcon },
+      { label: 'History', icon: SoftPillIcons.HistoryIcon },
+      { label: 'Trends', icon: SoftPillIcons.TrendsIcon },
+    ],
+  },
+  'companion-chip': {
+    // Paired with Split Search, which minimizes on scroll: the chip rides above the bar's end
+    // and follows it as it shrinks, slides away with it for the keyboard, and a toast placed
+    // with useTabBarInset() clears both.
+    render: () => <SplitSearch />,
+    panel: () => <CompanionChipPanel />,
+    extra: CompanionChipExtra,
+    hideOnKeyboard: true,
+    background: '#f2f2f7',
+    initialTab: 1,
+    barHeight: 62,
+    blobs: [
+      { dx: -120, dy: -60, r: 55, color: '#e7c3d9' },
+      { dx: 40, dy: -70, r: 45, color: '#d9dde6' },
+      { dx: 150, dy: -40, r: 40, color: '#c9d6c4' },
+    ],
+    tabs: [
+      { label: 'For You', icon: SplitSearchIcons.ForYouIcon },
+      { label: 'Products', icon: SplitSearchIcons.ProductsIcon },
+      { label: 'Go Further', icon: SplitSearchIcons.GoFurtherIcon },
+      { label: 'Bag', icon: SplitSearchIcons.BagIcon },
+      { label: 'Search', icon: SplitSearchIcons.SearchIcon },
+    ],
+  },
+  'sub-tabs': {
+    // A Soft Pill whose Library tab owns a drawer: long-press it (or use the screen-reader
+    // action) and Albums, Artists and Songs slide up from behind it.
+    render: () => <SubTabsBar />,
+    panel: () => <SubTabsPanel />,
+    extra: SubTabsNote,
+    background: '#e5dfd4',
+    pattern: { kind: 'stripes', light: '#f4efe7', dark: '#e1dace', gap: 8 },
+    initialTab: 0,
+    barHeight: 58.5,
+    tabs: [
+      { label: 'Home', icon: SoftPillIcons.HomeIcon },
+      { label: 'Ideas', icon: SoftPillIcons.IdeasIcon },
+      { label: 'Library', icon: SoftPillIcons.ExploreIcon },
+      { label: 'History', icon: SoftPillIcons.HistoryIcon },
+      { label: 'Trends', icon: SoftPillIcons.TrendsIcon },
     ],
   },
 };

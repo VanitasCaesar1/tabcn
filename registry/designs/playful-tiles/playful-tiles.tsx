@@ -21,6 +21,7 @@ export type PlayfulTilesColors = typeof defaultColors;
 
 export interface PlayfulTilesProps {
   colors?: Partial<PlayfulTilesColors>;
+  /** Each tab's tile color, in tab order; repeats from the start when there are more tabs. */
   tabColors?: string[];
   haptics?: boolean;
 }

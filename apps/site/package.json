@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun scripts/fetch-repo.ts && bun scripts/build-registry.ts && next dev",
-    "build": "bun scripts/fetch-repo.ts && bun scripts/build-registry.ts && next build",
+    "dev": "bun scripts/fetch-repo.ts && bun scripts/build-registry.ts && bun scripts/build-props.ts && next dev",
+    "build": "bun scripts/fetch-repo.ts && bun scripts/build-registry.ts && bun scripts/build-props.ts && next build",
     "registry": "bun scripts/build-registry.ts",
+    "props": "bun scripts/build-props.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

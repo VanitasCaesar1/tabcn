@@ -32,14 +32,16 @@ export interface TabIndicatorValues {
 
 /**
  * Animated values that follow the active tab's frame inside the enclosing
- * `TabList`. Jumps into place on the first layout, springs after that.
+ * `TabList`. Jumps into place on the first layout, springs after that. Inside a `TabScrub`
+ * (tabcn/gestures) they follow the finger while it slides along the bar, then settle on the
+ * tab it lifted on.
  */
 export function useTabIndicator(options: TabIndicatorOptions = {}): TabIndicatorValues {
   const { inset = 0, spring = tabcnSpring } = options;
   const insetX = typeof inset === 'number' ? inset : inset.x;
   const insetY = typeof inset === 'number' ? inset : inset.y;
   const { activeIndex } = useTabBar();
-  const { frames } = useTabListContext('useTabIndicator');
+  const { frames, scrub } = useTabListContext('useTabIndicator');
   const x = useSharedValue(0);
   const y = useSharedValue(0);
   const width = useSharedValue(0);
@@ -47,7 +49,8 @@ export function useTabIndicator(options: TabIndicatorOptions = {}): TabIndicator
   const ready = useSharedValue(false);
 
   useAnimatedReaction(
-    () => frames.value[activeIndex],
+    // While scrubbing, the frame under the finger; otherwise the active tab's.
+    () => scrub?.value ?? frames.value[activeIndex],
     (frame) => {
       if (!frame) return;
       const next = {

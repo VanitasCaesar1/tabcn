@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { catalog } from '@/catalog';
-import { demos, designHref, useCurrentDemo } from '@/demos';
+import { demos, designHref, screenBackground, useCurrentDemo } from '@/demos';
 import { Pattern } from '@/pattern';
 
 /**
@@ -30,7 +30,9 @@ export function DemoScreen({ index }: { index: number }) {
   const navigation = useNavigation();
 
   return (
-    <View style={[styles.screen, { backgroundColor: demo?.background }]}>
+    <View
+      style={[styles.screen, { backgroundColor: demo ? screenBackground(demo, index) : undefined }]}
+    >
       {demo?.pattern ? <Pattern spec={demo.pattern} centerY={barCenterY} /> : null}
       {demo?.blobs?.map((b) => (
         <View
@@ -47,6 +49,19 @@ export function DemoScreen({ index }: { index: number }) {
           }}
         />
       ))}
+      {/* A demo with a sheet hides the stack header (see Demo.fullScreen), so it offers its own
+          way back. */}
+      {demo?.fullScreen ? (
+        <Pressable
+          role="button"
+          accessibilityLabel="Back"
+          hitSlop={10}
+          onPress={() => router.back()}
+          style={[styles.next, styles.back, { top: insets.top + 12, backgroundColor: chip }]}
+        >
+          <Text style={{ color: text, fontWeight: '600' }}>Back</Text>
+        </Pressable>
+      ) : null}
       {/* The stack header is transparent on iOS 26, so clear it by hand. */}
       <View style={[styles.header, { paddingTop: insets.top + 64 }]}>
         <Text style={[styles.title, { color: text }]}>{title}</Text>
@@ -92,4 +107,5 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 30, fontWeight: '700' },
   next: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 },
+  back: { position: 'absolute', left: 20 },
 });

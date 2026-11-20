@@ -16,13 +16,19 @@ export interface TabFrame {
   height: number;
 }
 
-interface TabListContextValue {
+export interface TabListContextValue {
   listRef: RefObject<ComponentRef<typeof View> | null>;
   /** Frame of each tab button relative to the TabList, by tab index. */
   frames: SharedValue<Record<number, TabFrame>>;
+  /**
+   * Set only inside `TabScrub` (tabcn/gestures): the frame the indicator follows while a
+   * finger scrubs the bar, or null to follow the active tab. Internal.
+   */
+  scrub?: SharedValue<TabFrame | null>;
 }
 
-const TabListContext = createContext<TabListContextValue | null>(null);
+/** Internal: shared with `TabScrub`, which draws its own list. */
+export const TabListContext = createContext<TabListContextValue | null>(null);
 
 export function useTabListContext(caller: string): TabListContextValue {
   const ctx = use(TabListContext);

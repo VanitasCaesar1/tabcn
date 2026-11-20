@@ -60,7 +60,9 @@ module.exports = {
   ReduceMotion,
   Easing,
   useSharedValue: (initial) => React.useState(() => makeShared(initial))[0],
+  makeMutable: (initial) => makeShared(initial),
   useAnimatedStyle: () => ({}),
+  useAnimatedProps: () => ({}),
   useAnimatedReaction: () => {},
   useDerivedValue: (fn) => makeShared(fn()),
   withSpring: (to, _config, callback) => {
@@ -84,6 +86,9 @@ module.exports = {
   useAnimatedScrollHandler: (handlers) => (event) =>
     handlers.onScroll?.(event?.nativeEvent ? event.nativeEvent : event),
   withDelay: (_d, a) => a,
+  withRepeat: (a) => a,
+  // Skips layout animations for its children (Cart Pill's count): renders them as they are.
+  LayoutAnimationConfig: ({ children }) => React.createElement(React.Fragment, null, children),
   withSequence: (...steps) => steps[steps.length - 1],
   interpolate: (v, input, output) =>
     output[0] + ((v - input[0]) / (input[1] - input[0])) * (output[1] - output[0]),

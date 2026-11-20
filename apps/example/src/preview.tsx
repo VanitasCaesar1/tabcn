@@ -41,7 +41,7 @@ export function DesignPreview({ demo }: { demo: Demo }) {
         {/* Its own provider, for bars that use panel or minimize hooks (Quick Create's bar). */}
         <TabBarProvider>
           <TabBarStateProvider value={state}>
-            {demo.render({ onActionPress: noop })}
+            {demo.render({ onActionPress: noop, routes: tabs.map((tab) => tab.routeName) })}
           </TabBarStateProvider>
         </TabBarProvider>
       </View>

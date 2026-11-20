@@ -5,9 +5,12 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { type ReactElement, type ReactNode, use, useCallback, useMemo, useState } from 'react';
 
+import { SafeAreaFrameContext } from 'react-native-safe-area-context';
+
 import { useAdapterBridge } from './adapter-bridge';
 import { buildTabBarState, type TabOptionsLike } from './build-state';
 import { useOverrideSlot } from './override';
+import { ScreenFrameContext } from './screen-frame';
 import { TabBarStateProvider } from './state';
 
 const noop = () => {};
@@ -39,9 +42,18 @@ function ReactNavigationTabBar({ nav, children }: { nav: BottomTabBarProps; chil
   );
 
   const isFocused = useCallback(() => navigation.isFocused(), [navigation]);
-  useAdapterBridge(state, isFocused);
+  // The helpers carry the parent screen's `addListener`, which emits its focus and blur.
+  useAdapterBridge(state, isFocused, navigation);
 
-  return <TabBarStateProvider value={value}>{children}</TabBarStateProvider>;
+  // Sheets size themselves from the screen's frame, which the navigator's safe-area
+  // provider measures.
+  const frame = use(SafeAreaFrameContext);
+
+  return (
+    <ScreenFrameContext value={frame}>
+      <TabBarStateProvider value={value}>{children}</TabBarStateProvider>
+    </ScreenFrameContext>
+  );
 }
 
 /**

@@ -78,9 +78,10 @@ body {
   }
 }
 
+/* Drawn on tabcnSpring: the stroke only grows, so it counts as a resize. */
 .ul-stroke {
   stroke-dasharray: 1;
-  animation: ul-draw 700ms cubic-bezier(0.65, 0, 0.35, 1) 350ms both;
+  animation: ul-draw 400ms var(--tabcn-spring) 500ms both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -89,54 +90,278 @@ body {
   }
 }
 
-/* Home hero: a few tab bar cards floating at the sides of the headline. Position and size come
-   from inline custom properties; drift and a slight tilt run on two loops of different lengths,
-   so the motion doesn't visibly repeat. Both loops ease in and out and only reverse, so nothing
-   overshoots. */
-.hero-card {
+/* Home hero: the departure board of tab bars (hero.tsx, bar-board.tsx). */
+
+/* The library's motion as CSS curves. tabcnSpring (stiffness 420, damping 41) is critically
+   damped: sampled over 400 ms from x(t) = 1 - (1 + wt)e^-wt with w = sqrt(420), it only rises, so
+   nothing overshoots. Browsers without linear() keep the bezier, which has the same shape.
+   tabcnTiming is the library's 200 ms crossfade curve. */
+:root {
+  --tabcn-spring: cubic-bezier(0.25, 1, 0.5, 1);
+  --tabcn-timing: cubic-bezier(0.25, 0.1, 0.25, 1);
+  /* An edge around every tile (it also keeps near-black bars apart from the dark page), its
+     shadow, and the veil that dims every tile but the one in focus. */
+  --tile-ring: light-dark(oklch(0 0 0 / 0.08), oklch(1 0 0 / 0.1));
+  --tile-shadow: light-dark(oklch(0 0 0 / 0.22), oklch(0 0 0 / 0.8));
+  --tile-veil: light-dark(oklch(1 0 0 / 0.5), oklch(0.145 0 0 / 0.62));
+  /* A lighter veil for the lead row's other tiles, so their loops still read. */
+  --tile-veil-near: light-dark(oklch(1 0 0 / 0.35), oklch(0.145 0 0 / 0.45));
+  /* The dock's capsule behind the group in focus. */
+  --dock-capsule: light-dark(#ffffff, #2a2a2a);
+  --dock-capsule-shadow:
+    0 1px 2px light-dark(oklch(0 0 0 / 0.1), oklch(0 0 0 / 0.5)),
+    inset 0 0 0 1px light-dark(oklch(0 0 0 / 0.05), oklch(1 0 0 / 0.06));
+}
+
+/* A custom property takes any value, so declaring it twice would always keep the second, even
+   where linear() isn't understood. Only browsers that understand it get the sampled curve. */
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --tabcn-spring: linear(
+      0,
+      0.094,
+      0.273,
+      0.454,
+      0.607,
+      0.725,
+      0.812,
+      0.873,
+      0.915,
+      0.944,
+      0.964,
+      0.976,
+      0.985,
+      0.99,
+      0.994,
+      0.996,
+      1
+    );
+  }
+}
+
+/* Page entrance: a plain fade on tabcnTiming (200 ms), staggered with --rise-delay. Nothing
+   moves or grows. CSS only, so it runs before the scripts load. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.rise {
+  animation: fade-in 200ms var(--tabcn-timing) var(--rise-delay, 0ms) both;
+}
+
+/* Tile sizes follow the page column (the hero is the container), not the window. The lead row
+   is 402 px wide once the column allows: an iPhone 17 Pro's width in points, so its bars show at
+   actual size. The two rows under it are 62% of that. Tiles keep the recordings' crop, 1206 x 420. */
+.hero {
+  --lead-w: min(402px, calc(100cqi - 96px));
+  --lead-h: calc(var(--lead-w) * 420 / 1206);
+  --chorus-w: calc(var(--lead-w) * 0.62);
+  --chorus-h: calc(var(--chorus-w) * 420 / 1206);
+}
+
+/* Rows only fade in, on tabcnTiming, starting at 300, 340 and 380 ms. */
+.bar-row {
+  --pitch: calc(var(--tile-w) + var(--gap));
+  position: relative;
+  height: var(--tile-h);
+  animation: fade-in 200ms var(--tabcn-timing) calc(300ms + var(--row) * 40ms) both;
+}
+
+/* Each row sets its own size; --pitch has to be worked out on the row, where --tile-w is set. */
+.bar-row[data-size="lead"] {
+  --tile-w: var(--lead-w);
+  --tile-h: var(--lead-h);
+  --gap: 16px;
+  --radius: 16px;
+  --veil: var(--tile-veil-near);
+}
+
+.bar-row[data-size="chorus"] {
+  --tile-w: var(--chorus-w);
+  --tile-h: var(--chorus-h);
+  --gap: 14px;
+  --radius: 12px;
+  --veil: var(--tile-veil);
+}
+
+.bar-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+  /* Back in over CUT_IN_MS after a cut (see [data-cut] below). */
+  transition: opacity var(--cut-in-ms, 200ms) var(--tabcn-timing);
+}
+
+.bar-row[data-size="lead"] + .bar-row {
+  margin-top: 4px;
+}
+
+/* The faded edges. The mask reaches past the row above and below, so the focus outline and
+   the tiles' shadows aren't cut off. */
+.bar-mask {
   position: absolute;
-  left: var(--x);
-  top: var(--y);
-  width: calc(var(--w) * var(--hero-scale, 1));
-  translate: -50% -50%;
-  perspective: 900px;
-  opacity: var(--o);
+  inset: -12px 0 -32px;
+  pointer-events: none;
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
 }
 
-.hero-card > div {
-  translate: 0 0 var(--z);
-  transform: rotateX(var(--rx0)) rotateY(var(--ry0)) rotateZ(var(--rz0));
-  animation:
-    hero-float var(--df) ease-in-out var(--delay) infinite alternate,
-    hero-tumble var(--dt) ease-in-out var(--delay) infinite alternate;
-  will-change: translate, transform;
+/* Slot --offset sits in the middle. Each step changes --offset by one and the track slides on
+   tabcnSpring; a step that lands mid-slide carries on from where the track is. */
+.bar-track {
+  position: absolute;
+  inset: 12px 0 auto;
+  height: var(--tile-h);
+  translate: calc(50% - var(--tile-w) / 2 - var(--offset) * var(--pitch) * var(--dir)) 0;
+  transition: translate var(--spring-ms, 400ms) var(--tabcn-spring);
 }
 
-.hero-field[data-paused] .hero-card > div {
-  animation-play-state: paused;
+/* Automatic steps ripple down the rows; prev, next and the dock move them all at once. */
+[data-step="auto"] .bar-track {
+  transition-delay: calc(var(--row) * var(--stagger, 90ms));
 }
 
-@keyframes hero-float {
-  to {
-    translate: var(--tx) var(--ty) var(--z);
-  }
+/* A long jump: the rows fade out, move with the slide switched off, and fade back in. */
+.bar-rows[data-cut="out"] {
+  opacity: 0;
+  transition-duration: var(--cut-out-ms, 120ms);
 }
 
-@keyframes hero-tumble {
-  to {
-    transform: rotateX(var(--rx1)) rotateY(var(--ry1)) rotateZ(var(--rz1));
-  }
+.bar-rows[data-cut="snap"] {
+  opacity: 0;
+  transition: none;
+}
+
+.bar-rows[data-cut="snap"] .bar-track {
+  transition: none;
+}
+
+.bar-tile {
+  position: absolute;
+  top: 0;
+  left: calc(var(--i) * var(--pitch) * var(--dir));
+  width: var(--tile-w);
+  height: var(--tile-h);
+  overflow: hidden;
+  border-radius: var(--radius, 16px);
+  pointer-events: auto;
+  box-shadow:
+    0 0 0 1px var(--tile-ring),
+    0 14px 30px -16px var(--tile-shadow);
+  outline: 1.5px solid transparent;
+  outline-offset: 3px;
+  transition: outline-color var(--timing-ms, 200ms) var(--tabcn-timing);
+}
+
+.bar-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--veil, var(--tile-veil));
+  pointer-events: none;
+  transition: opacity var(--timing-ms, 200ms) var(--tabcn-timing);
+}
+
+.bar-tile[data-focus] {
+  outline-color: var(--foreground);
+}
+
+.bar-tile[data-focus]::after {
+  opacity: 0;
+}
+
+/* A loop shows over its poster once it is actually playing. */
+.bar-video {
+  opacity: 0;
+  transition: opacity var(--timing-ms, 200ms) var(--tabcn-timing);
+}
+
+.bar-video[data-shown] {
+  opacity: 1;
+}
+
+/* The dock under the board: a tab bar of layout groups and the pause button. It fades in last. */
+.dock {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  padding-inline: 16px;
+  animation: fade-in 200ms var(--tabcn-timing) 420ms both;
+}
+
+.dock-pill {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr));
+  width: min(312px, 100% - 52px);
+  height: 52px;
+  padding: 4px;
+  border-radius: 9999px;
+  background: var(--surface);
+  box-shadow: var(--shadow-raised);
+}
+
+/* Sits behind the group in focus: one tab wide, moved by its own width per tab. */
+.dock-capsule {
+  position: absolute;
+  inset: 4px auto 4px 4px;
+  width: calc((100% - 8px) / var(--n, 4));
+  border-radius: 9999px;
+  background: var(--dock-capsule);
+  box-shadow: var(--dock-capsule-shadow);
+  translate: calc(var(--g) * 100%) 0;
+  transition: translate var(--spring-ms, 400ms) var(--tabcn-spring);
+}
+
+.dock-tab {
+  transition: color var(--timing-ms, 200ms) var(--tabcn-timing);
+}
+
+.dock-tab:hover {
+  transition-duration: 150ms;
 }
 
 @media (max-width: 639px) {
-  .hero-field {
-    --hero-scale: 0.7;
+  .bar-row[data-size="lead"] {
+    --gap: 12px;
+    --radius: 12px;
+  }
+  .bar-row[data-size="chorus"] {
+    --gap: 12px;
+    --radius: 10px;
+  }
+  .bar-rows {
+    gap: 12px;
+  }
+  .bar-row[data-size="lead"] + .bar-row {
+    margin-top: 0;
+  }
+  .bar-mask {
+    mask-image: linear-gradient(90deg, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+  }
+  .dock {
+    margin-top: 20px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-card > div {
+  .rise,
+  .bar-row,
+  .dock {
     animation: none;
+  }
+  .bar-rows,
+  .bar-track,
+  .bar-tile,
+  .bar-tile::after,
+  .bar-video,
+  .dock-capsule,
+  .dock-tab {
+    transition: none;
   }
 }
 
