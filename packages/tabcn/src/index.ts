@@ -1,8 +1,27 @@
 /**
  * tabcn: the shared foundation every tab bar design builds on.
- *
- * The public API is not written yet. It is specified in
- * docs/designs/foundation.md and implemented once that doc is approved.
+ * Spec: docs/designs/foundation.md. Navigator adapters live in
+ * 'tabcn/expo-router' and 'tabcn/react-navigation'.
  */
 
-export const TABCN_VERSION = '0.0.0';
+export {
+  TabIndicator,
+  type TabIndicatorOptions,
+  type TabIndicatorProps,
+  type TabIndicatorValues,
+  useTabIndicator,
+} from './indicator';
+export { tabcnSpring, tabcnTiming } from './motion';
+export { PressableScale, type PressableScaleProps } from './PressableScale';
+export {
+  type Insets,
+  type TabBarState,
+  TabBarStateProvider,
+  type TabIconProps,
+  type TabItem,
+  useTabBar,
+} from './state';
+export { TabBarRoot, type TabBarRootProps } from './TabBarRoot';
+export { TabButton, type TabButtonProps } from './TabButton';
+export { type TabFrame, TabList, type TabListProps } from './TabList';
+export { useFocusProgress } from './useFocusProgress';

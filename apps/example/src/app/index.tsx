@@ -1,6 +1,5 @@
 import { Link } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { TABCN_VERSION } from 'tabcn';
 
 import { catalog, LAYOUT_LABELS } from '@/catalog';
 import { useColors } from '@/use-colors';
@@ -15,7 +14,7 @@ export default function Gallery() {
       contentContainerStyle={styles.list}
       ListHeaderComponent={
         <Text style={[styles.header, { color: colors.muted }]}>
-          {catalog.length} designs · tabcn {TABCN_VERSION}
+          {catalog.filter((d) => d.status === 'ready').length} of {catalog.length} designs built
         </Text>
       }
       ItemSeparatorComponent={() => <View style={styles.gap} />}

@@ -88,7 +88,7 @@ export const catalog: DesignEntry[] = [
     title: 'Solid Dark',
     layout: 'docked-bar',
     summary: 'Black bar, icons only, filled icon for the active tab and a center create icon.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'outline-dark',
@@ -160,7 +160,7 @@ export const catalog: DesignEntry[] = [
     title: 'Sliding Capsule',
     layout: 'floating-pill',
     summary: 'White pill with icons and labels; a grey capsule slides to the active tab.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'labeled-plus',
@@ -168,7 +168,7 @@ export const catalog: DesignEntry[] = [
     title: 'Labeled + Plus',
     layout: 'pill-with-action',
     summary: 'Labelled pill with a sliding capsule beside a separate plus button.',
-    status: 'planned',
+    status: 'ready',
   },
   {
     id: 'frosted-media',

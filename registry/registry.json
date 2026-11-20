@@ -1,0 +1,49 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "tabcn",
+  "homepage": "https://github.com/OWNER/tabcn",
+  "items": [
+    {
+      "name": "sliding-capsule",
+      "type": "registry:component",
+      "title": "Sliding Capsule",
+      "description": "White floating pill with icons and labels; a grey capsule slides to the active tab.",
+      "dependencies": ["tabcn", "expo-haptics"],
+      "files": [
+        {
+          "path": "registry/designs/sliding-capsule/sliding-capsule.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/sliding-capsule.tsx"
+        }
+      ]
+    },
+    {
+      "name": "labeled-plus",
+      "type": "registry:component",
+      "title": "Labeled + Plus",
+      "description": "Labelled pill with a sliding capsule beside a separate plus button that runs an action.",
+      "dependencies": ["tabcn", "expo-haptics"],
+      "files": [
+        {
+          "path": "registry/designs/labeled-plus/labeled-plus.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/labeled-plus.tsx"
+        }
+      ]
+    },
+    {
+      "name": "solid-dark",
+      "type": "registry:component",
+      "title": "Solid Dark",
+      "description": "Black bar, icons only; each icon crossfades from outline to filled and a dot follows the active tab.",
+      "dependencies": ["tabcn", "expo-haptics"],
+      "files": [
+        {
+          "path": "registry/designs/solid-dark/solid-dark.tsx",
+          "type": "registry:component",
+          "target": "components/tabcn/solid-dark.tsx"
+        }
+      ]
+    }
+  ]
+}

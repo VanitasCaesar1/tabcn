@@ -7,7 +7,7 @@ bun install
 bun run example
 ```
 
-`bun run check` runs lint (Biome), typecheck (every workspace) and the package build. CI runs the same command on every pull request.
+`bun run check` runs lint (Biome), typecheck (every workspace), the Jest tests and the package build. CI runs the same command on every pull request.
 
 ## Design first
 

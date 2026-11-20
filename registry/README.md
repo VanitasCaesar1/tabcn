@@ -1,7 +1,7 @@
 # Registry
 
-Each design will live in its own folder here (`registry/<id>/`) as plain source files that users copy into their app. Each design is built only on the public `tabcn` API, React Native, and the dependencies it lists.
+The copyable designs. Each one is a single file, `designs/<id>/<id>.tsx`, that imports only `tabcn`, React Native, Reanimated and the npm packages listed for it in [`registry.json`](registry.json). Users install a design with the shadcn CLI and own the copy from then on.
 
-How the files are listed, versioned and copied (our own `tabcn add <id>` command, or the shadcn CLI's registry format) is an open question for the foundation design doc in [`docs/designs/`](../docs/designs/).
+`registry.json` follows the [shadcn registry format](https://ui.shadcn.com/docs/registry/registry-json). The tabcn website will serve the built item files at `/r/<id>.json` (see `docs/designs/foundation.md`).
 
-The list of designs and their working ids is in [`apps/example/src/catalog.ts`](../apps/example/src/catalog.ts).
+The example app imports these files directly (`@registry/<id>/<id>`), so what it shows is exactly what users copy. The full list of planned designs and their status is in [`apps/example/src/catalog.ts`](../apps/example/src/catalog.ts).

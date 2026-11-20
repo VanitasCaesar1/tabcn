@@ -4,13 +4,36 @@
 
 Animated tab bars for React Native and Expo, in the style of shadcn/ui: install a small foundation package, then copy the design you want into your app and make it yours.
 
-> **Status: pre-release.** The repo is set up; the foundation API is being designed in [`docs/designs/`](docs/designs/). Nothing is published to npm yet.
+> **Status: pre-release.** The foundation is implemented to [`docs/designs/foundation.md`](docs/designs/foundation.md) and 3 of the 20 designs are built. Nothing is published to npm yet.
 
 ## How it works
 
 - **`tabcn` (npm package)** holds the parts every tab bar needs and that are easy to get wrong: connecting to the navigator, tab state, safe-area spacing, the animated active-tab highlight, press feedback, badges, haptics, reduced-motion support and accessibility. Bug fixes here reach everyone through `npm update`.
 - **Designs ([`registry/`](registry/))** are short source files built on that foundation. You copy one into your project and own it. Change icons, labels and the number of tabs through props, or edit the file to change the look and motion.
 - **Navigation** stays with your navigator. A tabcn design is passed as the `tabBar` of Expo Router's `<Tabs>` or React Navigation's bottom tabs, so screens, deep links, the Android back button and screen-reader roles keep working.
+
+## Usage
+
+```tsx
+// app/(tabs)/_layout.tsx (Expo Router)
+import { Tabs } from 'expo-router/js-tabs';
+import { tabBar } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'
+import { SlidingCapsule } from '@/components/tabcn/sliding-capsule';
+
+export default function TabLayout() {
+  return (
+    <Tabs tabBar={tabBar(<SlidingCapsule />)} screenOptions={{ headerShown: false }}>
+      <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: HomeIcon }} />
+      <Tabs.Screen
+        name="inbox"
+        options={{ title: 'Inbox', tabBarIcon: InboxIcon, tabBarBadge: 3 }}
+      />
+    </Tabs>
+  );
+}
+```
+
+Icons, labels, badges and the number of tabs come from the screens' options, as with the default tab bar. Floating designs report their height, so screens can pad lists with `useBottomTabBarHeight()`.
 
 ## The 20 designs
 
@@ -57,10 +80,10 @@ Requires [Bun](https://bun.sh) 1.4+ and Node 22+. iOS needs Xcode; Android needs
 bun install        # install everything (workspaces)
 bun run example    # start Metro for the example app
 bun run ios        # or open it in the iOS simulator
-bun run check      # lint + typecheck + build, the same as CI
+bun run check      # lint + typecheck + tests + build, the same as CI
 ```
 
-The example app imports `tabcn` from `packages/tabcn/src` directly (through the `source` export condition), so edits to the package show up on reload with no build step.
+The example app imports `tabcn` from `packages/tabcn/src` directly (through the `tabcn-source` export condition), so edits to the package show up on reload with no build step.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and release process.
 

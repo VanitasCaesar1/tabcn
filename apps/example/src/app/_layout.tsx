@@ -7,7 +7,7 @@ export default function RootLayout() {
     <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="index" options={{ title: 'tabcn' }} />
-        <Stack.Screen name="designs/[id]" options={{ title: '' }} />
+        <Stack.Screen name="designs/[id]" options={{ title: '', headerBackTitle: 'Back' }} />
       </Stack>
     </ThemeProvider>
   );
