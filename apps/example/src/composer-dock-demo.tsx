@@ -9,13 +9,13 @@ import { ComposerDock, type ComposerDockMenu } from '@registry/composer-dock/com
 import {
   ArtifactItemIcon,
   ArtifactsIcon,
+  BellItemIcon,
   CameraIcon,
   ChatIcon,
   CodeIcon,
   CodeItemIcon,
   ConnectorsIcon,
   FileIcon,
-  HomeItemIcon,
   MoreIcon,
   PhotoIcon,
   ProjectItemIcon,
@@ -61,6 +61,9 @@ const INK = '#1f1e1d';
 const SOFT = '#8a8984';
 const FAINT = '#dcdbd6';
 const CHIP = 'rgba(0, 0, 0, 0.05)';
+// Projects keep a colour of their own, shown on their icons.
+const GAMES = '#8a83d8';
+const ASSISTANT = '#6fa86a';
 const fade = { ...tabcnTiming, reduceMotion: ReduceMotion.System };
 // Round buttons and the search field are Liquid Glass on iOS 26, as in the app.
 const GLASS = isLiquidGlassAvailable();
@@ -163,11 +166,12 @@ export function ComposerDockDemoBar({ routes }: { routes: readonly string[] }) {
           onPress: say('Fantasy league'),
         },
         { key: 'meal', label: 'Meal prep', icon: ProjectItemIcon, onPress: say('Meal prep') },
-        { key: 'games', label: 'Games', icon: ThumbItemIcon, onPress: say('Games') },
+        { key: 'games', label: 'Games', icon: ThumbItemIcon, color: GAMES, onPress: say('Games') },
         {
           key: 'assistant',
           label: 'Executive assistant',
-          icon: HomeItemIcon,
+          icon: BellItemIcon,
+          color: ASSISTANT,
           unread: true,
           onPress: say('Executive assistant'),
         },
@@ -702,8 +706,8 @@ function EffortSlider({
 // ---- The drawer of chats, from the menu button. ----
 
 const PINNED = [
-  { label: 'Executive assistant', icon: HomeItemIcon, unread: true },
-  { label: 'Games', icon: ThumbItemIcon },
+  { label: 'Executive assistant', icon: BellItemIcon, color: ASSISTANT, unread: true },
+  { label: 'Games', icon: ThumbItemIcon, color: GAMES },
   { label: 'Renovation receipts', icon: CodeItemIcon },
   { label: 'Photo filter tool with film effects', icon: CodeItemIcon },
   { label: 'Screenshot mockup', icon: ChatOutlineIcon },
@@ -804,7 +808,7 @@ function DrawerBody({ open }: { open: boolean }) {
                 onPress={choose(p.label)}
                 style={styles.drawerRow}
               >
-                <p.icon color="#57564f" size={18} />
+                <p.icon color={'color' in p && p.color ? p.color : '#57564f'} size={18} />
                 <Text numberOfLines={1} style={styles.drawerRowText}>
                   {p.label}
                 </Text>

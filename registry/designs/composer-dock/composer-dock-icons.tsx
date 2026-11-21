@@ -126,6 +126,19 @@ export function HomeItemIcon({ color, size = 16 }: IconProps) {
   );
 }
 
+/** Outline service bell, for an assistant-style project in a hold menu. */
+export function BellItemIcon({ color, size = 16 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M4.5 16.5a7.5 7.5 0 0 1 15 0M3 19.5h18M12 6.5V9M10 6.5h4"
+        stroke={color}
+        {...outline}
+      />
+    </Svg>
+  );
+}
+
 /** Outline thumbs-up, for a game-style project in a hold menu. */
 export function ThumbItemIcon({ color, size = 16 }: IconProps) {
   return (

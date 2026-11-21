@@ -5,9 +5,10 @@
  *   dark pill names the tab under the finger, the composer fades back, and lifting chooses
  *   the tab. `onScrubTab` reports the tab under the finger so a screen can preview it.
  * - Hold a tab that has a menu (`menus`, by route name) to open its recent items in a card
- *   above it, with an optional "New …" row. The held tab gets a soft square behind it and
- *   the screen fades back; tapping outside, Android back or the screen-reader escape
- *   gesture closes it.
+ *   that grows out of the tab, with an optional "New …" row. The held tab gets a soft
+ *   capsule behind it and the screen fades back. Keep holding and slide onto a row, then lift,
+ *   to choose it (as with iOS menus), or lift and tap. Tapping outside, Android back or the
+ *   screen-reader escape gesture closes it.
  * - The composer is a pill: + (the attachment menu, `attachments`), the text field, a
  *   dictation button and a voice button that turns into Send once there is text. Focused,
  *   it opens into a two-row card with the model chip (`model`, `onModelPress`) and rides on
@@ -31,21 +32,22 @@
  * or turns. With "reduce motion" on, every change is instant.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-// 'react-native-tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
-// here names it as this design's own dependency, so `shadcn add` installs it.
-import 'react-native-gesture-handler';
 import {
   type ComponentRef,
+  createContext,
   type ReactNode,
   type RefObject,
+  use,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import {
-  Modal,
+  BackHandler,
   Pressable,
   StyleSheet,
   Text,
@@ -53,6 +55,9 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+// 'react-native-tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
+// here names it as this design's own dependency, so `shadcn add` installs it.
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
   Extrapolation,
@@ -63,6 +68,7 @@ import Animated, {
   ReduceMotion,
   runOnJS,
   useAnimatedKeyboard,
+  useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -81,6 +87,8 @@ import { TabScrub } from 'react-native-tabcn/gestures';
 const defaultColors = {
   /** The dock, the same as the screen behind it. */
   background: '#f8f8f6',
+  /** Tints the Liquid Glass surfaces so they take the screen's tone, as in the app. */
+  glassTint: 'rgba(248, 248, 246, 0.72)',
   /** The composer's pill and card: a faint lift off the screen colour. */
   composer: 'rgba(255, 255, 255, 0.6)',
   /** Hairline edge of the composer and the menus. */
@@ -107,8 +115,10 @@ const defaultColors = {
   unread: '#2f7df6',
   /** Laid over the screen while a hold menu is open. */
   scrim: 'rgba(248, 248, 246, 0.74)',
-  /** The square behind a held tab. */
+  /** The capsule behind a held tab (without glass). */
   held: 'rgba(0, 0, 0, 0.06)',
+  /** Tints the held tab's glass capsule, a shade darker than the screen. */
+  heldGlassTint: 'rgba(222, 221, 216, 0.6)',
   /** The pill naming the tab under the finger. */
   label: '#1f1e1d',
   /** Its text. */
@@ -127,6 +137,8 @@ export interface ComposerDockMenuItem {
   label: string;
   /** Drawn before the label. */
   icon?: ComposerDockIcon;
+  /** The icon's colour (a project's own colour). Default `colors.menuIcon`. */
+  color?: string;
   /** Shows a blue dot at the end of the row. */
   unread?: boolean;
   /** Runs when the row is chosen; the menu closes first. */
@@ -196,9 +208,13 @@ const COMPOSER_GAP = 10;
 /** Between the composer and the keyboard. */
 const KEYBOARD_GAP = 6;
 const SIDE = 16;
+/** The app's glass: the transparent kind, so surfaces take the screen's tone. */
+const GLASS_STYLE = 'regular';
+/** Pressable's long-press delay: holding a tab this long opens its menu. */
+const LONG_PRESS_MS = 500;
 /** Each tab's width; the row is centred. */
 const TAB_WIDTH = 80;
-const HOLD_CARD_WIDTH = 232;
+const HOLD_CARD_WIDTH = 296;
 const ATTACH_CARD_WIDTH = 168;
 
 const fade = { ...tabcnTiming, reduceMotion: ReduceMotion.System };
@@ -239,6 +255,59 @@ export function ComposerDock({
   const [scrubbing, setScrubbing] = useState<TabItem | null>(null);
   const [held, setHeld] = useState<{ key: string; anchor: Frame; rowTop: number } | null>(null);
   const [attach, setAttach] = useState<Frame | null>(null);
+  // The finger that opened a hold menu, while it stays down: sliding it onto a row and lifting
+  // chooses that row.
+  const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
+  // Menus are drawn inside the dock (not in a modal, which would cancel the finger still down
+  // from the long press), over the whole screen: this is where the dock sits in the window.
+  const dockRef = useRef<ComponentRef<typeof View>>(null);
+  const [origin, setOrigin] = useState({ x: 0, y: 0 });
+  const [lifts, setLifts] = useState(0);
+
+  // Holding a tab opens its menu, and the same finger can then slide onto a row and lift to
+  // choose it. One pan on the row starts after the long-press delay and follows that finger
+  // natively, so it keeps going while the menu appears over it. A finger that moves first is
+  // a scrub or a tap, and the pan lets it go.
+  const icons = useRef(new Map<string, ComponentRef<typeof View>>()).current;
+  const register = (key: string, node: ComponentRef<typeof View> | null) => {
+    if (node) icons.set(key, node);
+    else icons.delete(key);
+  };
+  const [rowWidth, setRowWidth] = useState(0);
+  const latest = useRef({ tabs, menus, rowWidth });
+  latest.current = { tabs, menus, rowWidth };
+  const holdGesture = useMemo(() => {
+    const holdAt = (x: number) => {
+      const { tabs: list, menus: all, rowWidth: width } = latest.current;
+      const index = Math.floor((x - (width - list.length * TAB_WIDTH) / 2) / TAB_WIDTH);
+      const tab = list[index];
+      const node = tab ? icons.get(tab.key) : undefined;
+      if (!tab || !node || !all?.[tab.routeName]) return;
+      node.measureInWindow((fx, fy, fw, fh) =>
+        openRef.current(tab, { x: fx, y: fy, width: fw, height: fh }),
+      );
+    };
+    const move = (x: number, y: number) => setPointer({ x, y });
+    // The last position stays until the menu closes: the row under it is the one the lift
+    // chooses.
+    const lift = () => setLifts((n) => n + 1);
+    return Gesture.Pan()
+      .activateAfterLongPress(LONG_PRESS_MS)
+      .failOffsetX([-8, 8])
+      .failOffsetY([-8, 8])
+      .onStart((e) => {
+        'worklet';
+        runOnJS(holdAt)(e.x);
+      })
+      .onUpdate((e) => {
+        'worklet';
+        runOnJS(move)(e.absoluteX, e.absoluteY);
+      })
+      .onEnd(() => {
+        'worklet';
+        runOnJS(lift)();
+      });
+  }, [icons]);
 
   const hover = (tab: TabItem | null) => {
     setScrubbing(tab);
@@ -246,11 +315,19 @@ export function ComposerDock({
   };
 
   const openMenu = (tab: TabItem, anchor: Frame) => {
-    measure(rowRef, (row) => {
-      if (haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setHeld({ key: tab.key, anchor, rowTop: row.y });
+    // The hold gesture and the tab's own long press can both ask; open once.
+    if (held?.key === tab.key) return;
+    measure(dockRef, (dock) => {
+      setOrigin({ x: dock.x, y: dock.y });
+      measure(rowRef, (row) => {
+        if (haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setPointer(null);
+        setHeld({ key: tab.key, anchor, rowTop: row.y });
+      });
     });
   };
+  const openRef = useRef(openMenu);
+  openRef.current = openMenu;
   // The last menu shown, kept while its card fades out after it closes.
   const [shownHeld, setShownHeld] = useState(held);
   if (held && held !== shownHeld) setShownHeld(held);
@@ -278,49 +355,66 @@ export function ComposerDock({
 
   return (
     <TabBarRoot placement="docked" style={{ backgroundColor: colors.background }}>
-      <Composer
-        composerRef={composerRef}
-        colors={colors}
-        placeholder={placeholder}
-        model={model}
-        onModelPress={onModelPress}
-        onSend={onSend}
-        onVoicePress={onVoicePress}
-        onDictatePress={onDictatePress}
-        onAttachPress={
-          attachments ? () => measure(composerRef, (frame) => setAttach(frame)) : undefined
-        }
-        dimmed={scrubbing !== null}
-        glass={glass}
-      />
-      <Animated.View ref={rowRef} collapsable={false} style={rowStyle}>
-        <TabScrub
-          enabled={scrub}
-          style={styles.tabRow}
-          onScrubStart={(tab) => {
-            if (haptics) Haptics.selectionAsync();
-            hover(tab);
-          }}
-          onTabCross={(tab) => {
-            if (haptics) Haptics.selectionAsync();
-            hover(tab);
-          }}
-          onScrubEnd={() => hover(null)}
-        >
-          <ScrubLabel tab={scrubbing} colors={colors} />
-          {tabs.map((tab) => (
-            <DockTab
-              key={tab.key}
-              tab={tab}
-              colors={colors}
-              lit={scrubbing ? scrubbing.key === tab.key : tab.focused}
-              held={held?.key === tab.key}
-              onHold={menus?.[tab.routeName] ? openMenu : undefined}
-            />
-          ))}
-        </TabScrub>
-      </Animated.View>
-      <Animated.View style={spacerStyle} />
+      <View ref={dockRef} collapsable={false} style={styles.dock}>
+        <Composer
+          composerRef={composerRef}
+          colors={colors}
+          placeholder={placeholder}
+          model={model}
+          onModelPress={onModelPress}
+          onSend={onSend}
+          onVoicePress={onVoicePress}
+          onDictatePress={onDictatePress}
+          onAttachPress={
+            attachments
+              ? () =>
+                  measure(dockRef, (dock) => {
+                    setOrigin({ x: dock.x, y: dock.y });
+                    measure(composerRef, (frame) => setAttach(frame));
+                  })
+              : undefined
+          }
+          dimmed={scrubbing !== null}
+          glass={glass}
+        />
+        <GestureDetector gesture={holdGesture}>
+          <Animated.View
+            ref={rowRef}
+            collapsable={false}
+            style={rowStyle}
+            onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}
+          >
+            <TabScrub
+              enabled={scrub}
+              style={styles.tabRow}
+              onScrubStart={(tab) => {
+                if (haptics) Haptics.selectionAsync();
+                hover(tab);
+              }}
+              onTabCross={(tab) => {
+                if (haptics) Haptics.selectionAsync();
+                hover(tab);
+              }}
+              onScrubEnd={() => hover(null)}
+            >
+              <ScrubLabel tab={scrubbing} colors={colors} />
+              {tabs.map((tab) => (
+                <DockTab
+                  key={tab.key}
+                  tab={tab}
+                  colors={colors}
+                  lit={scrubbing ? scrubbing.key === tab.key : tab.focused || held?.key === tab.key}
+                  held={held?.key === tab.key}
+                  onHold={menus?.[tab.routeName] ? openMenu : undefined}
+                  register={register}
+                  glass={glass}
+                />
+              ))}
+            </TabScrub>
+          </Animated.View>
+        </GestureDetector>
+        <Animated.View style={spacerStyle} />
+      </View>
 
       <Popover
         open={held !== null && menu !== undefined}
@@ -330,8 +424,14 @@ export function ComposerDock({
         width={HOLD_CARD_WIDTH}
         centerX={shownHeld ? shownHeld.anchor.x + shownHeld.anchor.width / 2 : 0}
         bottom={shownHeld?.rowTop ?? 0}
+        gap={12}
+        grow
+        pointer={pointer}
+        lifts={lifts}
+        haptics={haptics}
         colors={colors}
         glass={glass}
+        origin={origin}
         label={heldTab ? `${heldTab.label}, recent` : 'Recent'}
       >
         {(close) =>
@@ -340,17 +440,22 @@ export function ComposerDock({
               {menu.items.map((item) => (
                 <MenuRow
                   key={item.key}
+                  id={item.key}
                   label={item.label}
                   icon={item.icon}
+                  iconColor={item.color}
                   unread={item.unread}
+                  large
                   colors={colors}
                   onPress={() => close(item.onPress)}
                 />
               ))}
               {menu.create ? (
                 <MenuRow
+                  id="create"
                   label={menu.create.label}
                   create
+                  large
                   colors={colors}
                   onPress={() => close(menu.create?.onPress)}
                 />
@@ -368,8 +473,11 @@ export function ComposerDock({
         width={ATTACH_CARD_WIDTH}
         left={shownAttach?.x ?? SIDE}
         bottom={shownAttach ? shownAttach.y + shownAttach.height : 0}
+        gap={-8}
+        haptics={haptics}
         colors={colors}
         glass={glass}
+        origin={origin}
         label="Add to message"
       >
         {(close) =>
@@ -378,6 +486,7 @@ export function ComposerDock({
               {group.map((a) => (
                 <MenuRow
                   key={a.key}
+                  id={a.key}
                   label={a.label}
                   icon={a.icon}
                   iconSize={18}
@@ -399,12 +508,18 @@ function DockTab({
   lit,
   held,
   onHold,
+  register,
+  glass,
 }: {
   tab: TabItem;
   colors: ComposerDockColors;
   lit: boolean;
   held: boolean;
+  /** The held tab's capsule is Liquid Glass, as in the app. */
+  glass: boolean;
   onHold?: (tab: TabItem, anchor: Frame) => void;
+  /** Hands the dock this tab's icon, which its menu opens from. */
+  register: (key: string, node: ComponentRef<typeof View> | null) => void;
 }) {
   const ref = useRef<ComponentRef<typeof View>>(null);
   const square = useSharedValue(held ? 1 : 0);
@@ -413,23 +528,39 @@ function DockTab({
   }, [held, square]);
   const squareStyle = useAnimatedStyle(() => ({ opacity: square.value }));
   const color = lit ? colors.foreground : colors.muted;
+
+  const open = () => {
+    if (onHold) measure(ref, (frame) => onHold(tab, frame));
+  };
   return (
     <TabButton
       tab={tab}
       style={styles.tab}
-      onLongPress={onHold ? () => measure(ref, (frame) => onHold(tab, frame)) : undefined}
+      // Touch holds are handled by the row's hold gesture (see ComposerDock); this long press is
+      // the screen readers' way in.
+      onLongPress={onHold ? open : undefined}
       accessibilityActions={onHold ? [{ name: 'longpress', label: 'Show recent' }] : undefined}
     >
-      <View ref={ref} collapsable={false} style={styles.iconBox}>
+      <View
+        ref={(node) => {
+          ref.current = node;
+          register(tab.key, node);
+        }}
+        collapsable={false}
+        style={styles.iconBox}
+      >
         <Animated.View
           pointerEvents="none"
-          style={[
-            StyleSheet.absoluteFill,
-            styles.heldSquare,
-            { backgroundColor: colors.held },
-            squareStyle,
-          ]}
-        />
+          style={[styles.heldCapsule, glass ? null : { backgroundColor: colors.held }, squareStyle]}
+        >
+          {glass ? (
+            <GlassView
+              glassEffectStyle={GLASS_STYLE}
+              tintColor={colors.heldGlassTint}
+              style={[StyleSheet.absoluteFill, styles.heldGlass]}
+            />
+          ) : null}
+        </Animated.View>
         {tab.renderIcon?.({ focused: tab.focused, color, size: 20 })}
       </View>
     </TabButton>
@@ -510,12 +641,24 @@ function Composer({
   };
 
   const plus = onAttachPress ? (
-    <CircleButton key="plus" label="Add files and more" onPress={onAttachPress}>
+    <CircleButton
+      key="plus"
+      label="Add files and more"
+      onPress={onAttachPress}
+      glass={glass}
+      tint={colors.glassTint}
+    >
       <PlusGlyph color={colors.foreground} />
     </CircleButton>
   ) : null;
   const dictate = onDictatePress ? (
-    <CircleButton key="dictate" label="Dictate" onPress={onDictatePress}>
+    <CircleButton
+      key="dictate"
+      label="Dictate"
+      onPress={onDictatePress}
+      glass={glass}
+      tint={colors.glassTint}
+    >
       <MicGlyph color={colors.dictate} />
     </CircleButton>
   ) : null;
@@ -554,7 +697,8 @@ function Composer({
     >
       {glass ? (
         <GlassView
-          glassEffectStyle="regular"
+          glassEffectStyle={GLASS_STYLE}
+          tintColor={colors.glassTint}
           isInteractive
           style={[StyleSheet.absoluteFill, { borderRadius: focused ? 22 : 24 }]}
         />
@@ -601,7 +745,8 @@ function Composer({
               >
                 {glass ? (
                   <GlassView
-                    glassEffectStyle="regular"
+                    glassEffectStyle={GLASS_STYLE}
+                    tintColor={colors.glassTint}
                     isInteractive
                     style={[StyleSheet.absoluteFill, styles.chipGlass]}
                   />
@@ -625,11 +770,16 @@ function CircleButton({
   label,
   onPress,
   background,
+  glass,
+  tint,
   children,
 }: {
   label: string;
   onPress?: () => void;
   background?: string;
+  /** Sits in its own small Liquid Glass circle, as the app's + and dictation buttons do. */
+  glass?: boolean;
+  tint?: string;
   children: ReactNode;
 }) {
   return (
@@ -644,14 +794,40 @@ function CircleButton({
         { opacity: pressed ? 0.6 : 1 },
       ]}
     >
+      {glass ? (
+        <GlassView
+          glassEffectStyle={GLASS_STYLE}
+          tintColor={tint}
+          style={[StyleSheet.absoluteFill, styles.circleGlass]}
+        />
+      ) : null}
       {children}
     </Pressable>
   );
 }
 
+const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+
+interface RowFrame {
+  y: number;
+  height: number;
+}
+
+/** What a card tells its rows: the row under a held finger, and where each row sits. */
+const PopoverContext = createContext<{
+  hovered: string | null;
+  place: (id: string, frame: RowFrame | null, run?: () => void) => void;
+}>({ hovered: null, place: () => {} });
+
 /**
- * A card in a transparent modal, above the given bottom edge. The screen above `scrimBottom`
- * is washed with `scrim`; a tap anywhere outside the card closes it. Crossfades in and out.
+ * A card drawn over the whole screen from inside the dock (`origin` is where the dock sits),
+ * `gap` points above the given bottom edge. The screen above
+ * `scrimBottom` is washed with `scrim`; a tap anywhere outside the card closes it.
+ *
+ * With `grow`, the card grows out of the point it opened from (`centerX`, at its bottom edge)
+ * while a blur over it clears, as iOS menus do, on an eased curve with no overshoot; closing
+ * reverses it. Otherwise it crossfades. With `pointer` (a finger still down from the long
+ * press), the row under it is highlighted, and when `lifts` counts up the highlighted row runs.
  */
 function Popover({
   open,
@@ -662,8 +838,14 @@ function Popover({
   centerX,
   left,
   bottom,
+  gap,
+  grow,
+  pointer,
+  lifts,
+  haptics,
   colors,
   glass,
+  origin,
   label,
   children,
 }: {
@@ -675,8 +857,15 @@ function Popover({
   centerX?: number;
   left?: number;
   bottom: number;
+  gap: number;
+  grow?: boolean;
+  pointer?: { x: number; y: number } | null;
+  lifts?: number;
+  haptics: boolean;
   colors: ComposerDockColors;
   glass: boolean;
+  /** Where the dock sits in the window: the overlay is drawn from there to cover the screen. */
+  origin: { x: number; y: number };
   label: string;
   children: (close: (then?: () => void) => void) => ReactNode;
 }) {
@@ -684,8 +873,8 @@ function Popover({
   const [mounted, setMounted] = useState(open);
   if (open && !mounted) setMounted(true);
   const shown = useSharedValue(0);
-  // Runs once the card has faded out: unmounts the modal, then the chosen row's action (so a
-  // screen it opens doesn't appear under a closing menu).
+  // Runs once the card has gone: unmounts the overlay, then the chosen row's action (so a screen
+  // it opens doesn't appear under a closing menu).
   const after = useRef<(() => void) | undefined>(undefined);
   const finish = useRef(() => {
     setMounted(false);
@@ -694,32 +883,102 @@ function Popover({
     then?.();
   }).current;
   useEffect(() => {
-    if (open) shown.value = withTiming(1, fade);
-    else
-      shown.value = withTiming(0, fade, (done) => {
-        if (done) runOnJS(finish)();
+    if (open)
+      shown.value = withTiming(1, {
+        duration: grow ? 260 : tabcnTiming.duration,
+        easing: Easing.out(Easing.cubic),
+        reduceMotion: ReduceMotion.System,
       });
-  }, [open, shown, finish]);
-  const style = useAnimatedStyle(() => ({ opacity: shown.value }));
+    else
+      shown.value = withTiming(
+        0,
+        {
+          duration: grow ? 180 : tabcnTiming.duration,
+          easing: Easing.in(Easing.cubic),
+          reduceMotion: ReduceMotion.System,
+        },
+        (done) => {
+          if (done) runOnJS(finish)();
+        },
+      );
+  }, [open, shown, finish, grow]);
 
   const close = (then?: () => void) => {
     after.current = then;
     onClose();
   };
+  // Android back closes an open menu.
+  const closeRef = useRef(close);
+  closeRef.current = close;
+  useEffect(() => {
+    if (!open) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeRef.current();
+      return true;
+    });
+    return () => sub.remove();
+  }, [open]);
+
   const x = Math.min(
     Math.max(left ?? (centerX ?? 0) - width / 2, SIDE),
     screen.width - SIDE - width,
   );
+  const cardBottom = bottom - gap;
+  // The card grows from the tab: from its bottom edge, at the tab's centre.
+  const originX = Math.min(Math.max((centerX ?? x) - x, 0), width);
 
-  return (
-    <Modal
-      transparent
-      visible={mounted}
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={() => close()}
+  // Rows report where they sit, so a held finger can be matched to one.
+  const [frames, setFrames] = useState<Record<string, RowFrame>>({});
+  const runs = useRef(new Map<string, () => void>());
+  const [cardHeight, setCardHeight] = useState(0);
+  const place = (id: string, frame: RowFrame | null, run?: () => void) => {
+    if (run) runs.current.set(id, run);
+    if (frame)
+      setFrames((all) =>
+        all[id]?.y === frame.y && all[id]?.height === frame.height ? all : { ...all, [id]: frame },
+      );
+  };
+  const cardTop = cardBottom - cardHeight;
+  let hovered: string | null = null;
+  if (pointer && open && pointer.x >= x && pointer.x <= x + width) {
+    for (const [id, f] of Object.entries(frames)) {
+      if (pointer.y >= cardTop + f.y && pointer.y < cardTop + f.y + f.height) hovered = id;
+    }
+  }
+  // A selection tick for each row the finger slides onto; lifting on one chooses it.
+  const lastHovered = useRef<string | null>(null);
+  useEffect(() => {
+    if (hovered && hovered !== lastHovered.current && haptics) Haptics.selectionAsync();
+    lastHovered.current = hovered;
+  }, [hovered, haptics]);
+  const seenLifts = useRef(lifts ?? 0);
+  useEffect(() => {
+    if (lifts === undefined || lifts === seenLifts.current) return;
+    seenLifts.current = lifts;
+    const id = lastHovered.current;
+    if (id) runs.current.get(id)?.();
+  }, [lifts]);
+
+  const scrimStyle = useAnimatedStyle(() => ({ opacity: shown.value }));
+  const cardStyle = useAnimatedStyle(() =>
+    grow
+      ? {
+          opacity: interpolate(shown.value, [0, 0.45, 1], [0, 0.85, 1]),
+          transform: [{ scale: 0.55 + 0.45 * shown.value }],
+        }
+      : { opacity: shown.value },
+  );
+  const blurProps = useAnimatedProps(() => ({ intensity: (1 - shown.value) * 45 }));
+
+  return mounted ? (
+    <View
+      pointerEvents={open ? 'box-none' : 'none'}
+      style={[
+        styles.overlay,
+        { left: -origin.x, top: -origin.y, width: screen.width, height: screen.height },
+      ]}
     >
-      <Animated.View style={[StyleSheet.absoluteFill, style]}>
+      <Animated.View style={[StyleSheet.absoluteFill, scrimStyle]}>
         <Pressable
           accessibilityLabel="Close menu"
           onPress={() => close()}
@@ -731,70 +990,108 @@ function Popover({
           onPress={() => close()}
           style={[styles.scrimRest, { top: scrimBottom || screen.height }]}
         />
-        <View
-          accessibilityViewIsModal
-          accessibilityLabel={label}
-          onAccessibilityEscape={() => close()}
-          style={[
-            styles.card,
-            {
-              width,
-              left: x,
-              bottom: screen.height - bottom + 8,
-            },
-            glass ? styles.cardGlass : { backgroundColor: colors.menu, borderColor: colors.border },
-          ]}
-        >
-          {glass ? (
-            <GlassView
-              glassEffectStyle="regular"
-              style={[StyleSheet.absoluteFill, styles.cardGlassFill]}
-            />
-          ) : null}
-          {children(close)}
-        </View>
       </Animated.View>
-    </Modal>
-  );
+      <Animated.View
+        accessibilityViewIsModal
+        accessibilityLabel={label}
+        onAccessibilityEscape={() => close()}
+        onLayout={(e) => setCardHeight(e.nativeEvent.layout.height)}
+        style={[
+          styles.card,
+          grow ? styles.cardLarge : null,
+          {
+            width,
+            left: x,
+            bottom: screen.height - cardBottom,
+            transformOrigin: `${originX}px 100%`,
+          },
+          glass ? styles.cardGlass : { backgroundColor: colors.menu, borderColor: colors.border },
+          cardStyle,
+        ]}
+      >
+        {glass ? (
+          <GlassView
+            glassEffectStyle={GLASS_STYLE}
+            tintColor={colors.glassTint}
+            style={[StyleSheet.absoluteFill, grow ? styles.cardLargeFill : styles.cardGlassFill]}
+          />
+        ) : null}
+        <PopoverContext value={{ hovered, place }}>{children(close)}</PopoverContext>
+        {grow ? (
+          <AnimatedBlurView
+            pointerEvents="none"
+            tint="light"
+            animatedProps={blurProps}
+            style={[StyleSheet.absoluteFill, styles.cardLargeFill]}
+          />
+        ) : null}
+      </Animated.View>
+    </View>
+  ) : null;
 }
 
 function MenuRow({
+  id,
   label,
   icon: Icon,
-  iconSize = 16,
+  iconSize,
+  iconColor,
   unread,
   create,
+  large,
   colors,
   onPress,
 }: {
+  id: string;
   label: string;
   icon?: ComposerDockIcon;
   iconSize?: number;
+  iconColor?: string;
   unread?: boolean;
   create?: boolean;
+  /** The hold menu's rows: taller, larger text and icons. */
+  large?: boolean;
   colors: ComposerDockColors;
   onPress: () => void;
 }) {
+  const { hovered, place } = use(PopoverContext);
+  const size = iconSize ?? (large ? 18 : 16);
+  useEffect(() => {
+    place(id, null, onPress);
+  });
   return (
     <Pressable
       role="button"
       accessibilityLabel={unread ? `${label}, unread` : label}
       onPress={onPress}
+      onLayout={(e) =>
+        place(id, { y: e.nativeEvent.layout.y, height: e.nativeEvent.layout.height })
+      }
       style={({ pressed }) => [
         styles.row,
-        pressed ? { backgroundColor: colors.menuPressed } : null,
+        large ? styles.rowLarge : null,
+        pressed || hovered === id ? { backgroundColor: colors.menuPressed } : null,
       ]}
     >
-      <View style={styles.rowIcon}>
+      <View style={[styles.rowIcon, large ? styles.rowIconLarge : null]}>
         {create ? (
-          <View style={[styles.createDot, { backgroundColor: colors.foreground }]}>
-            <PlusGlyph color={colors.onForeground} size={12} />
+          <View
+            style={[
+              styles.createDot,
+              large ? styles.createDotLarge : null,
+              { backgroundColor: colors.foreground },
+            ]}
+          >
+            <PlusGlyph color={colors.onForeground} size={large ? 14 : 12} />
           </View>
         ) : Icon ? (
-          <Icon color={colors.menuIcon} size={iconSize} />
+          <Icon color={iconColor ?? colors.menuIcon} size={size} />
         ) : null}
       </View>
-      <Text numberOfLines={1} style={[styles.rowText, { color: colors.foreground }]}>
+      <Text
+        numberOfLines={1}
+        style={[styles.rowText, large ? styles.rowTextLarge : null, { color: colors.foreground }]}
+      >
         {label}
       </Text>
       {unread ? <View style={[styles.unread, { backgroundColor: colors.unread }]} /> : null}
@@ -887,6 +1184,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   ends: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  circleGlass: { borderRadius: 17 },
   circle: {
     width: 34,
     height: 34,
@@ -906,8 +1204,18 @@ const styles = StyleSheet.create({
   chipGlass: { borderRadius: 14 },
   tabRow: { height: TAB_ROW, justifyContent: 'center' },
   tab: { width: TAB_WIDTH, alignItems: 'center', justifyContent: 'center' },
-  iconBox: { width: 44, height: 34, alignItems: 'center', justifyContent: 'center' },
-  heldSquare: { borderRadius: 11, borderCurve: 'continuous' },
+  iconBox: { width: 60, height: 42, alignItems: 'center', justifyContent: 'center' },
+  // Wider than the icon box: it reaches past it, as the app's does.
+  heldCapsule: {
+    position: 'absolute',
+    left: -2,
+    right: -2,
+    top: -3,
+    bottom: -3,
+    borderRadius: 24,
+    borderCurve: 'continuous',
+  },
+  heldGlass: { borderRadius: 24 },
   labelTrack: { position: 'absolute', left: 0, top: -20, alignItems: 'center' },
   labelPill: {
     height: 24,
@@ -917,6 +1225,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   labelText: { fontSize: 12, fontWeight: '600' },
+  dock: { alignSelf: 'stretch' },
+  overlay: { position: 'absolute', zIndex: 10, elevation: 10 },
   scrim: { position: 'absolute', top: 0, left: 0, right: 0 },
   scrimRest: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   card: {
@@ -927,8 +1237,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     boxShadow: '0 8px 28px rgba(0, 0, 0, 0.10)',
   },
-  cardGlass: { borderWidth: 0, boxShadow: '0 8px 28px rgba(0, 0, 0, 0.06)' },
+  cardGlass: { borderWidth: 0, boxShadow: '0 8px 30px rgba(0, 0, 0, 0.05)' },
   cardGlassFill: { borderRadius: 16 },
+  cardLarge: { borderRadius: 24, paddingVertical: 6, borderWidth: 0 },
+  cardLargeFill: { borderRadius: 24 },
   groupGap: { marginTop: 10 },
   row: {
     flexDirection: 'row',
@@ -939,8 +1251,17 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
     borderRadius: 10,
   },
+  rowLarge: {
+    minHeight: 43,
+    paddingHorizontal: 14,
+    gap: 14,
+    marginHorizontal: 6,
+    borderRadius: 14,
+  },
   rowIcon: { width: 20, alignItems: 'center' },
+  rowIconLarge: { width: 24 },
   rowText: { flex: 1, fontSize: 14 },
+  rowTextLarge: { fontSize: 16 },
   createDot: {
     width: 18,
     height: 18,
@@ -948,5 +1269,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  unread: { width: 7, height: 7, borderRadius: 3.5 },
+  createDotLarge: { width: 21, height: 21, borderRadius: 10.5 },
+  unread: { width: 7, height: 7, borderRadius: 3.5, marginRight: 6 },
 });

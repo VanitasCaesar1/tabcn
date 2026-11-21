@@ -740,7 +740,8 @@
         "react-native-gesture-handler",
         "expo-haptics",
         "react-native-svg",
-        "expo-glass-effect"
+        "expo-glass-effect",
+        "expo-blur"
       ],
       "files": [
         {
