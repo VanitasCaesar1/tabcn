@@ -29,7 +29,7 @@ import {
   tabcnTiming,
   useFocusProgress,
   useTabBar,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 const defaultColors = {
   /** The fill over the blur, or the whole surface where there's no blur (Android). */

@@ -1,5 +1,5 @@
 /**
- * Sheet maths shared by the drag gestures ('tabcn/gestures') and their tests. Internal: not
+ * Sheet maths shared by the drag gestures ('react-native-tabcn/gestures') and their tests. Internal: not
  * exported from any entry point.
  */
 

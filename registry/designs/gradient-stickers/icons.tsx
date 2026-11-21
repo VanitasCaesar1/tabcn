@@ -3,7 +3,7 @@
  * Pass them as `tabBarIcon` in your screen options.
  */
 import Svg, { Path } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 export function HouseIcon({ size }: TabIconProps) {
   return (

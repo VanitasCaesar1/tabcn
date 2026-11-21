@@ -740,7 +740,7 @@ describe('override slot', () => {
   });
 });
 
-describe('tabcn/gestures', () => {
+describe('react-native-tabcn/gestures', () => {
   it('is never loaded by the core entry', () => {
     jest.isolateModules(() => {
       jest.doMock('react-native-gesture-handler', () => {

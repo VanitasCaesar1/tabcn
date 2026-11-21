@@ -11,7 +11,7 @@
  * Pass them as `tabBarIcon` in your screen options.
  */
 import Svg, { Circle, G, Path } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 /** Outline stroke in points (search, chat, person), measured about 2.4 to 2.6 pt. */
 const STROKE = 2.4;

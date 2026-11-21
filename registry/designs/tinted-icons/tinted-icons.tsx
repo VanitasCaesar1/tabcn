@@ -49,7 +49,7 @@ import {
   useFocusProgress,
   useTabBar,
   useTabIndicator,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 const defaultColors = {
   /** The bar, on every tab without its own entry in `surfaces`. */

@@ -10,7 +10,14 @@
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
-import { TabBarRoot, TabButton, type TabItem, TabList, useFocusProgress, useTabBar } from 'tabcn';
+import {
+  TabBarRoot,
+  TabButton,
+  type TabItem,
+  TabList,
+  useFocusProgress,
+  useTabBar,
+} from 'react-native-tabcn';
 
 const defaultColors = {
   /** The screen colour: the bar has no surface of its own. */

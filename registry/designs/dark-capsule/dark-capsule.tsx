@@ -14,7 +14,7 @@ import {
   TabList,
   useFocusProgress,
   useTabBar,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 const defaultColors = {
   background: '#0e0e10',

@@ -23,7 +23,7 @@ import {
   usePanelAnchor,
   useTabBar,
   useTabIndicator,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 const defaultColors = {
   background: 'rgba(28, 30, 38, 0.72)',

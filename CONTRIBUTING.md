@@ -15,7 +15,7 @@ Changes to the public API of `packages/tabcn`, or to how designs are installed, 
 
 ## Adding a design
 
-1. Build it in `registry/<id>/` using only the public `tabcn` API plus the dependencies it declares.
+1. Build it in `registry/<id>/` using only the public `react-native-tabcn` API plus the dependencies it declares.
 2. Show it in the example app and set its `status` in `apps/example/src/catalog.ts`.
 3. Check it on iOS and Android, in light and dark mode, with "Reduce Motion" on, and with VoiceOver/TalkBack.
 

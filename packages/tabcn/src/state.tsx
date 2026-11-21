@@ -79,7 +79,7 @@ export function useTabBar(): TabBarState {
   if (!state) {
     throw new Error(
       'tabcn: useTabBar() must be used inside a tab bar rendered with tabBar() from ' +
-        "'tabcn/expo-router' or 'tabcn/react-navigation', or inside <TabBarStateProvider>.",
+        "'react-native-tabcn/expo-router' or 'react-native-tabcn/react-navigation', or inside <TabBarStateProvider>.",
     );
   }
   return state;

@@ -191,7 +191,7 @@ code = ('/**\n * Icons for the Orbs design: what sits inside each glass orb, in 
         ' * (render them at the orb\'s size). Lettering is set in Bowlby One and bent round the orb;\n'
         ' * see tools/trace/orbs.py. Pass them as `tabBarIcon`.\n */\n'
         "import Svg, {\n  Defs,\n  Ellipse,\n  G,\n  LinearGradient,\n  Path,\n  RadialGradient,\n  Stop,\n} from 'react-native-svg';\n"
-        "import type { TabIconProps } from 'tabcn';\n\n"
+        "import type { TabIconProps } from 'react-native-tabcn';\n\n"
         + component('ScratchIcon', 'orbs-scratch', glyph_orb('SCRATCH', center='hexagon'), 'Curved "SCRATCH" lettering round a blue hexagon.')
         + '\n' + component('PlacesIcon', 'orbs-places', glyph_orb('PLACES', center='64'), 'Curved "PLACES" lettering round a count.')
         + '\n' + chat)

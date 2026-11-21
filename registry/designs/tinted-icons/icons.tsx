@@ -9,7 +9,7 @@
  */
 import type { ReactNode } from 'react';
 import Svg, { Circle, G, Path } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 /** 1.84 pt at 30 pt: the 4.7 px stroke measured at 2.58 px per pt. */
 const STROKE = 2.45;

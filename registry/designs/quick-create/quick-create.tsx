@@ -37,7 +37,7 @@ import * as Haptics from 'expo-haptics';
 import { type ReactNode, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { TabPanel, tabcnTiming, useTabPanel } from 'tabcn';
+import { TabPanel, tabcnTiming, useTabPanel } from 'react-native-tabcn';
 
 const defaultColors = {
   /** The menu's surface. Close to Labeled + Plus's frosted fill, a little more opaque. */

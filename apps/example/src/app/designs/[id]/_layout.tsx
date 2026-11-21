@@ -1,8 +1,8 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
 import { Alert, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { TabBarProvider } from 'tabcn';
-import { tabBar } from 'tabcn/expo-router';
+import { TabBarProvider } from 'react-native-tabcn';
+import { tabBar } from 'react-native-tabcn/expo-router';
 
 import { findDesign, LAYOUT_LABELS } from '@/catalog';
 import { CurrentDemoProvider, demos, RAIL_MIN_WIDTH, screenBackground, TAB_ROUTES } from '@/demos';

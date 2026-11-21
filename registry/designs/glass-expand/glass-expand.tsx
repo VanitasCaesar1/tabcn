@@ -22,7 +22,14 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { TabBarRoot, TabButton, type TabItem, TabList, tabcnSpring, useTabBar } from 'tabcn';
+import {
+  TabBarRoot,
+  TabButton,
+  type TabItem,
+  TabList,
+  tabcnSpring,
+  useTabBar,
+} from 'react-native-tabcn';
 
 const defaultColors = {
   /**

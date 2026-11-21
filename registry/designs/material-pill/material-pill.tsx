@@ -36,7 +36,7 @@ import {
   tabcnTiming,
   useFocusProgress,
   useTabBar,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 /** Google Home's light scheme (Material 3 baseline). */
 const defaultColors = {

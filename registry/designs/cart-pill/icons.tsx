@@ -11,7 +11,7 @@
  * Pass them as `tabBarIcon` in your screen options.
  */
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 /**
  * Home: a filled house. The roof is a 3.5-unit band whose eaves stick out past the walls
