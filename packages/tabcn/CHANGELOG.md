@@ -1,5 +1,11 @@
 # react-native-tabcn
 
+## 0.1.1
+
+### Patch Changes
+
+- 3a13d43: The npm page links to the website (every design, with its install command) and to the issue tracker.
+
 ## 0.1.0
 
 ### Minor Changes
