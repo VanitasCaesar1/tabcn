@@ -292,7 +292,7 @@ These are all the exports a design gets: three components, two hooks and one pla
 ### 4. Designs and the registry
 
 -   **One file per design:** `registry/designs/<id>/<id>.tsx`.
--   **Allowed imports:** `tabcn`, `react`, `react-native`, `react-native-reanimated`, and the npm packages listed in the design's registry entry. No imports between designs and no shared helper files, so shadcn never has to rewrite import paths.
+-   **Allowed imports:** `tabcn`, `react`, `react-native`, `react-native-reanimated`, and the npm packages listed in the design's registry entry. No imports between designs and no shared helper files, so shadcn never has to rewrite import paths. (Amended 2026-11-21, [composer-dock-split.md](composer-dock-split.md): a design split into several files of its own registry item may import a sibling as `./<name>` when that file keeps its name when installed.)
 -   **Props:** each design exports one component. Its props cover only what screen options can't express, such as action-button handlers (`onActionPress`), colours, and a `placement` override where the design allows it.
 -   **Registry index:** `registry/registry.json` is the shadcn registry index, with one `registry:item` per design whose files are `registry:file` (see the 2026-11-21 retest above: `registry:component` files are rewritten by shadcn). Each item lists its file (`target: components/tabcn/<id>.tsx`), its npm `dependencies` (always `tabcn@^<current minor>`, plus `expo-blur` and similar where used), and its title and description from the catalog.
 -   **Build and hosting:**

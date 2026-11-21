@@ -15,7 +15,7 @@
  * Run: bun scripts/check-registry.ts   (part of `bun run check`)
  */
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { readDesignProps } from './design-props';
 
 const root = join(import.meta.dir, '..');
@@ -133,9 +133,24 @@ for (const item of registry.items) {
         );
       }
       if (spec.startsWith('.')) {
-        fail(
-          `${item.name}: ${file.path} imports ${spec}; designs are copied alone, so no relative imports`,
-        );
+        // A design may be split into several files of the same registry item. One may import
+        // another as './<name>' only when <name>.tsx is a file of this item whose installed name
+        // is the same, so the import resolves both here and in components/tabcn/ in an app.
+        // Imports between different items stay out: each item is copied on its own.
+        const name = spec.startsWith('./') && !spec.slice(2).includes('/') ? spec.slice(2) : null;
+        const sibling = name
+          ? item.files.find(
+              (f) =>
+                basename(f.path) === `${name}.tsx` &&
+                basename(f.target) === `${name}.tsx` &&
+                dirname(f.path) === dirname(file.path),
+            )
+          : undefined;
+        if (!sibling) {
+          fail(
+            `${item.name}: ${file.path} imports ${spec}; a relative import must name a file of the same item that keeps its name when installed`,
+          );
+        }
         continue;
       }
       const pkg = spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0];
