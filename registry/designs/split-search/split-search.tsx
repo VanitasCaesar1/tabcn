@@ -300,7 +300,8 @@ function Capsule({
       x.value = withSpring(next.left, tabcnSpring);
       width.value = withSpring(next.w, tabcnSpring);
     },
-    [kept, center, pillWidth],
+    // No dependency list: on native it is ignored with a warning, and the reaction already
+    // re-runs when `kept`, `center` or `pillWidth` (captured above) change.
   );
 
   const style = useAnimatedStyle(() => ({

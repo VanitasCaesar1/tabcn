@@ -4,7 +4,7 @@ import { CopyButton } from './copy-button';
 import { RunnerTabs } from './runner-tabs';
 import { RUNNERS, useRunner } from './use-runner';
 
-// One line to take a design home: the shadcn CLI pulls the files from /r/<id>.json into your
+// One line to take a design home (and a fix-up line under it): the shadcn CLI pulls the files from /r/<id>.json into your
 // project. The package manager you pick is remembered across pages. (From ui lab, MIT.)
 export function InstallCommand({ url, title = 'Install' }: { url: string; title?: string }) {
   const runner = useRunner();
@@ -26,6 +26,11 @@ export function InstallCommand({ url, title = 'Install' }: { url: string; title?
         </code>
         <CopyButton value={command} label="Copy install command" className="shrink-0" />
       </div>
+      {/* shadcn installs packages at npm's latest; this moves them to your SDK's versions. */}
+      <p className="mt-2 pl-1 text-pretty text-[13px] text-muted">
+        Then run <code className="font-mono text-foreground">npx expo install --fix</code> so the
+        packages it added match your Expo SDK.
+      </p>
     </section>
   );
 }

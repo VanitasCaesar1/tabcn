@@ -23,9 +23,10 @@ const read = (p: string) => readFileSync(join(root, p), 'utf8');
 
 interface Item {
   name: string;
+  type: string;
   title: string;
   dependencies?: string[];
-  files: { path: string; target: string }[];
+  files: { path: string; type: string; target: string }[];
 }
 const registry = JSON.parse(read('registry/registry.json')) as { items: Item[] };
 
@@ -102,7 +103,20 @@ for (const item of registry.items) {
       }
     }
   }
+  // shadcn runs its web transforms (Tailwind classes, CSS variables, icons) over
+  // `registry:component` files. Those rewrite plain strings: `rgba(255, 255, 255, 0.1)` loses a
+  // `255,` and `viewBox="0 0 24 24"` becomes `"0 24"`, which crashes react-native-svg. It also
+  // needs a components.json first. `registry:item` with `registry:file` files is copied
+  // byte for byte to its target, with no components.json.
+  if (item.type !== 'registry:item') {
+    fail(`${item.name}: type should be registry:item (shadcn rewrites registry:component files)`);
+  }
   for (const file of item.files) {
+    if (file.type !== 'registry:file') {
+      fail(
+        `${item.name}: ${file.path} should be type registry:file, so shadcn copies it unchanged`,
+      );
+    }
     if (!existsSync(join(root, file.path))) {
       fail(`${item.name}: ${file.path} does not exist`);
       continue;
