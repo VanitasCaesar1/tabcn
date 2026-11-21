@@ -1,6 +1,6 @@
 /**
  * The same designs under plain React Navigation (`@react-navigation/bottom-tabs`), the way an
- * app without Expo Router uses tabcn: `tabBar={tabBar(<Design />)}` from 'tabcn/react-navigation'.
+ * app without Expo Router uses tabcn: `tabBar={tabBar(<Design />)}` from 'react-native-tabcn/react-navigation'.
  * The navigator runs in its own independent tree inside this Expo Router screen.
  */
 import { createBottomTabNavigator, useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -21,8 +21,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { TabBarProvider } from 'tabcn';
-import { tabBar } from 'tabcn/react-navigation';
+import { TabBarProvider } from 'react-native-tabcn';
+import { tabBar } from 'react-native-tabcn/react-navigation';
 
 import { catalog } from '@/catalog';
 import { type Demo, demos, RAIL_MIN_WIDTH, screenBackground } from '@/demos';
@@ -112,7 +112,8 @@ function Screen({
       ) : null}
       <Text style={[styles.title, { color: text }]}>{demo.tabs[index]?.label}</Text>
       <Text style={[styles.note, { color: text }]}>
-        Rendered by @react-navigation/bottom-tabs with tabBar() from 'tabcn/react-navigation'.
+        Rendered by @react-navigation/bottom-tabs with tabBar() from
+        'react-native-tabcn/react-navigation'.
       </Text>
       <ScrollView
         horizontal

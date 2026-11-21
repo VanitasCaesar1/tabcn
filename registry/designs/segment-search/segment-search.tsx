@@ -26,7 +26,7 @@ import {
   tabcnTiming,
   usePanelAnchor,
   useTabBar,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 const defaultColors = {
   /** Top to bottom: a lighter band along the top edge, then the body colour. */

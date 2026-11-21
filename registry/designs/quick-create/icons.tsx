@@ -5,7 +5,7 @@
  * as `tabBarIcon`.
  */
 import Svg, { Path, Rect } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 /** Only the colour and size are used, so these fit an action's `icon` and a tab's icon. */
 type IconProps = Pick<TabIconProps, 'color' | 'size'>;

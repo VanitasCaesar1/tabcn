@@ -25,7 +25,7 @@ import { BlurView } from 'expo-blur';
 import { type ReactNode, useEffect, useRef } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { tabcnTiming } from 'tabcn';
+import { tabcnTiming } from 'react-native-tabcn';
 
 const defaultColors = {
   /** Tint over the blur (and the fill on Android, where there is no blur). */

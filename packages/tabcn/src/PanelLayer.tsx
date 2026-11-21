@@ -310,7 +310,7 @@ function PanelView({
     return () => clearTimeout(timer);
   }, [store, id, anchorName, anchorMissing]);
 
-  // Drag handle for 'tabcn/gestures'.
+  // Drag handle for 'react-native-tabcn/gestures'.
   const handle = useMemo<PanelHandle>(
     () => ({
       visible,

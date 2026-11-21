@@ -12,7 +12,7 @@ import Svg, {
   RadialGradient,
   Stop,
 } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 /** Curved "SCRATCH" lettering round a blue hexagon. */
 export function ScratchIcon({ size }: TabIconProps) {

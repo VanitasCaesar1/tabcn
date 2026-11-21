@@ -24,7 +24,7 @@ export default function RootLayout() {
     if (fontsLoaded) SplashScreen.hideAsync();
   }, [fontsLoaded]);
   return (
-    // Panel dragging ('tabcn/gestures') needs gesture handler's root view around the app.
+    // Panel dragging ('react-native-tabcn/gestures') needs gesture handler's root view around the app.
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>

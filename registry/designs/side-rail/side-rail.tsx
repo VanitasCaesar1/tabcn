@@ -38,7 +38,7 @@ import {
   useFocusProgress,
   useTabBar,
   useTabIndicator,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 /** Google's Material 3 light tokens, as measured on the screenshots. */
 const defaultColors = {

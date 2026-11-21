@@ -8,11 +8,11 @@ Animated tab bars for React Native and Expo, in the style of shadcn/ui: install 
 
 **[Browse all 42 designs →](https://vanitascaesar1.github.io/tabcn/)** Each one opens in Expo Go from a QR code and plays on a phone in the page.
 
-> **Status: pre-release.** All 42 designs (36 tab bars and 6 panels) and the foundation are built ([`docs/designs/foundation.md`](docs/designs/foundation.md)). The `tabcn` package is not on npm yet, so `shadcn add` can copy a design but its `tabcn` dependency won't install until the first release. Until then, run the example app below.
+> **Status: 0.x.** All 42 designs (36 tab bars and 6 panels) and the foundation are built ([`docs/designs/foundation.md`](docs/designs/foundation.md)). The foundation is on npm as [`react-native-tabcn`](https://www.npmjs.com/package/react-native-tabcn) (npm turned down the bare name `tabcn` as too close to `table`). Before 1.0, a minor release may change its API; the changelog says so when it does.
 
 ## How it works
 
-- **`tabcn` (npm package)** holds the parts every tab bar needs and that are easy to get wrong: connecting to the navigator, tab state, safe-area spacing, the animated active-tab highlight, press feedback, badges, haptics, reduced-motion support and accessibility. Bug fixes here reach everyone through `npm update`.
+- **`react-native-tabcn` (npm package)** holds the parts every tab bar needs and that are easy to get wrong: connecting to the navigator, tab state, safe-area spacing, the animated active-tab highlight, press feedback, badges, haptics, reduced-motion support and accessibility. Bug fixes here reach everyone through `npm update`.
 - **Designs ([`registry/`](registry/))** are short source files built on that foundation. You copy one into your project and own it. Change icons, labels and the number of tabs through props, or edit the file to change the look and motion.
 - **Navigation** stays with your navigator. A tabcn design is passed as the `tabBar` of Expo Router's `<Tabs>` or React Navigation's bottom tabs, so screens, deep links, the Android back button and screen-reader roles keep working.
 
@@ -22,14 +22,14 @@ Animated tab bars for React Native and Expo, in the style of shadcn/ui: install 
 npx shadcn@latest add https://vanitascaesar1.github.io/tabcn/r/sliding-capsule.json
 ```
 
-This copies the design and its icons into `components/tabcn/` and installs what it needs (`tabcn`, `expo-haptics`, `react-native-svg`, …). Every design's page on the site has its own command.
+This copies the design and its icons into `components/tabcn/` and installs what it needs (`react-native-tabcn`, `expo-haptics`, `react-native-svg`, …). Every design's page on the site has its own command.
 
 ## Usage
 
 ```tsx
 // app/(tabs)/_layout.tsx (Expo Router)
 import { Tabs } from 'expo-router/js-tabs';
-import { tabBar } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'
+import { tabBar } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'
 import { SlidingCapsule } from '@/components/tabcn/sliding-capsule';
 
 export default function TabLayout() {
@@ -54,8 +54,8 @@ Panels are surfaces that live behind the tab bar and slide out of it: a mini pla
 ```tsx
 // app/(tabs)/_layout.tsx
 import { Tabs } from 'expo-router/js-tabs';
-import { TabBarProvider } from 'tabcn';
-import { tabBar } from 'tabcn/expo-router';
+import { TabBarProvider } from 'react-native-tabcn';
+import { tabBar } from 'react-native-tabcn/expo-router';
 import { MiniPlayer } from '@/components/tabcn/mini-player';
 import { SoftPill } from '@/components/tabcn/soft-pill';
 
@@ -69,7 +69,7 @@ export default function TabLayout() {
 }
 ```
 
-Any component under the provider controls it with `useTabPanel('player')` (`peek()`, `open()`, `hide()`, `toggle()`). A screen can replace the tabs while it is focused with `useTabBarOverride(<ContextTray … />)` from `tabcn/expo-router`. Dragging a panel (`tabcn/gestures`) needs `react-native-gesture-handler` and a `GestureHandlerRootView` around the app. Without a provider, the bar renders exactly as before. See [`docs/designs/panels.md`](docs/designs/panels.md).
+Any component under the provider controls it with `useTabPanel('player')` (`peek()`, `open()`, `hide()`, `toggle()`). A screen can replace the tabs while it is focused with `useTabBarOverride(<ContextTray … />)` from `react-native-tabcn/expo-router`. Dragging a panel (`react-native-tabcn/gestures`) needs `react-native-gesture-handler` and a `GestureHandlerRootView` around the app. Without a provider, the bar renders exactly as before. See [`docs/designs/panels.md`](docs/designs/panels.md).
 
 ### Minimize on scroll
 
@@ -89,7 +89,7 @@ export default function TabLayout() {
 ```tsx
 // app/(tabs)/index.tsx
 import Animated from 'react-native-reanimated';
-import { useMinimizeOnScroll } from 'tabcn';
+import { useMinimizeOnScroll } from 'react-native-tabcn';
 
 export default function Home() {
   const onScroll = useMinimizeOnScroll();
@@ -124,7 +124,7 @@ function CommentsButton() {
 }
 ```
 
-To build your own, pass `snapPoints` (points or percentages of the screen, lowest first) to `TabPanel`, put the header in `PanelDragArea` and the body in `PanelScrollView` (both from `tabcn/gestures`). The sheet is modal only at its highest snap point, and with a screen reader on it opens straight to it.
+To build your own, pass `snapPoints` (points or percentages of the screen, lowest first) to `TabPanel`, put the header in `PanelDragArea` and the body in `PanelScrollView` (both from `react-native-tabcn/gestures`). The sheet is modal only at its highest snap point, and with a screen reader on it opens straight to it.
 
 ### Companions
 
@@ -221,7 +221,7 @@ Screens draw the content behind the sheet and pad their own controls with `useBo
 
 ### Scrubbing
 
-`TabScrub` from `tabcn/gestures` is a `TabList` you can press and slide along: the indicator follows the finger, `onTabCross` runs for each tab it passes (for a haptic), and lifting chooses the tab under it. A tap is still a tap, and a vertical swipe is left to the system. Scrub Pill uses it; in your own design, swap `TabList` for `TabScrub`:
+`TabScrub` from `react-native-tabcn/gestures` is a `TabList` you can press and slide along: the indicator follows the finger, `onTabCross` runs for each tab it passes (for a haptic), and lifting chooses the tab under it. A tap is still a tap, and a vertical swipe is left to the system. Scrub Pill uses it; in your own design, swap `TabList` for `TabScrub`:
 
 ```tsx
 export function MyTabBar() {
@@ -318,7 +318,7 @@ bun run ios        # or open it in the iOS simulator
 bun run check      # lint + typecheck + registry check + tests + build, the same as CI
 ```
 
-The example app imports `tabcn` from `packages/tabcn/src` directly (through the `tabcn-source` export condition), so edits to the package show up on reload with no build step.
+The example app imports `react-native-tabcn` from `packages/tabcn/src` directly (through the `tabcn-source` export condition), so edits to the package show up on reload with no build step.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and release process.
 

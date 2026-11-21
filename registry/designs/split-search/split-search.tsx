@@ -42,7 +42,7 @@ import {
   useRestoreTabBar,
   useTabBar,
   useTabBarMinimized,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 const defaultColors = {
   /**

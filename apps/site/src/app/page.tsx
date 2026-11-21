@@ -93,7 +93,7 @@ export default function Home() {
               <Step n={1} title="Install the foundation">
                 <CodeBlock
                   filename="Terminal"
-                  code="npx expo install tabcn react-native-reanimated react-native-worklets"
+                  code="npx expo install react-native-tabcn react-native-reanimated react-native-worklets"
                 />
               </Step>
               <Step n={2} title="Add a design">

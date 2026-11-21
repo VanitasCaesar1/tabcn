@@ -50,7 +50,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { TabPanel, tabcnTiming, usePanelAnchor, useTabBar, useTabPanel } from 'tabcn';
+import { TabPanel, tabcnTiming, usePanelAnchor, useTabBar, useTabPanel } from 'react-native-tabcn';
 
 const defaultColors = {
   /** The drawer's surface. */

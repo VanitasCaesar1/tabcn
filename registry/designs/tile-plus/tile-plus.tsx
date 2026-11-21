@@ -48,7 +48,7 @@ import {
   useFocusProgress,
   usePanelAnchor,
   useTabBar,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 const defaultColors = {
   /** The bar: the same white as the feed above it. */

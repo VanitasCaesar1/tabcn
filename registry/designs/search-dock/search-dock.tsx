@@ -46,7 +46,7 @@ import {
   usePanelAnchor,
   useTabBar,
   useTabBarMinimized,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 const defaultColors = {
   /** The tiles: opaque white, as sampled. For a dark theme try '#1f1f1f'. */

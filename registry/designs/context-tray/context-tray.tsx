@@ -4,7 +4,7 @@
  * pill with a label, a percentage and a thin progress bar, and a round close button beside
  * it. When the screen loses focus the tabs come back.
  *
- * It is content for `useTabBarOverride` (from `tabcn/expo-router` or `tabcn/react-navigation`),
+ * It is content for `useTabBarOverride` (from `react-native-tabcn/expo-router` or `react-native-tabcn/react-navigation`),
  * so it needs a `TabBarProvider` around the tabs navigator:
  *
  * ```tsx
@@ -32,7 +32,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { tabcnSpring, tabcnTiming, useTabBar } from 'tabcn';
+import { tabcnSpring, tabcnTiming, useTabBar } from 'react-native-tabcn';
 
 const defaultColors = {
   /** Fill of the pill and the close button. Defaults suit light floating pills (Glass Expand). */

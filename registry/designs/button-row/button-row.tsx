@@ -28,7 +28,7 @@ import {
   TabList,
   useFocusProgress,
   useTabBar,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 const defaultColors = {
   /** The buttons' fill. */

@@ -48,7 +48,7 @@ import {
   useFocusProgress,
   usePanelAnchor,
   useTabBar,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 const defaultColors = {
   /**

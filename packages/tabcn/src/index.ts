@@ -1,8 +1,8 @@
 /**
  * tabcn: the shared foundation every tab bar design builds on.
  * Specs: docs/designs/foundation.md, panels.md, motion-and-rail.md, bottom-components.md.
- * Navigator adapters live in 'tabcn/expo-router' and 'tabcn/react-navigation'; panel and
- * sheet dragging, and scrubbing the bar, in 'tabcn/gestures'.
+ * Navigator adapters live in 'react-native-tabcn/expo-router' and 'react-native-tabcn/react-navigation'; panel and
+ * sheet dragging, and scrubbing the bar, in 'react-native-tabcn/gestures'.
  */
 
 export { BadgeCount } from './BadgeCount';

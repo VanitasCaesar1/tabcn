@@ -9,7 +9,7 @@
  */
 import { Image, type ImageSourcePropType, View } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 /** The magnifier: ring and handle with round caps. */
 export function SearchIcon({ color, size }: TabIconProps) {

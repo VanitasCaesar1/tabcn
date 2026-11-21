@@ -7,7 +7,7 @@
  * Pass them as `tabBarIcon` in your screen options.
  */
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 /** Stroke width in units: 1.5 pt at 24 pt, as measured. */
 const STROKE = 2.5;

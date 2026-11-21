@@ -8,7 +8,7 @@
  * Pass them as `tabBarIcon`.
  */
 import Svg, { Circle, Defs, G, Mask, Path, Rect } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 /** The white of the cut-outs in the filled glyphs. */
 const CUT = '#ffffff';

@@ -54,7 +54,7 @@ import {
   useFocusProgress,
   usePanelAnchor,
   useTabBar,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 const defaultColors = {
   /** The bar, which also fills the home-indicator area. The same as Reddit's dark feed. */

@@ -3,7 +3,7 @@
  * Pass them as `tabBarIcon` in your screen options.
  */
 import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 export function VideoIcon({ color, size }: TabIconProps) {
   return (

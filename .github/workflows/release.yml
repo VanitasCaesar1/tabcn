@@ -40,6 +40,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # setup-node's npm config reads the token from NODE_AUTH_TOKEN.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Signs the published package with this workflow's identity (id-token: write above).
+          NPM_CONFIG_PROVENANCE: true
       # site.yml also builds on this push, at the same moment as the publish, so it reads npm before
       # the new version is there. Once npm serves it, build the site again so the hero, the sidebar
       # and the Quick start show the version instead of "not on npm yet".
@@ -47,8 +51,8 @@ jobs:
         if: steps.changesets.outputs.published == 'true'
         # Waits up to two minutes for the version just published (not merely any version) to show.
         run: |
-          want=$(jq -r '.[] | select(.name == "tabcn") | .version' <<< "$PUBLISHED")
-          for i in $(seq 1 12); do npm view "tabcn@${want:-latest}" version >/dev/null 2>&1 && break; sleep 10; done
+          want=$(jq -r '.[] | select(.name == "react-native-tabcn") | .version' <<< "$PUBLISHED")
+          for i in $(seq 1 12); do npm view "react-native-tabcn@${want:-latest}" version >/dev/null 2>&1 && break; sleep 10; done
           gh workflow run site.yml --ref main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

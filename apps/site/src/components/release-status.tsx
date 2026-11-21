@@ -13,16 +13,16 @@ export function ReleaseStatus() {
     <div className="rise mt-2.5 flex h-5 items-center justify-center whitespace-nowrap text-[12px] [--rise-delay:180ms]">
       {npmVersion ? (
         <a
-          href="https://www.npmjs.com/package/tabcn"
+          href="https://www.npmjs.com/package/react-native-tabcn"
           target="_blank"
           rel="noreferrer"
-          aria-label={`tabcn ${npmVersion} on npm`}
+          aria-label={`react-native-tabcn ${npmVersion} on npm`}
           className={link}
         >
           <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-foreground" />
           <span>
-            tabcn <span className="font-mono text-foreground tabular-nums">v{npmVersion}</span> on
-            npm
+            <span className="font-mono">react-native-tabcn</span>{' '}
+            <span className="font-mono text-foreground tabular-nums">v{npmVersion}</span> on npm
           </span>
           <Arrow direction="up-right" className="size-3" />
         </a>
@@ -33,7 +33,7 @@ export function ReleaseStatus() {
             className="size-1.5 shrink-0 rounded-full shadow-[inset_0_0_0_1px_currentColor]"
           />
           <span className="underline decoration-border underline-offset-2 transition-[text-decoration-color] duration-150 ease-out group-hover:decoration-current motion-reduce:transition-none">
-            tabcn isn't on npm yet
+            react-native-tabcn isn't on npm yet
           </span>
         </a>
       )}

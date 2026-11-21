@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const repo = 'VanitasCaesar1/tabcn';
-const pkg = 'tabcn';
+const pkg = 'react-native-tabcn';
 const file = fileURLToPath(new URL('../src/lib/repo.json', import.meta.url));
 
 type State = { repo: string; stars: number; npm: string | null };
@@ -64,8 +64,10 @@ async function fetchNpm(): Promise<string | null> {
   if (!res.ok) throw new Error(`npm answered ${res.status}`);
   const body = (await res.json()) as { 'dist-tags'?: { latest?: unknown } };
   const latest = body['dist-tags']?.latest;
-  // An unpublished package leaves a tombstone with no latest tag.
-  return typeof latest === 'string' ? latest : null;
+  // An unpublished package leaves a tombstone with no latest tag. While npm reviews a new
+  // package, latest is a placeholder such as 0.0.0-stage: not installable, so not published yet.
+  if (typeof latest !== 'string' || /-stage$/.test(latest)) return null;
+  return latest;
 }
 
 const [gh, npm] = await Promise.allSettled([fetchStars(), fetchNpm()]);
