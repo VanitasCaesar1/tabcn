@@ -93,6 +93,9 @@ export interface BarSheetProps {
 
 const DEFAULT_SNAP_POINTS: readonly SnapPoint[] = ['60%', '100%'];
 
+/** A tab change this soon after the sheet opens counts as part of opening it. */
+const ADOPT_FOCUS_MS = 300;
+
 /** Declares the sheet. Renders nothing here: the sheet is drawn behind the tab bar. */
 export function BarSheet({
   id = 'sheet',
@@ -185,14 +188,26 @@ function SheetBody({
   const screenReader = useScreenReader();
 
   // The sheet belongs to what's on screen, so switching tabs slides it away. (The content
-  // renders inside the tab bar, so it can read the bar's state.)
-  const { activeIndex } = useTabBar();
-  const lastActive = useRef(activeIndex);
+  // renders inside the tab bar, so it can read the bar's state.) Tabs are told apart by route
+  // key, not position, so tabs added or removed around the focused one don't close it. The
+  // sheet belongs to the tab focused when it opened; a tab change that lands just after it
+  // opened (a handler that navigates, then opens the sheet) is part of opening it.
+  const { tabs, activeIndex } = useTabBar();
+  const focusedKey = tabs[activeIndex]?.key ?? null;
+  const open = snap >= 0;
+  const openedOn = useRef<{ key: string | null; at: number } | null>(null);
   useEffect(() => {
-    if (lastActive.current === activeIndex) return;
-    lastActive.current = activeIndex;
-    hide();
-  }, [activeIndex, hide]);
+    if (!open) {
+      openedOn.current = null;
+      return;
+    }
+    const opened = openedOn.current;
+    if (opened === null || Date.now() - opened.at < ADOPT_FOCUS_MS) {
+      openedOn.current = { key: focusedKey, at: opened?.at ?? Date.now() };
+      return;
+    }
+    if (opened.key !== focusedKey) hide();
+  }, [open, focusedKey, hide]);
 
   // One selection haptic each time the sheet settles at another height.
   const previous = useRef(snap);

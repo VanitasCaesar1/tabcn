@@ -8,7 +8,7 @@
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import {
   BadgeCount,
   TabBarRoot,
@@ -52,8 +52,13 @@ export function FrostedMedia({
   haptics = true,
 }: FrostedMediaProps) {
   const colors = { ...defaultColors, ...custom };
-  const { tabs } = useTabBar();
+  const { tabs, insets } = useTabBar();
+  const window = useWindowDimensions();
   const glass = isLiquidGlassAvailable();
+  // Tabs shrink from 82.5 pt down to 60 when the pill would outgrow the screen, and below 60
+  // only when even that doesn't fit (6-7 tabs), so no tab is clipped off the pill's end.
+  const room = window.width - insets.left - insets.right - LIST_PADDING * 2 - PILL_BORDER * 2;
+  const minWidth = Math.max(0, Math.min(MIN_TAB, room / Math.max(1, tabs.length)));
   return (
     <TabBarRoot placement="floating">
       <View style={[styles.pill, { borderColor: colors.border }]}>
@@ -80,7 +85,7 @@ export function FrostedMedia({
             ]}
           />
           {tabs.map((tab) => (
-            <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
+            <Tab key={tab.key} tab={tab} colors={colors} minWidth={minWidth} haptics={haptics} />
           ))}
         </TabList>
       </View>
@@ -92,17 +97,24 @@ export function FrostedMedia({
 function Tab({
   tab,
   colors,
+  minWidth,
   haptics,
 }: {
   tab: TabItem;
   colors: FrostedMediaColors;
+  minWidth: number;
   haptics: boolean;
 }) {
   const color = colors.foreground;
+  const label = (
+    <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.label, { color }]}>
+      {tab.label}
+    </Text>
+  );
   return (
     <TabButton
       tab={tab}
-      style={styles.tab}
+      style={[styles.tab, { minWidth }]}
       // No tick for the tab that's already active: nothing changes.
       onPressIn={haptics && !tab.focused ? () => Haptics.selectionAsync() : undefined}
     >
@@ -113,9 +125,15 @@ function Tab({
             <Badge badge={tab.badge} colors={colors} />
           </View>
         ) : null}
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.label, { color }]}>
-          {tab.label}
-        </Text>
+        {tab.renderIcon ? (
+          label
+        ) : (
+          // Without an icon, the badge sits on the label instead.
+          <View style={styles.labelBox}>
+            {label}
+            <Badge badge={tab.badge} colors={colors} onLabel />
+          </View>
+        )}
       </View>
     </TabButton>
   );
@@ -125,16 +143,31 @@ function Tab({
  * A badge at the icon's top right, drawn only when the tab sets one: an empty badge ('') is a
  * dot, a number a count. Hidden from screen readers: `TabButton` reads it with the label.
  */
-function Badge({ badge, colors }: { badge: TabItem['badge']; colors: FrostedMediaColors }) {
+function Badge({
+  badge,
+  colors,
+  onLabel = false,
+}: {
+  badge: TabItem['badge'];
+  colors: FrostedMediaColors;
+  /** Drawn on the label's top right (a tab without an icon). */
+  onLabel?: boolean;
+}) {
   if (badge == null) return null;
   const text = String(badge).trim();
-  if (!text) return <View style={[styles.dot, { backgroundColor: colors.badge }]} />;
+  if (!text) {
+    return (
+      <View
+        style={[styles.dot, onLabel ? styles.labelDot : null, { backgroundColor: colors.badge }]}
+      />
+    );
+  }
   const textStyle = [styles.badgeText, { color: colors.badgeText }];
   return (
     <View
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
-      style={[styles.count, { backgroundColor: colors.badge }]}
+      style={[styles.count, onLabel ? styles.labelCount : null, { backgroundColor: colors.badge }]}
     >
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
@@ -149,28 +182,32 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: FrostedMedi
 
 /** The traced icons' 40-unit box, in points, at the reference's scale. */
 const ICON = 23.6;
+/** The least tab width while the tabs fit, the list's end padding and the pill's border. */
+const MIN_TAB = 60;
+const LIST_PADDING = 5.2;
+const PILL_BORDER = 1;
 
 const styles = StyleSheet.create({
   pill: {
     // Fits the screen when the tabs' full width doesn't: they shrink instead.
     maxWidth: '100%',
     borderRadius: 999,
-    borderWidth: 1,
+    borderWidth: PILL_BORDER,
     overflow: 'hidden',
     boxShadow: '0 12px 30px rgba(0, 0, 0, 0.35)',
   },
-  list: { paddingHorizontal: 5.2, paddingVertical: 2.55 },
+  list: { paddingHorizontal: LIST_PADDING, paddingVertical: 2.55 },
   capsule: { borderRadius: 999, borderWidth: 1 },
   tab: {
     width: 82.5,
     flexShrink: 1,
-    minWidth: 60,
     height: 51.2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   content: { alignItems: 'center', gap: 3.5 },
   label: { fontSize: 9.8, fontWeight: '600' },
+  labelBox: { maxWidth: '100%' },
   dot: { position: 'absolute', top: -1, right: -3, width: 8, height: 8, borderRadius: 4 },
   count: {
     position: 'absolute',
@@ -183,5 +220,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // On the label: its top right corner, overhanging a little.
+  labelDot: { top: -3, right: -7 },
+  labelCount: { left: undefined, top: -11, right: -12 },
   badgeText: { fontSize: 10, lineHeight: 13, fontWeight: '700' },
 });

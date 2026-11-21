@@ -102,7 +102,12 @@ function Tab({
           {tab.renderIcon({ focused: tab.focused, color, size: ICON })}
           <Badge badge={tab.badge} colors={colors} />
         </View>
-      ) : null}
+      ) : (
+        // No icon: the badge sits where the icon's corner would be.
+        <View style={styles.badgeOnly}>
+          <Badge badge={tab.badge} colors={colors} />
+        </View>
+      )}
       <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.label, { color }]}>
         {tab.label}
       </Text>
@@ -141,6 +146,7 @@ const ICON = 22;
 const LENS_INSET = { x: 2, y: 2 };
 
 const styles = StyleSheet.create({
+  badgeOnly: { position: 'absolute', top: 4, right: 10 },
   pill: {
     // Fits the screen when the tabs' full width doesn't: they shrink instead.
     maxWidth: '100%',
@@ -157,7 +163,7 @@ const styles = StyleSheet.create({
   tab: {
     width: 68,
     flexShrink: 1,
-    minWidth: 54,
+    minWidth: 46,
     height: 54,
     alignItems: 'center',
     justifyContent: 'center',

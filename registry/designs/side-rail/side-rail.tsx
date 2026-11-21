@@ -21,7 +21,15 @@
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import {
+  I18nManager,
+  ScrollView,
+  type StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -245,19 +253,22 @@ function Rail({
           )}
         </PressableScale>
       ) : null}
-      <TabList style={[styles.railList, { marginTop: listMargin }]}>
-        <Pill width={PILL} top={TAB_PAD} color={colors.indicator} />
-        {tabs.map((tab) => (
-          <Tab
-            key={tab.key}
-            tab={tab}
-            colors={colors}
-            haptics={haptics}
-            pillWidth={PILL}
-            style={styles.railTab}
-          />
-        ))}
-      </TabList>
+      {/* A short rail (a phone in landscape) scrolls instead of pushing tabs off the bottom. */}
+      <ScrollView style={styles.railScroll} showsVerticalScrollIndicator={false} bounces={false}>
+        <TabList style={[styles.railList, { marginTop: listMargin }]}>
+          <Pill width={PILL} top={TAB_PAD} color={colors.indicator} />
+          {tabs.map((tab) => (
+            <Tab
+              key={tab.key}
+              tab={tab}
+              colors={colors}
+              haptics={haptics}
+              pillWidth={PILL}
+              style={styles.railTab}
+            />
+          ))}
+        </TabList>
+      </ScrollView>
     </TabBarRoot>
   );
 }
@@ -300,7 +311,7 @@ function Pill({ width, top, color }: { width: number; top: number; color: string
   return (
     <Animated.View
       pointerEvents="none"
-      style={[styles.pill, { width, backgroundColor: color }, style]}
+      style={[styles.pill, PHYSICAL_LEFT, { width, backgroundColor: color }, style]}
     />
   );
 }
@@ -397,7 +408,18 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SideRailCol
   );
 }
 
+/**
+ * Tab frames are physical (from the left edge), but in a right-to-left layout React Native reads
+ * `left` as the start edge, the right, unless the app turned that swap off. Pin the pill to the
+ * physical left either way, so `translateX` by a frame's `x` lands on the tab.
+ */
+const PHYSICAL_LEFT =
+  I18nManager.isRTL && (I18nManager.getConstants?.().doLeftAndRightSwapInRTL ?? true)
+    ? { right: 0 }
+    : { left: 0 };
+
 const styles = StyleSheet.create({
+  railScroll: { flexShrink: 1 },
   rail: {
     alignItems: 'center',
   },
@@ -468,7 +490,6 @@ const styles = StyleSheet.create({
   },
   pill: {
     position: 'absolute',
-    left: 0,
     top: 0,
     height: PILL_HEIGHT,
     borderRadius: PILL_HEIGHT / 2,

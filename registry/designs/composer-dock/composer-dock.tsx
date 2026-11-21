@@ -160,12 +160,15 @@ export function ComposerDock({
     else icons.delete(key);
   };
   const [rowWidth, setRowWidth] = useState(0);
-  const latest = useRef({ tabs, menus, rowWidth });
-  latest.current = { tabs, menus, rowWidth };
+  // 80 pt a tab, as in the app, narrowed only when the row can't hold them all.
+  const tabWidth =
+    rowWidth > 0 && tabs.length > 0 ? Math.min(TAB_WIDTH, rowWidth / tabs.length) : TAB_WIDTH;
+  const latest = useRef({ tabs, menus, rowWidth, tabWidth });
+  latest.current = { tabs, menus, rowWidth, tabWidth };
   const holdGesture = useMemo(() => {
     const holdAt = (x: number) => {
-      const { tabs: list, menus: all, rowWidth: width } = latest.current;
-      const slot = Math.floor((x - (width - list.length * TAB_WIDTH) / 2) / TAB_WIDTH);
+      const { tabs: list, menus: all, rowWidth: width, tabWidth: each } = latest.current;
+      const slot = Math.floor((x - (width - list.length * each) / 2) / each);
       // The row runs right to left in RTL, so the first tab is the rightmost slot.
       const index = I18nManager.isRTL ? list.length - 1 - slot : slot;
       const tab = list[index];
@@ -197,6 +200,10 @@ export function ComposerDock({
       });
   }, [icons]);
 
+  // The menus are positioned against the bar's padding box, which starts `insets.left` before
+  // the dock (the docked bar pads the side safe areas), so that is the overlay's origin.
+  const overlayOrigin = (dock: Frame) => ({ x: dock.x - insets.left, y: dock.y });
+
   const hover = (tab: TabItem | null) => {
     setScrubbing(tab);
     onScrubTab?.(tab);
@@ -206,7 +213,7 @@ export function ComposerDock({
     // The hold gesture and the tab's own long press can both ask; open once.
     if (held?.key === tab.key) return;
     measure(dockRef, (dock) => {
-      setOrigin({ x: dock.x, y: dock.y });
+      setOrigin(overlayOrigin(dock));
       measure(rowRef, (row) => {
         if (haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setPointer(null);
@@ -257,7 +264,7 @@ export function ComposerDock({
             attachments
               ? () =>
                   measure(dockRef, (dock) => {
-                    setOrigin({ x: dock.x, y: dock.y });
+                    setOrigin(overlayOrigin(dock));
                     measure(composerRef, (frame) => setAttach(frame));
                   })
               : undefined
@@ -296,6 +303,7 @@ export function ComposerDock({
                   onHold={menus?.[tab.routeName] ? openMenu : undefined}
                   register={register}
                   glass={glass}
+                  width={tabWidth}
                 />
               ))}
             </TabScrub>

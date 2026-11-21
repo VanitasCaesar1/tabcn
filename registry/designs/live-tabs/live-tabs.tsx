@@ -49,6 +49,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import {
+  BadgeCount,
   TabBarRoot,
   TabButton,
   type TabItem,
@@ -72,6 +73,10 @@ const defaultColors = {
   accent: '#c2410c',
   /** The ring's unfilled track. */
   track: 'rgba(0, 0, 0, 0.08)',
+  /** Badge fill (iOS system red), ringed in `background`. */
+  badge: '#ff3b30',
+  /** The count on a badge. */
+  badgeText: '#ffffff',
 };
 
 export type LiveTabsColors = typeof defaultColors;
@@ -206,6 +211,7 @@ function LiveTab({
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, focusedIcon]}>
           {tab.renderIcon?.({ focused: true, color: colors.foreground, size: ICON })}
         </Animated.View>
+        <Badge badge={tab.badge} colors={colors} />
       </View>
       <View style={styles.lines}>
         <Animated.View style={[styles.line, labelStyle]}>
@@ -233,6 +239,34 @@ function LiveTab({
         </Animated.View>
       </View>
     </TabButton>
+  );
+}
+
+/**
+ * A badge on the icon's top right, over the ring: a dot for an empty badge, a count otherwise.
+ * The tab's accessibility label already reads it.
+ */
+function Badge({ badge, colors }: { badge: TabItem['badge']; colors: LiveTabsColors }) {
+  if (badge == null) return null;
+  const text = String(badge).trim();
+  const fill = { backgroundColor: colors.badge, borderColor: colors.background };
+  if (text === '') return <View pointerEvents="none" style={[styles.badgeDot, fill]} />;
+  const textStyle = [styles.badgeText, { color: colors.badgeText }];
+  return (
+    <View
+      pointerEvents="none"
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
+      style={[styles.badge, fill]}
+    >
+      {typeof badge === 'number' ? (
+        <BadgeCount value={badge} textStyle={textStyle} />
+      ) : (
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+          {text}
+        </Text>
+      )}
+    </View>
   );
 }
 
@@ -286,6 +320,29 @@ const styles = StyleSheet.create({
   semibold: {
     fontWeight: '600',
   },
+  // The icon's top right inside the ring's box: the icon runs from 6 to 28 pt.
+  badgeDot: {
+    position: 'absolute',
+    top: 4,
+    left: (RING + ICON) / 2 - 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+  },
+  badge: {
+    position: 'absolute',
+    top: 0,
+    left: RING / 2 + 3,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { fontSize: 10, lineHeight: 13, fontWeight: '700', includeFontPadding: false },
   live: {
     fontVariant: ['tabular-nums'],
   },

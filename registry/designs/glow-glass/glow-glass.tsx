@@ -18,6 +18,7 @@ import type { ReactNode } from 'react';
 import { Platform, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle } from 'react-native-reanimated';
 import {
+  BadgeCount,
   PressableScale,
   TabBarRoot,
   TabButton,
@@ -44,6 +45,10 @@ const defaultColors = {
   inactive: '#8a8b91',
   /** Inactive icons, a shade darker than their labels. */
   inactiveIcon: '#76777c',
+  /** Badge fill (the app shows none; iOS system red). */
+  badge: '#ff453a',
+  /** The count on a badge. */
+  badgeText: '#ffffff',
 };
 
 export type GlowGlassColors = typeof defaultColors;
@@ -77,7 +82,8 @@ export function GlowGlass({
   const { tabs, insets } = useTabBar();
   const window = useWindowDimensions();
   const anchor = usePanelAnchor('action');
-  // The measured 62 pt per tab where it fits; narrower, down to MIN_TAB, where it doesn't.
+  // The measured 62 pt per tab where it fits; narrower where it doesn't, down to MIN_TAB only
+  // as a last resort (the row may then run past the screen's edges).
   const room = window.width - insets.left - insets.right - EDGE * 2;
   const fixed = LIST_PADDING * 2 + BORDER * 2 + GAP + HEIGHT;
   const tabWidth = Math.max(MIN_TAB, Math.min(TAB, (room - fixed) / Math.max(1, tabs.length)));
@@ -194,6 +200,7 @@ function Tab({
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, lit]}>
           {tab.renderIcon?.({ focused: true, color: colors.active, size: ICON })}
         </Animated.View>
+        <Badge badge={tab.badge} colors={colors} />
       </View>
       <Animated.Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.label, label]}>
         {tab.label}
@@ -202,10 +209,38 @@ function Tab({
   );
 }
 
+/**
+ * A badge on the icon's top right: a dot for an empty badge, a count otherwise. The tab's
+ * accessibility label already reads it.
+ */
+function Badge({ badge, colors }: { badge: TabItem['badge']; colors: GlowGlassColors }) {
+  if (badge == null) return null;
+  const text = String(badge).trim();
+  const fill = { backgroundColor: colors.badge };
+  if (text === '') return <View pointerEvents="none" style={[styles.dot, fill]} />;
+  const textStyle = [styles.badgeText, { color: colors.badgeText }];
+  return (
+    <View
+      pointerEvents="none"
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
+      style={[styles.count, fill]}
+    >
+      {typeof badge === 'number' ? (
+        <BadgeCount value={badge} textStyle={textStyle} />
+      ) : (
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+          {text}
+        </Text>
+      )}
+    </View>
+  );
+}
+
 const HEIGHT = 58.5;
 /** Each tab's measured width, and the least it narrows to on a small screen. */
 const TAB = 62;
-const MIN_TAB = 48;
+const MIN_TAB = 40;
 /** The gap between the pill and the round button. */
 const GAP = 8.5;
 /** The pill's inner padding at each end, and its border. */
@@ -231,6 +266,19 @@ const styles = StyleSheet.create({
   iconBox: { width: ICON, height: ICON },
   center: { alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: 9.2, fontWeight: '400' },
+  dot: { position: 'absolute', top: -2, right: -3, width: 7, height: 7, borderRadius: 3.5 },
+  count: {
+    position: 'absolute',
+    top: -5,
+    left: ICON - 7,
+    minWidth: 15,
+    height: 15,
+    borderRadius: 7.5,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { fontSize: 9.5, lineHeight: 12, fontWeight: '700', includeFontPadding: false },
   round: {
     width: HEIGHT,
     height: HEIGHT,

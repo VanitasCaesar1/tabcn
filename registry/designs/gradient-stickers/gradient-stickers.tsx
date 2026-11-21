@@ -20,8 +20,8 @@ import {
 const defaultColors = {
   /** The pill's cream fill; the glow fades into it. */
   background: '#fef0c3',
-  /** The glow along the top edge, left to right. */
-  glow: ['#ffd392', '#ffd392', '#fff5c1', '#dcee82', '#dcee82'] as const,
+  /** The glow along the top edge, left to right: two or more colours. */
+  glow: ['#ffd392', '#ffd392', '#fff5c1', '#dcee82', '#dcee82'] as readonly string[],
   /** The pill's light edge. */
   rim: 'rgba(255, 250, 214, 0.9)',
   /** The tinted capsule behind the active sticker. */
@@ -46,6 +46,13 @@ export interface GradientStickersProps {
 export function GradientStickers({ colors: custom, haptics = true }: GradientStickersProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
+  // LinearGradient needs two colours at least: a single one is a flat glow.
+  const only = colors.glow[0] ?? 'transparent';
+  const glow = (colors.glow.length >= 2 ? colors.glow : [only, only]) as readonly [
+    string,
+    string,
+    ...string[],
+  ];
   return (
     <TabBarRoot placement="floating" style={styles.outer}>
       <View style={styles.shadow}>
@@ -54,8 +61,8 @@ export function GradientStickers({ colors: custom, haptics = true }: GradientSti
         >
           <LinearGradient
             pointerEvents="none"
-            colors={colors.glow}
-            locations={[0, 0.46, 0.52, 0.57, 1]}
+            colors={glow}
+            locations={glowLocations(glow.length)}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
             style={styles.glow}
@@ -106,6 +113,16 @@ function Tab({
       ) : null}
     </TabButton>
   );
+}
+
+/** The default glow's stops: its warm and green ends meet in a narrow pale band mid-way. */
+const GLOW_LOCATIONS = [0, 0.46, 0.52, 0.57, 1] as const;
+
+/** Stops for `count` glow colours: the measured ones for five, evenly spread otherwise. */
+function glowLocations(count: number): readonly [number, number, ...number[]] {
+  if (count === GLOW_LOCATIONS.length) return GLOW_LOCATIONS;
+  const stops = Array.from({ length: count }, (_, i) => i / (count - 1));
+  return stops as readonly number[] as readonly [number, number, ...number[]];
 }
 
 /**

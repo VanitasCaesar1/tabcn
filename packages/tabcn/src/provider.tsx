@@ -92,6 +92,8 @@ export interface PanelHandle {
    * height (a plain panel) or each snap point (a sheet).
    */
   stops: SharedValue<number[]>;
+  /** Called on the JS thread when a drag takes the panel, before any `settle`. */
+  begin: () => void;
   /** Called on the JS thread when a drag ends, with the index into `stops` it settled on. */
   settle: (stop: number) => void;
 }

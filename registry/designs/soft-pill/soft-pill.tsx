@@ -67,7 +67,12 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: SoftPillColors; h
           {tab.renderIcon({ focused: tab.focused, color: colors.foreground, size: ICON })}
           <Badge badge={tab.badge} colors={colors} />
         </View>
-      ) : null}
+      ) : (
+        // No icon: the badge sits where the icon's corner would be.
+        <View style={styles.badgeOnly}>
+          <Badge badge={tab.badge} colors={colors} />
+        </View>
+      )}
       <Text
         numberOfLines={1}
         maxFontSizeMultiplier={1.3}
@@ -121,6 +126,7 @@ const CAPSULE_OVERHANG = 3.75;
 const CAPSULE_INSET = { x: -CAPSULE_OVERHANG, y: 0 };
 
 const styles = StyleSheet.create({
+  badgeOnly: { position: 'absolute', top: 4, right: 10 },
   pill: {
     // Fits the screen when the tabs' full width doesn't: they shrink instead.
     maxWidth: '100%',

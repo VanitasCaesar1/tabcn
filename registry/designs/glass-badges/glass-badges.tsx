@@ -313,6 +313,7 @@ function Badge({
     ),
   }));
   if (tab.badge == null) return null;
+  const empty = String(tab.badge).trim() === '';
   const text = { color: colors.badgeText };
   return (
     <Animated.View
@@ -321,9 +322,10 @@ function Badge({
       accessibilityElementsHidden
       entering={FadeIn.duration(160).easing(BADGE_EASING).reduceMotion(ReduceMotion.System)}
       exiting={FadeOut.duration(120).easing(BADGE_EASING).reduceMotion(ReduceMotion.System)}
-      style={[styles.badge, { backgroundColor: colors.badge }, ring]}
+      // An empty badge is a dot, centred where a count's circle would be.
+      style={[empty ? styles.dot : styles.badge, { backgroundColor: colors.badge }, ring]}
     >
-      {typeof tab.badge === 'number' ? (
+      {empty ? null : typeof tab.badge === 'number' ? (
         <BadgeCount value={tab.badge} textStyle={[styles.badgeText, text]} />
       ) : (
         <Text maxFontSizeMultiplier={1.3} style={[styles.badgeText, text]}>
@@ -335,6 +337,7 @@ function Badge({
 }
 
 const BADGE_OUTER = BADGE + BADGE_RING * 2;
+const DOT_OUTER = 10 + BADGE_RING * 2;
 
 const styles = StyleSheet.create({
   row: {
@@ -395,6 +398,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dot: {
+    position: 'absolute',
+    left: ICON / 2 + BADGE_DX - DOT_OUTER / 2,
+    top: ICON / 2 + BADGE_DY - DOT_OUTER / 2,
+    width: DOT_OUTER,
+    height: DOT_OUTER,
+    borderRadius: DOT_OUTER / 2,
+    borderWidth: BADGE_RING,
   },
   badgeText: {
     fontSize: 12,

@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
   },
   section: {
     flex: 1,
-    minWidth: 72,
+    minWidth: 52,
     height: 32,
     flexDirection: 'row',
     gap: 5,

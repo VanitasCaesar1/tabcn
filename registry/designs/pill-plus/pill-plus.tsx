@@ -182,11 +182,13 @@ const styles = StyleSheet.create({
     // First icon centre 39 pt in (10 + SLOT / 2); the plus centre 38 pt from the right end.
     paddingStart: 10,
     paddingEnd: 13,
+    maxWidth: '100%',
     // The icons sit 1.5 pt below the capsule's middle in the app.
     paddingTop: 3,
   },
   list: { alignItems: 'stretch' },
-  tab: { width: SLOT, alignItems: 'center', justifyContent: 'center' },
+  // Full slots where they fit; with many tabs they share the screen's width.
+  tab: { width: SLOT, flexShrink: 1, minWidth: 40, alignItems: 'center', justifyContent: 'center' },
   iconBox: { width: ICON, height: ICON },
   center: { alignItems: 'center', justifyContent: 'center' },
   plusSlot: { width: PLUS_SLOT, alignItems: 'center', justifyContent: 'center' },

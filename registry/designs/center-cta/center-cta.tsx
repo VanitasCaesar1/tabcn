@@ -23,6 +23,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import {
+  BadgeCount,
   PressableScale,
   TabBarRoot,
   TabButton,
@@ -42,6 +43,10 @@ const defaultColors = {
   buttonText: '#2f302a',
   /** The colour handed to tab icons. The bundled illustrations are full colour and ignore it. */
   icon: '#ffffff',
+  /** Badge fill (the app shows none; iOS system red), ringed in `background`. */
+  badge: '#ff3b30',
+  /** The count on a badge. */
+  badgeText: '#ffffff',
 };
 
 export type CenterCtaColors = typeof defaultColors;
@@ -71,6 +76,9 @@ export function CenterCta({
   // The measured width where it fits; narrower, keeping EDGE from each side, where it doesn't.
   const width = Math.min(WIDTH, window.width - insets.left - insets.right - EDGE * 2);
   const half = Math.ceil(tabs.length / 2);
+  // 42 pt illustrations, smaller only when a slot is narrower than that (many tabs, small screens).
+  const slot = (width - BAR_PADDING * 2 - BUTTON_WIDTH) / Math.max(1, tabs.length);
+  const iconSize = Math.max(0, Math.min(ICON, slot));
   const anchor = usePanelAnchor('action');
   const pressed = useSharedValue(0);
   const { button, background } = colors;
@@ -82,7 +90,7 @@ export function CenterCta({
     <TabBarRoot placement="floating" style={{ width }}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
         {tabs.slice(0, half).map((tab) => (
-          <Tab key={tab.key} tab={tab} color={colors.icon} haptics={haptics} />
+          <Tab key={tab.key} tab={tab} size={iconSize} colors={colors} haptics={haptics} />
         ))}
         <View style={styles.middle}>
           <PressableScale
@@ -117,7 +125,7 @@ export function CenterCta({
           </PressableScale>
         </View>
         {tabs.slice(half).map((tab) => (
-          <Tab key={tab.key} tab={tab} color={colors.icon} haptics={haptics} />
+          <Tab key={tab.key} tab={tab} size={iconSize} colors={colors} haptics={haptics} />
         ))}
       </TabList>
     </TabBarRoot>
@@ -127,6 +135,10 @@ export function CenterCta({
 /** The bar's measured width, and the space kept from each screen edge when it can't fit. */
 const WIDTH = 371;
 const EDGE = 8;
+/** The illustrations' size, the centre button's width and the bar's side padding. */
+const ICON = 42;
+const BUTTON_WIDTH = 113;
+const BAR_PADDING = 6;
 /** Share of the bar colour mixed into the button while it is held. */
 const PRESS_MIX = 0.1;
 const PRESS_IN = {
@@ -136,23 +148,64 @@ const PRESS_IN = {
 };
 
 /** Side tabs never change look: the illustrations can't be recoloured, and the app doesn't dim them. */
-function Tab({ tab, color, haptics }: { tab: TabItem; color: string; haptics: boolean }) {
+function Tab({
+  tab,
+  size,
+  colors,
+  haptics,
+}: {
+  tab: TabItem;
+  size: number;
+  colors: CenterCtaColors;
+  haptics: boolean;
+}) {
   return (
     <TabButton
       tab={tab}
       style={styles.tab}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      {tab.renderIcon?.({ focused: tab.focused, color, size: 42 })}
+      <View>
+        {tab.renderIcon?.({ focused: tab.focused, color: colors.icon, size })}
+        <Badge badge={tab.badge} colors={colors} />
+      </View>
     </TabButton>
   );
 }
 
+/**
+ * A badge on the illustration's top right: a dot for an empty badge, a count otherwise, ringed
+ * in the bar colour so it reads over the artwork. The tab's accessibility label already reads it.
+ */
+function Badge({ badge, colors }: { badge: TabItem['badge']; colors: CenterCtaColors }) {
+  if (badge == null) return null;
+  const text = String(badge).trim();
+  const fill = { backgroundColor: colors.badge, borderColor: colors.background };
+  if (text === '') return <View pointerEvents="none" style={[styles.dot, fill]} />;
+  const textStyle = [styles.badgeText, { color: colors.badgeText }];
+  return (
+    <View
+      pointerEvents="none"
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
+      style={[styles.count, fill]}
+    >
+      {typeof badge === 'number' ? (
+        <BadgeCount value={badge} textStyle={textStyle} />
+      ) : (
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+          {text}
+        </Text>
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  bar: { height: 69, borderRadius: 24, alignItems: 'stretch', paddingHorizontal: 6 },
+  bar: { height: 69, borderRadius: 24, alignItems: 'stretch', paddingHorizontal: BAR_PADDING },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   middle: { justifyContent: 'center' },
-  button: { width: 113, height: 49 },
+  button: { width: BUTTON_WIDTH, height: 49 },
   face: {
     flex: 1,
     borderRadius: 25,
@@ -161,4 +214,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   buttonText: { fontSize: 19 },
+  dot: {
+    position: 'absolute',
+    top: -1,
+    right: -1,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+  },
+  count: {
+    position: 'absolute',
+    top: -6,
+    right: -8,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { fontSize: 11, lineHeight: 14, fontWeight: '700', includeFontPadding: false },
 });

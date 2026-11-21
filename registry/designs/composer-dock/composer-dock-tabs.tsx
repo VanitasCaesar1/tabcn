@@ -5,7 +5,7 @@
  */
 import { GlassView } from 'expo-glass-effect';
 import { type ComponentRef, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { I18nManager, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { TabButton, type TabItem, useTabIndicator } from 'react-native-tabcn';
 import {
@@ -14,8 +14,10 @@ import {
   fade,
   GLASS_STYLE,
   measure,
-  TAB_WIDTH,
 } from './composer-dock-theme';
+
+/** The icon's box, which the held capsule reaches just past: narrower only in a crowded row. */
+const ICON_BOX = 60;
 
 export function DockTab({
   tab,
@@ -25,6 +27,7 @@ export function DockTab({
   onHold,
   register,
   glass,
+  width,
 }: {
   tab: TabItem;
   colors: ComposerDockColors;
@@ -35,6 +38,8 @@ export function DockTab({
   onHold?: (tab: TabItem, anchor: Frame) => void;
   /** Hands the dock this tab's icon, which its menu opens from. */
   register: (key: string, node: ComponentRef<typeof View> | null) => void;
+  /** The tab's width: TAB_WIDTH, narrowed so every tab fits the row. */
+  width: number;
 }) {
   const ref = useRef<ComponentRef<typeof View>>(null);
   const square = useSharedValue(held ? 1 : 0);
@@ -50,7 +55,7 @@ export function DockTab({
   return (
     <TabButton
       tab={tab}
-      style={styles.tab}
+      style={[styles.tab, { width }]}
       // Touch holds are handled by the row's hold gesture (see ComposerDock); this long press is
       // the screen readers' way in.
       onLongPress={onHold ? open : undefined}
@@ -62,7 +67,7 @@ export function DockTab({
           register(tab.key, node);
         }}
         collapsable={false}
-        style={styles.iconBox}
+        style={[styles.iconBox, { width: Math.min(ICON_BOX, width) }]}
       >
         <Animated.View
           pointerEvents="none"
@@ -102,7 +107,7 @@ export function ScrubLabel({ tab, colors }: { tab: TabItem | null; colors: Compo
       pointerEvents="none"
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
-      style={[styles.labelTrack, style]}
+      style={[styles.labelTrack, PHYSICAL_LEFT, style]}
     >
       <View style={[styles.labelPill, { backgroundColor: colors.label }]}>
         <Text
@@ -117,9 +122,19 @@ export function ScrubLabel({ tab, colors }: { tab: TabItem | null; colors: Compo
   );
 }
 
+/**
+ * The scrub frame's x is measured from the row's physical left edge, but in a right-to-left
+ * layout React Native reads `left` as the start edge (the right) unless the app turned that
+ * swap off. Pin the pill to the physical left either way, so its translateX lands on the tab.
+ */
+const PHYSICAL_LEFT =
+  I18nManager.isRTL && (I18nManager.getConstants?.().doLeftAndRightSwapInRTL ?? true)
+    ? { right: 0 }
+    : { left: 0 };
+
 const styles = StyleSheet.create({
-  tab: { width: TAB_WIDTH, alignItems: 'center', justifyContent: 'center' },
-  iconBox: { width: 60, height: 42, alignItems: 'center', justifyContent: 'center' },
+  tab: { alignItems: 'center', justifyContent: 'center' },
+  iconBox: { height: 42, alignItems: 'center', justifyContent: 'center' },
   // Wider than the icon box: it reaches past it, as the app's does.
   heldCapsule: {
     position: 'absolute',
@@ -131,7 +146,7 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
   },
   heldGlass: { borderRadius: 24 },
-  labelTrack: { position: 'absolute', left: 0, top: -20, alignItems: 'center' },
+  labelTrack: { position: 'absolute', top: -20, alignItems: 'center' },
   labelPill: {
     height: 24,
     paddingHorizontal: 10,

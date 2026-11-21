@@ -484,8 +484,11 @@ const styles = StyleSheet.create({
   list: {
     gap: GAP,
   },
+  // Square tiles where they fit; with many tabs they narrow so the field keeps its room.
   tile: {
     width: TILE,
+    flexShrink: 1,
+    minWidth: 40,
     height: TILE,
     borderRadius: RADIUS,
     alignItems: 'center',
@@ -493,6 +496,7 @@ const styles = StyleSheet.create({
   },
   field: {
     flex: 1,
+    minWidth: 120,
     height: TILE,
     borderRadius: RADIUS,
   },

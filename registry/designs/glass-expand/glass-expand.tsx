@@ -92,11 +92,19 @@ const BOTTOM = 22;
 /** Keeps the pill clear of the screen's sides on narrow phones. */
 const MIN_MARGIN = 16;
 
-/** Where each tab and the capsule sit for one active tab: left edges and widths, in points. */
+/** Where each tab and the capsule sit for one active tab, in points. */
 interface Slots {
-  tabs: { left: number; width: number; center: number }[];
-  /** Left edge of the capsule, or null with no active tab. */
+  /**
+   * `start`: offset from the row's start edge (the right in RTL), for layout styles.
+   * `left` and `center`: from the row's physical left edge, for transforms.
+   */
+  tabs: { start: number; left: number; width: number; center: number }[];
+  /** Physical left edge of the capsule, or null with no active tab. */
   capsule: number | null;
+  /** The capsule's width: 94 pt, narrower only when the row can't hold it (7 tabs, 320 pt). */
+  capsuleWidth: number;
+  /** The flexible gap between icons. */
+  gap: number;
 }
 
 /**
@@ -108,27 +116,35 @@ interface Slots {
 function computeSlots(width: number, count: number, active: number): Slots {
   const isEdge = (spacer: number) =>
     (spacer === 0 && active === 0) || (spacer === count && active === count - 1);
-  let fixed = 0;
+  const hasActive = active >= 0 && active < count;
+  // Everything but the capsule: the inactive icons and the 6 pt edge spaces.
+  let rest = 0;
   let gaps = 0;
-  for (let i = 0; i < count; i++) fixed += i === active ? CAPSULE_WIDTH : ICON;
+  for (let i = 0; i < count; i++) if (i !== active) rest += ICON;
   for (let spacer = 0; spacer <= count; spacer++) {
-    if (isEdge(spacer)) fixed += INSET;
+    if (isEdge(spacer)) rest += INSET;
     else gaps += 1;
   }
+  // The capsule gives up width (never below an icon's) before the row overflows the pill.
+  const capsuleWidth = hasActive
+    ? Math.max(ICON, Math.min(CAPSULE_WIDTH, width - rest))
+    : CAPSULE_WIDTH;
+  const fixed = rest + (hasActive ? capsuleWidth : 0);
   const gap = gaps > 0 ? Math.max(0, (width - fixed) / gaps) : 0;
   const tabs: Slots['tabs'] = [];
   let x = 0;
   let capsule: number | null = null;
   for (let i = 0; i < count; i++) {
     x += isEdge(i) ? INSET : gap;
-    const w = i === active ? CAPSULE_WIDTH : ICON;
-    // The row reads right to left in RTL, as a flex row would.
+    const w = i === active ? capsuleWidth : ICON;
+    // Layout reads `start` right to left in RTL by itself; transforms are physical, so the
+    // drawn parts mirror their own offset.
     const left = I18nManager.isRTL ? width - x - w : x;
-    tabs.push({ left, width: w, center: left + w / 2 });
+    tabs.push({ start: x, left, width: w, center: left + w / 2 });
     if (i === active) capsule = left;
     x += w;
   }
-  return { tabs, capsule };
+  return { tabs, capsule, capsuleWidth, gap };
 }
 
 /**
@@ -171,6 +187,10 @@ export function GlassExpand({
   // Elsewhere (no inset, Android navigation bars) it keeps clear of the system area.
   const bottom = Math.max(BOTTOM, Platform.OS === 'ios' ? insets.bottom - 12 : insets.bottom + 8);
   const slots = computeSlots(width, tabs.length, activeIndex);
+  // Inactive tabs are only as wide as their icon; the slop reaches into the gaps around them,
+  // but never past the middle of a gap, where the next tab's slop begins.
+  const side = Math.min(HIT_SLOP, slots.gap / 2);
+  const hitSlop = { left: side, right: side, top: INSET, bottom: INSET };
   return (
     <TabBarRoot placement="floating" offset={bottom - insets.bottom}>
       <View style={[styles.pill, { width }]}>
@@ -205,7 +225,12 @@ export function GlassExpand({
           />
         )}
         <TabList style={styles.list}>
-          <Capsule left={slots.capsule} activeIndex={activeIndex} colors={colors} />
+          <Capsule
+            left={slots.capsule}
+            width={slots.capsuleWidth}
+            activeIndex={activeIndex}
+            colors={colors}
+          />
           {tabs.map((tab) => {
             const slot = slots.tabs[tab.index];
             if (!slot) return null;
@@ -214,6 +239,7 @@ export function GlassExpand({
                 key={tab.key}
                 tab={tab}
                 slot={slot}
+                hitSlop={hitSlop}
                 activeIndex={activeIndex}
                 colors={colors}
                 haptics={haptics}
@@ -229,10 +255,12 @@ export function GlassExpand({
 /** The flat capsule: a fixed 94 x 70 pt that only slides, so it never squeezes mid-move. */
 function Capsule({
   left,
+  width,
   activeIndex,
   colors,
 }: {
   left: number | null;
+  width: number;
   activeIndex: number;
   colors: GlassExpandColors;
 }) {
@@ -244,7 +272,8 @@ function Capsule({
       pointerEvents="none"
       style={[
         styles.capsule,
-        { backgroundColor: colors.capsule, borderColor: colors.capsuleBorder },
+        PHYSICAL_LEFT,
+        { width, backgroundColor: colors.capsule, borderColor: colors.capsuleBorder },
         style,
       ]}
     />
@@ -259,12 +288,14 @@ function Capsule({
 function Tab({
   tab,
   slot,
+  hitSlop,
   activeIndex,
   colors,
   haptics,
 }: {
   tab: TabItem;
   slot: Slots['tabs'][number];
+  hitSlop: { left: number; right: number; top: number; bottom: number };
   activeIndex: number;
   colors: GlassExpandColors;
   haptics: boolean;
@@ -277,11 +308,11 @@ function Tab({
     <Fragment>
       <TabButton
         tab={tab}
-        hitSlop={HIT_SLOP}
-        style={[styles.tab, { left: slot.left, width: slot.width }]}
+        hitSlop={hitSlop}
+        style={[styles.tab, { start: slot.start, width: slot.width }]}
         onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
       />
-      <Animated.View pointerEvents="none" style={[styles.icon, iconStyle]}>
+      <Animated.View pointerEvents="none" style={[styles.icon, PHYSICAL_LEFT, iconStyle]}>
         {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: ICON })}
         <Badge badge={tab.badge} colors={colors} />
       </Animated.View>
@@ -317,8 +348,18 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: GlassExpand
 
 /** The icons' 40-unit box, in points: the sneaker draws about 33 x 31 pt, the drop 23 x 29. */
 const ICON = 34;
-/** Inactive tabs are only as wide as their icon; this reaches into the gaps around them. */
-const HIT_SLOP = { left: 12, right: 12, top: INSET, bottom: INSET };
+/** How far an inactive tab's touch target reaches into the gaps beside its icon, at most. */
+const HIT_SLOP = 12;
+
+/**
+ * The capsule and icons move by physical x (transforms don't flip in RTL), but React Native
+ * reads `left` as the start edge in a right-to-left layout unless the app turned that swap
+ * off. Pin them to the physical left either way.
+ */
+const PHYSICAL_LEFT =
+  I18nManager.isRTL && (I18nManager.getConstants?.().doLeftAndRightSwapInRTL ?? true)
+    ? { right: 0 }
+    : { left: 0 };
 
 const styles = StyleSheet.create({
   pill: { borderRadius: 999, paddingVertical: INSET },
@@ -332,9 +373,7 @@ const styles = StyleSheet.create({
   list: { alignItems: 'center', height: CAPSULE_HEIGHT },
   capsule: {
     position: 'absolute',
-    left: 0,
     top: 0,
-    width: CAPSULE_WIDTH,
     height: CAPSULE_HEIGHT,
     borderRadius: 999,
     borderWidth: 1,
@@ -342,7 +381,6 @@ const styles = StyleSheet.create({
   tab: { position: 'absolute', top: 0, height: CAPSULE_HEIGHT },
   icon: {
     position: 'absolute',
-    left: 0,
     top: (CAPSULE_HEIGHT - ICON) / 2,
     width: ICON,
     height: ICON,

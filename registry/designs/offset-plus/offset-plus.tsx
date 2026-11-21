@@ -151,6 +151,8 @@ interface Palettes {
   light: OffsetPlusColors;
   /** 0 on the black bar, 1 on the light one, in between while it fades. */
   scheme: SharedValue<number>;
+  /** The bar is on (or fading to) its light colours: badges take `lightColors`. */
+  isLight: boolean;
 }
 
 export function OffsetPlus({
@@ -177,7 +179,7 @@ export function OffsetPlus({
   const fill = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(scheme.value, [0, 1], [dark.background, light.background]),
   }));
-  const palettes: Palettes = { dark, light, scheme };
+  const palettes: Palettes = { dark, light, scheme, isLight };
 
   // The plus sits in the middle slot: with four tabs, two on each side.
   const half = Math.ceil(tabs.length / 2);
@@ -287,7 +289,7 @@ function Action({
 
 function Tab({
   tab,
-  palettes: { dark, light, scheme },
+  palettes: { dark, light, scheme, isLight },
   hasLight,
   fontFamily,
   haptics,
@@ -341,7 +343,7 @@ function Tab({
             {icons(light)}
           </Animated.View>
         ) : null}
-        <Badge badge={tab.badge} colors={dark} />
+        <Badge badge={tab.badge} colors={isLight ? light : dark} />
       </View>
       <Animated.Text
         numberOfLines={1}

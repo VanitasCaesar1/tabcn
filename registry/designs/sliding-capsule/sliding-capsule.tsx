@@ -72,7 +72,7 @@ export interface SlidingCapsuleProps {
  */
 const TAB_WIDTH = 89.5;
 /** On a narrow screen the tabs shrink to fit, down to this width. */
-const MIN_TAB_WIDTH = 64;
+const MIN_TAB_WIDTH = 50;
 const BAR_HEIGHT = 62.5;
 const BAR_PADDING = 7.5;
 const CAPSULE_INSET = { x: -3.5, y: 4 };

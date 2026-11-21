@@ -18,7 +18,14 @@
  */
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
-import { Platform, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import Animated, { interpolate, interpolateColor, useAnimatedStyle } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import {
@@ -114,13 +121,13 @@ const SCRIM_ABOVE = 27;
  * The fade's stops: points below the buttons' tops (negative is above), white's opacity. The
  * last one's colour carries on down to the screen's edge.
  */
-const SCRIM_STOPS: readonly (readonly [number, number])[] = [
+const scrimStops = (button: number): readonly (readonly [number, number])[] => [
   [-SCRIM_ABOVE, 0],
   [-8, 0.58],
   [0, 0.8],
-  [BUTTON / 2, 0.9],
-  [BUTTON, 0.97],
-  [BUTTON + 10, 1],
+  [button / 2, 0.9],
+  [button, 0.97],
+  [button + 10, 1],
 ];
 
 export function ButtonRow({
@@ -132,7 +139,13 @@ export function ButtonRow({
 }: ButtonRowProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs, insets } = useTabBar();
+  const window = useWindowDimensions();
   const wide = wideTab ?? Math.floor(tabs.length / 2);
+  // 49 pt buttons, as in the app, shrunk only when the row can't hold them all (7 tabs): every
+  // button, the pill included, then gets the same share of the row.
+  const row = window.width - insets.left - insets.right - SIDE * 2;
+  const count = Math.max(1, tabs.length);
+  const size = Math.max(0, Math.min(BUTTON, (row - GAP * (count - 1)) / count));
 
   // The app's buttons end 1 pt above the home indicator's inset. Where there's no inset
   // (older iPhones, some Android navigation modes) they keep a small gap from the edge.
@@ -152,6 +165,7 @@ export function ButtonRow({
       {scrim ? (
         <Scrim
           color={colors.scrim}
+          button={size}
           bottom={bottom}
           left={SIDE + insets.left}
           right={SIDE + insets.right}
@@ -165,6 +179,7 @@ export function ButtonRow({
               tab={tab}
               colors={colors}
               surface={surface}
+              size={size}
               fontFamily={fontFamily}
               haptics={haptics}
             />
@@ -174,6 +189,7 @@ export function ButtonRow({
               tab={tab}
               colors={colors}
               surface={surface}
+              size={size}
               haptics={haptics}
             />
           ),
@@ -189,16 +205,19 @@ export function ButtonRow({
  */
 function Scrim({
   color,
+  button,
   bottom,
   left,
   right,
 }: {
   color: string;
+  /** The buttons' height. */
+  button: number;
   bottom: number;
   left: number;
   right: number;
 }) {
-  const height = SCRIM_ABOVE + BUTTON + bottom;
+  const height = SCRIM_ABOVE + button + bottom;
   // Where a point below the buttons' tops falls along the fade, 0 at its top and 1 at the
   // screen's edge.
   const at = (belowTops: number) => Math.min(1, (SCRIM_ABOVE + belowTops) / height);
@@ -212,7 +231,7 @@ function Scrim({
       <Svg width="100%" height="100%">
         <Defs>
           <LinearGradient id="button-row-scrim" x1={0} y1={0} x2={0} y2={1}>
-            {SCRIM_STOPS.map(([belowTops, opacity]) => (
+            {scrimStops(button).map(([belowTops, opacity]) => (
               <Stop
                 key={belowTops}
                 offset={at(belowTops)}
@@ -256,17 +275,19 @@ function CircleTab({
   tab,
   colors,
   surface,
+  size,
   haptics,
 }: {
   tab: TabItem;
   colors: ButtonRowColors;
   surface: ViewStyle;
+  size: number;
   haptics: boolean;
 }) {
   return (
     <TabButton
       tab={tab}
-      style={[styles.button, styles.circle, surface]}
+      style={[styles.button, surface, { width: size, height: size, borderRadius: size / 2 }]}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <View style={styles.icon}>
@@ -282,12 +303,14 @@ function WideTab({
   tab,
   colors,
   surface,
+  size,
   fontFamily,
   haptics,
 }: {
   tab: TabItem;
   colors: ButtonRowColors;
   surface: ViewStyle;
+  size: number;
   fontFamily: string | undefined;
   haptics: boolean;
 }) {
@@ -299,7 +322,7 @@ function WideTab({
   return (
     <TabButton
       tab={tab}
-      style={[styles.button, styles.pill, surface]}
+      style={[styles.button, styles.pill, surface, { height: size, borderRadius: size / 2 }]}
       onLayout={(e) => setNarrow(e.nativeEvent.layout.width < MIN_LABELLED_PILL)}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
@@ -323,6 +346,15 @@ function WideTab({
 /** A count badge at the button's top right. Read with the tab's label, not on its own. */
 function Badge({ tab, colors }: { tab: TabItem; colors: ButtonRowColors }) {
   if (tab.badge == null) return null;
+  // An empty badge is a dot.
+  if (String(tab.badge).trim() === '') {
+    return (
+      <View
+        pointerEvents="none"
+        style={[styles.dot, { backgroundColor: colors.badge, borderColor: colors.background }]}
+      />
+    );
+  }
   const text = { color: colors.badgeText };
   return (
     <View
@@ -359,14 +391,9 @@ const styles = StyleSheet.create({
     top: -SCRIM_ABOVE,
   },
   button: {
-    height: BUTTON,
-    borderRadius: BUTTON / 2,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  circle: {
-    width: BUTTON,
   },
   pill: {
     flex: 1,
@@ -403,6 +430,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dot: {
+    position: 'absolute',
+    top: 1,
+    right: 1,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.5,
   },
   badgeText: {
     fontSize: 11,

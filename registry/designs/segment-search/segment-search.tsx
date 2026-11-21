@@ -80,7 +80,9 @@ export function SegmentSearch({
   const room = window.width - insets.left - insets.right - EDGE * 2;
   const fixed = LIST_PADDING * 2 + HEIGHT;
   const gap = Math.max(MIN_GAP, Math.min(GAP, room - fixed - TAB * count));
-  const tabWidth = Math.max(MIN_TAB, Math.min(TAB, (room - fixed - gap) / count));
+  // The measured minimum holds while it fits; past that (many tabs) the tabs share what's left.
+  const fit = (room - fixed - gap) / count;
+  const tabWidth = Math.min(TAB, fit >= MIN_TAB ? fit : Math.max(40, fit));
   return (
     <TabBarRoot placement="floating" style={[styles.row, { gap }]}>
       <View style={[styles.well, wellShadow(colors.shadow)]}>

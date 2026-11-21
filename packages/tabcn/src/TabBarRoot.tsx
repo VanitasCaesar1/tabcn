@@ -339,14 +339,32 @@ export function TabBarRoot({
 
   // The padding of the box the design's children sit in: the root's, or for a floating bar
   // the design's own `style`.
+  const flatStyle = (StyleSheet.flatten(style) ?? {}) as ViewStyle;
+  // An edge's inset plus the design's own padding on it. The root sets each edge explicitly,
+  // and an explicit edge wins over `paddingHorizontal`/`padding` whatever their order, so a
+  // design's shorthand padding would be dropped; add it here instead. A design that sets the
+  // edge itself (`paddingLeft`) keeps full control, as before.
+  const edge = (side: 'Top' | 'Bottom' | 'Left' | 'Right', inset: number) => {
+    if (flatStyle[`padding${side}`] !== undefined) return inset;
+    const axis =
+      side === 'Left' || side === 'Right' ? flatStyle.paddingHorizontal : flatStyle.paddingVertical;
+    const own = axis ?? flatStyle.padding;
+    return inset + (typeof own === 'number' ? own : 0);
+  };
   const basePadding: ViewStyle =
     placement === 'docked'
-      ? { paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }
+      ? {
+          paddingBottom: edge('Bottom', insets.bottom),
+          paddingLeft: edge('Left', insets.left),
+          paddingRight: edge('Right', insets.right),
+        }
       : rail
-        ? { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left }
+        ? {
+            paddingTop: edge('Top', insets.top),
+            paddingBottom: edge('Bottom', insets.bottom),
+            paddingLeft: edge('Left', insets.left),
+          }
         : {};
-
-  const flatStyle = (StyleSheet.flatten(style) ?? {}) as ViewStyle;
 
   // A floating bar's rounded ends hide the join; a docked bar's top edge is straight. An
   // empty floating bar (zero height, as under a sheet that stands in for the bar) hides
@@ -486,7 +504,9 @@ export function TabBarRoot({
       >
         {panels}
         <View
-          style={[style, boxPadding]}
+          // Centred, the box would size to its content and never learn the screen's width, so
+          // a design's `maxWidth: '100%'` couldn't shrink a bar wider than a narrow phone.
+          style={[styles.floatingBox, style, boxPadding]}
           onLayout={
             store
               ? (e) => {
@@ -535,3 +555,7 @@ export function TabBarRoot({
     </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  floatingBox: { maxWidth: '100%' },
+});

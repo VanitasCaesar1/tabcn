@@ -128,8 +128,9 @@ export function SplitSearch({
   const labelWidths = useSharedValue<Record<number, number>>({});
 
   // The last route is Search, drawn as its own circle; the rest share the pill.
-  const pillTabs = tabs.slice(0, -1);
   const search = tabs.length > 1 ? tabs[tabs.length - 1] : undefined;
+  // With a single visible tab there is no Search circle, and that tab sits in the pill.
+  const pillTabs = search ? tabs.slice(0, -1) : tabs;
   const count = Math.max(1, pillTabs.length);
   const pillWidth = Math.max(BAR, window.width - insets.left - insets.right - SIDE * 2 - GAP - BAR);
   const slot = (pillWidth - INSET * 2) / count;
@@ -141,7 +142,9 @@ export function SplitSearch({
   if (activeIndex >= 0 && activeIndex < pillTabs.length && activeIndex !== kept) {
     setKept(activeIndex);
   }
-  const keptCenter = INSET + slot * (kept + 0.5);
+  // Tabs can go away (a route hidden at runtime); keep the capsule on a pill tab.
+  const keptSlot = Math.min(kept, count - 1);
+  const keptCenter = INSET + slot * (keptSlot + 0.5);
 
   // While minimized, the circle is one button that expands the bar (as iOS 26 does); the
   // tabs inside it take no taps and aren't read.
@@ -183,7 +186,8 @@ export function SplitSearch({
                 center={keptCenter}
                 pillWidth={pillWidth}
                 slot={slot}
-                searchActive={search?.focused ?? false}
+                // No pill tab is active while Search is, or while a hidden route is focused.
+                searchActive={(search?.focused ?? false) || activeIndex < 0}
                 minimized={minimized}
                 color={colors.capsule}
                 labelWidths={labelWidths}

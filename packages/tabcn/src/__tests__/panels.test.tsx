@@ -818,4 +818,41 @@ describe('react-native-tabcn/gestures', () => {
     });
     expect(controls.player?.state).toBe('peek');
   });
+
+  it('a panel hidden while a finger drags it stays hidden when the finger lifts', async () => {
+    await render(
+      <GestureHandlerRootView>
+        <App state={makeTabState()}>
+          <Player />
+          <Controls id="player" />
+        </App>
+      </GestureHandlerRootView>,
+    );
+    await layoutBar();
+    await layoutPanel('player', 300);
+    await act(async () => controls.player?.peek());
+    const pan = createGestureController(getByGestureTestId('tabcn-drag-player'));
+    await act(async () => {
+      pan.begin();
+      pan.activate();
+      pan.update({ translationY: -40 });
+    });
+    // Something else hides it mid-drag (Android back, a tab switch, a hide() call).
+    await act(async () => controls.player?.hide());
+    expect(controls.player?.state).toBe('hidden');
+    await act(async () => {
+      // An upward flick that would open it on its own.
+      pan.end({ translationY: -40, velocityY: -1200 });
+    });
+    expect(controls.player?.state).toBe('hidden');
+    // The next drag starts fresh and works as before.
+    await act(async () => controls.player?.peek());
+    await act(async () => {
+      pan.begin();
+      pan.activate();
+      pan.update({ translationY: -40 });
+      pan.end({ translationY: -40, velocityY: -1200 });
+    });
+    expect(controls.player?.state).toBe('open');
+  });
 });

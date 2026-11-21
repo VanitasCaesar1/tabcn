@@ -777,6 +777,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     backgroundColor: PILL.background,
     boxShadow: '0 10px 28px rgba(60, 40, 20, 0.14)',
+    maxWidth: '100%',
   },
   capsule: { borderRadius: 999, backgroundColor: PILL.capsule },
   pillTab: {
@@ -784,7 +785,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 5.5,
     paddingTop: 2.5,
+    // Soft Pill's 63 pt where it fits; narrower on a small phone, as Soft Pill does.
     width: 63,
+    flexShrink: 1,
+    minWidth: 50,
     height: 50.7,
   },
   pillLabel: { fontSize: 9.5, color: PILL.foreground },

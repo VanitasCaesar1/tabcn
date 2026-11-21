@@ -79,7 +79,7 @@ const SPACING = 103;
 /** Room kept on each side of the row on a screen too narrow for it. */
 const MARGIN = 12;
 /** The row never scales below this, so the orbs stay tappable. */
-const MIN_SCALE = 0.6;
+const MIN_SCALE = 0.5;
 
 function resolveMaterial(material: OrbsMaterial): Exclude<OrbsMaterial, 'auto'> {
   if (material !== 'auto') return material;
