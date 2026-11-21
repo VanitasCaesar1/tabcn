@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { catalog } from '@/catalog';
 import { demos, designHref, screenBackground, useCurrentDemo } from '@/demos';
+import { embed } from '@/embed';
 import { PANEL_FAMILIES, useDemoScreenColors, usePanelFamily } from '@/panel-theme';
 import { Pattern } from '@/pattern';
 
@@ -66,7 +67,7 @@ export function DemoScreen({ index }: { index: number }) {
       ))}
       {/* A demo with a sheet hides the stack header (see Demo.fullScreen), so it offers its own
           way back. */}
-      {demo?.fullScreen ? (
+      {demo?.fullScreen && !embed ? (
         <Pressable
           role="button"
           accessibilityLabel="Back"
@@ -80,7 +81,7 @@ export function DemoScreen({ index }: { index: number }) {
       {/* The stack header is transparent on iOS 26, so clear it by hand. */}
       <View style={[styles.header, { paddingTop: insets.top + 64 }]}>
         <Text style={[styles.title, { color: text }]}>{title}</Text>
-        {next ? (
+        {next && !embed ? (
           <Pressable
             role="button"
             accessibilityLabel={`Next design: ${next.title}`}
@@ -98,37 +99,40 @@ export function DemoScreen({ index }: { index: number }) {
         ) : null}
       </View>
       {/* PanelUI's themes, through the bridge an app installs (registry/themes/panelui-colors.ts). */}
-      <View style={styles.themes} role="radiogroup" accessibilityLabel="Theme">
-        {PANEL_FAMILIES.map((option) => {
-          const selected = option.id === family;
-          return (
-            <Pressable
-              key={option.id}
-              role="radio"
-              accessibilityState={{ selected }}
-              accessibilityLabel={
-                option.id === 'tabcn' ? 'Design colours' : `PanelUI ${option.label}`
-              }
-              hitSlop={6}
-              onPress={() => setFamily(option.id)}
-              style={[styles.theme, { backgroundColor: selected ? text : chip }]}
-            >
-              <Text
-                style={[
-                  styles.themeLabel,
-                  {
-                    color: selected
-                      ? (themed?.background ?? (demo?.dark ? '#000000' : '#ffffff'))
-                      : text,
-                  },
-                ]}
+      {/* In the site's live preview the page around it has these. */}
+      {embed ? null : (
+        <View style={styles.themes} role="radiogroup" accessibilityLabel="Theme">
+          {PANEL_FAMILIES.map((option) => {
+            const selected = option.id === family;
+            return (
+              <Pressable
+                key={option.id}
+                role="radio"
+                accessibilityState={{ selected }}
+                accessibilityLabel={
+                  option.id === 'tabcn' ? 'Design colours' : `PanelUI ${option.label}`
+                }
+                hitSlop={6}
+                onPress={() => setFamily(option.id)}
+                style={[styles.theme, { backgroundColor: selected ? text : chip }]}
               >
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+                <Text
+                  style={[
+                    styles.themeLabel,
+                    {
+                      color: selected
+                        ? (themed?.background ?? (demo?.dark ? '#000000' : '#ffffff'))
+                        : text,
+                    },
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
       {/* A panel demo's controls, or a list to scroll. */}
       {Extra ? (
         <Extra

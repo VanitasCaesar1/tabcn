@@ -18,8 +18,10 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { useColorScheme } from 'react-native';
+import { Platform, useColorScheme } from 'react-native';
 import { Uniwind, useCSSVariable } from 'uniwind';
+
+import { embed } from '@/embed';
 
 export type PanelFamily = 'tabcn' | 'panel' | 'moon' | 'grass';
 export const PANEL_FAMILIES: { id: PanelFamily; label: string }[] = [
@@ -34,9 +36,23 @@ const PanelThemeContext = createContext<{
   setFamily: (family: PanelFamily) => void;
 }>({ family: 'tabcn', setFamily: () => {} });
 
+const isFamily = (value: unknown): value is PanelFamily =>
+  PANEL_FAMILIES.some((option) => option.id === value);
+
 export function PanelThemeProvider({ children }: { children: ReactNode }) {
-  const [family, setFamily] = useState<PanelFamily>('tabcn');
+  // The site's live preview picks the theme in the URL, then switches it with postMessage.
+  const [family, setFamily] = useState<PanelFamily>(isFamily(embed?.theme) ? embed.theme : 'tabcn');
   const dark = useColorScheme() === 'dark';
+  useEffect(() => {
+    if (!embed || Platform.OS !== 'web') return;
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as { type?: string; theme?: unknown } | null;
+      if (data?.type === 'tabcn:theme' && isFamily(data.theme)) setFamily(data.theme);
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
   useEffect(() => {
     // Panel is PanelUI's light/dark pair, which Uniwind follows with the system on its own.
     // Moon and Grass are extra themes: pick the half that matches the system.
