@@ -532,6 +532,13 @@ No new export. One core change in `TabBarRoot`: a floating bar whose box has zer
 export interface TabScrubProps {
   /** Runs on the JS thread each time the finger slides onto another tab. Play a haptic here. */
   onTabCross?: (tab: TabItem) => void;
+  /** Runs on the JS thread when a scrub starts, with the tab under the finger. (Added 2026-11-21.) */
+  onScrubStart?: (tab: TabItem) => void;
+  /**
+   * Runs on the JS thread when a scrub ends: the tab the finger lifted on, or null when it lifted
+   * far from the bar or the system took the touch. Runs before that tab is pressed. (Added 2026-11-21.)
+   */
+  onScrubEnd?: (tab: TabItem | null) => void;
   /** Turns scrubbing off; the list still works as a plain TabList. Default true. */
   enabled?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -548,6 +555,7 @@ export function TabScrub(props: TabScrubProps): ReactElement;
 -   **Long press first.** A long press is reported on the JS thread, the pan decides on the UI thread. The pan records when the touch went down, and a sideways drag that comes after Pressable's 500 ms long-press delay fails the pan instead of activating it: a finger that held still that long belongs to the tab's long press (a sub-tab drawer), which still fires however late the JS thread reports it, and a slow drift after the delay no longer kills both. Pressable's long-press timer starts when the JS thread sees the touch, never before the UI thread does, so a scrub that starts inside 500 ms cancels the press before its long press can fire; on a very busy JS thread, a cancel and a due long-press timer can still both be queued, in a narrow window. `TabScrub` can't see a `TabButton`'s props, so its documentation says to keep `delayLongPress` at its default inside it. Slide-to-select in the sub-tab drawer stays unsupported (the tab owns the touch).
 -   **Following.** The target keeps the size of the tab under the finger, centred on the finger, held between the first and last tabs; the indicator retargets on its spring (critically damped, overshoot clamped), so it trails the finger and never passes it. With reduce motion on, the target is the tab under the finger, so the indicator moves tab by tab, and the spring lands instantly.
 -   **Crossing** calls `onTabCross(tab)` once per new tab, not at the start.
+-   **Start and end** (added 2026-11-21, for Composer Dock's name pill). `onScrubStart(tab)` runs when the pan activates, with the tab under the finger; `onScrubEnd(tab | null)` runs once per scrub, before the commit's press: with the tab lifted on (the active tab too, though nothing is pressed then), or `null` when lifted more than 44 pt from the tabs or cancelled. A design learns that a scrub is happening, and which tab is under the finger, without a new context or a shared value; the indicator's position still comes from `useTabIndicator`. Rejected: a public `scrubbing` shared value or hook (a second way to read the same state, and the label text is set on the JS thread anyway); an `onScrubChange(tab | null)` that merges start, cross and end (it hides when a scrub starts, which a design needs for its first haptic).
 -   **Commit.** On lift over another tab, `tab.press()` runs (`tabPress`, `preventDefault`, navigation) and the indicator holds that tab until it becomes active, or lets go after 500 ms if the press was prevented. Lifting on the active tab does nothing (no re-press, which would pop its stack); lifting more than 44 pt above or below the tabs, or a cancelled touch, returns the indicator to the active tab.
 -   **Right to left.** Frames and touch positions are both physical (left to right), so the tab under the finger is found the same way in either direction.
 -   **Accessibility** unchanged: the list keeps the `tablist` role; screen readers select tabs by focus and double tap.
@@ -565,7 +573,8 @@ export function TabScrub(props: TabScrubProps): ReactElement;
 -   `packages/tabcn/src/indicator.tsx`: follow `scrub` while it is set.
 -   `packages/tabcn/src/gestures.tsx`: `TabScrub`, `TabScrubProps`.
 -   `registry/designs/scrub-pill/scrub-pill.tsx`: a light floating pill with a tinted lens, `onTabCross` haptics and a `scrub` opt-out; depends on `react-native-gesture-handler` and `expo-haptics`.
--   `packages/tabcn/src/__tests__/scrub.test.tsx`: taps still press; the target follows the finger, centred and clamped; one cross per tab; lifting presses and holds until active; a prevented press lets go; lifting on the active tab or far away changes nothing; a cancelled touch returns; a touch held past the long-press delay doesn't scrub; right to left; the design's smoke test.
+-   `registry/designs/composer-dock/`: a chat composer over four icon tabs; `onScrubStart`, `onTabCross` and `onScrubEnd` drive its name pill and an `onScrubTab` prop for the screen's preview; hold menus and the attachment menu are drawn inside the dock over the whole screen (tap outside closes them; a modal would cancel the finger still down from the long press). A hold menu grows out of the held tab while a blur over it clears (eased, no overshoot), and one pan on the tab row, starting after the long-press delay, lets the same finger slide onto a row and lift to choose it; the composer rides the keyboard (`useAnimatedKeyboard`) through a spacer inside the docked root, so the root's frame, and the height screens pad by, follow it. On iOS 26 the composer, the menus' cards and the model chip are Liquid Glass (`expo-glass-effect`, which ships in Expo Go); `material="solid"` or an older system gets flat fills. The example app's model sheet is TrueSheet (`@lodev09/react-native-true-sheet`, the native iOS 26 inset sheet) in a development build, and a drawn inset card with the same contents in Expo Go, where TrueSheet isn't linked; it is demo content, not part of the design.
+-   `packages/tabcn/src/__tests__/scrub.test.tsx`: taps still press; the target follows the finger, centred and clamped; one cross per tab; lifting presses and holds until active; a prevented press lets go; lifting on the active tab or far away changes nothing; a cancelled touch returns; a touch held past the long-press delay doesn't scrub; right to left; start and end are reported in order, before the press, with `null` for a lift far away or a cancel; the design's smoke test.
 
 ### Live tabs
 

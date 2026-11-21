@@ -245,6 +245,8 @@ export function MyTabBar() {
 }
 ```
 
+`onScrubStart(tab)` and `onScrubEnd(tab | null)` bracket a scrub, so a design can show something while the finger is down: Composer Dock names the tab under the finger in a small pill (updating it in `onTabCross`) and lets the screen preview it. `onScrubEnd` gets the tab the finger lifted on, or `null` when it lifted away from the bar or the system took the touch, and runs before that tab is pressed.
+
 It needs `react-native-gesture-handler` and a `GestureHandlerRootView` around the app.
 
 ### Live tabs
@@ -260,7 +262,7 @@ timer.setText(remaining > 0 ? format(remaining) : undefined); // shown in place 
 
 See [`docs/designs/bottom-components.md`](docs/designs/bottom-components.md) for all of the above.
 
-## The 42 designs
+## The 43 designs
 
 Every design animates: tap to see the active tab move. Click one to open its page, with the install command and a QR code for Expo Go.
 
@@ -285,6 +287,7 @@ Every design animates: tap to see the active tab move. Click one to open its pag
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/badge-dock/"><img src="assets/readme/badge-dock.gif" width="400" alt="Badge Dock tab bar"></a><br><b>Badge Dock</b><br><sub>Docked bar</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/cart-pill/"><img src="assets/readme/cart-pill.gif" width="400" alt="Cart Pill tab bar"></a><br><b>Cart Pill</b><br><sub>Pill + action button</sub></td></tr>
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/glass-badges/"><img src="assets/readme/glass-badges.gif" width="400" alt="Glass Badges tab bar"></a><br><b>Glass Badges</b><br><sub>Pill + action button</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/section-sheet/"><img src="assets/readme/section-sheet.gif" width="200" alt="Section Sheet tab bar"></a><br><b>Section Sheet</b><br><sub>Sheet</sub></td></tr>
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/scrub-pill/"><img src="assets/readme/scrub-pill.gif" width="400" alt="Scrub Pill tab bar"></a><br><b>Scrub Pill</b><br><sub>Floating pill</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/live-tabs/"><img src="assets/readme/live-tabs.gif" width="400" alt="Live Tabs tab bar"></a><br><b>Live Tabs</b><br><sub>Docked bar</sub></td></tr>
+<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/composer-dock/"><img src="assets/readme/composer-dock.gif" width="200" alt="Composer Dock tab bar"></a><br><b>Composer Dock</b><br><sub>Docked bar</sub></td><td width="50%"></td></tr>
 </table>
 
 ### Panels

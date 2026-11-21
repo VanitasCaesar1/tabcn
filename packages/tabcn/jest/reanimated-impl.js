@@ -58,6 +58,7 @@ module.exports = {
   },
   createAnimatedComponent,
   ReduceMotion,
+  Extrapolation: { CLAMP: 'clamp', EXTEND: 'extend', IDENTITY: 'identity' },
   Easing,
   useSharedValue: (initial) => React.useState(() => makeShared(initial))[0],
   makeMutable: (initial) => makeShared(initial),
@@ -96,6 +97,8 @@ module.exports = {
   runOnJS: (fn) => fn,
   // The OS "reduce motion" setting: off under Jest.
   useReducedMotion: () => false,
+  // No keyboard under Jest: height 0, closed.
+  useAnimatedKeyboard: () => ({ height: { value: 0 }, state: { value: 0 } }),
   FadeIn: builder(),
   FadeOut: builder(),
   ZoomIn: builder(),

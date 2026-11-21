@@ -388,6 +388,16 @@ export const catalog: DesignEntry[] = [
     status: 'ready',
   },
   {
+    id: 'composer-dock',
+    ref: 0,
+    title: 'Composer Dock',
+    kind: 'bar',
+    layout: 'docked-bar',
+    summary:
+      'A chat composer over four icon tabs on the screen colour: scrub the tabs with a dark name pill over the finger, hold one for a card of its recent items, and the composer opens into a card that rides the keyboard.',
+    status: 'ready',
+  },
+  {
     id: 'live-tabs',
     ref: 0,
     title: 'Live Tabs',

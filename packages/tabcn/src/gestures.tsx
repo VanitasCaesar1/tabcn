@@ -338,6 +338,17 @@ export interface TabScrubProps {
    * (not when the scrub starts). Play a selection haptic here.
    */
   onTabCross?: (tab: TabItem) => void;
+  /**
+   * Runs on the JS thread when a scrub starts, with the tab under the finger. Show a label
+   * for the tab under the finger here (and update it in `onTabCross`).
+   */
+  onScrubStart?: (tab: TabItem) => void;
+  /**
+   * Runs on the JS thread when a scrub ends: with the tab the finger lifted on, or `null`
+   * when it lifted far above or below the bar or the system took the touch. Runs before
+   * that tab is pressed. Lifting on the active tab passes the active tab.
+   */
+  onScrubEnd?: (tab: TabItem | null) => void;
   /** Turns scrubbing off; the list still works as a plain `TabList`. Default true. */
   enabled?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -375,7 +386,14 @@ export interface TabScrubProps {
  * </TabScrub>
  * ```
  */
-export function TabScrub({ onTabCross, enabled = true, style, children }: TabScrubProps) {
+export function TabScrub({
+  onTabCross,
+  onScrubStart,
+  onScrubEnd,
+  enabled = true,
+  style,
+  children,
+}: TabScrubProps) {
   const { tabs, activeIndex } = useTabBar();
   const listRef = useRef<ComponentRef<typeof View>>(null);
   const frames = useSharedValue<Record<number, TabFrame>>({});
@@ -391,8 +409,8 @@ export function TabScrub({ onTabCross, enabled = true, style, children }: TabScr
   const count = tabs.length;
 
   // The latest tabs and callback, read when the gesture calls back to the JS thread.
-  const latest = useRef({ tabs, activeIndex, onTabCross });
-  latest.current = { tabs, activeIndex, onTabCross };
+  const latest = useRef({ tabs, activeIndex, onTabCross, onScrubStart, onScrubEnd });
+  latest.current = { tabs, activeIndex, onTabCross, onScrubStart, onScrubEnd };
 
   // A tab chosen by lifting stays under the indicator until the navigator makes it active
   // (or, if the press was prevented, for a moment, after which the indicator returns).
@@ -412,6 +430,13 @@ export function TabScrub({ onTabCross, enabled = true, style, children }: TabScr
     const cross = (index: number) => {
       const tab = latest.current.tabs[index];
       if (tab) latest.current.onTabCross?.(tab);
+    };
+    const start = (index: number) => {
+      const tab = latest.current.tabs[index];
+      if (tab) latest.current.onScrubStart?.(tab);
+    };
+    const end = (index: number) => {
+      latest.current.onScrubEnd?.(latest.current.tabs[index] ?? null);
     };
     const commit = (index: number) => {
       const { tabs: current, activeIndex: active } = latest.current;
@@ -473,6 +498,7 @@ export function TabScrub({ onTabCross, enabled = true, style, children }: TabScr
         scrubbing.value = true;
         hovered.value = index;
         scrub.value = scrubTarget(frames.value, count, e.x, index, reduceMotion);
+        runOnJS(start)(index);
       })
       .onUpdate((e) => {
         'worklet';
@@ -491,9 +517,11 @@ export function TabScrub({ onTabCross, enabled = true, style, children }: TabScr
         const index = hovered.value;
         if (!success || index < 0 || !nearTabs(frames.value, count, e.y)) {
           scrub.value = null;
+          runOnJS(end)(-1);
           return;
         }
         scrub.value = frames.value[index] ?? null;
+        runOnJS(end)(index);
         runOnJS(commit)(index);
       })
       .onFinalize(() => {
@@ -504,6 +532,7 @@ export function TabScrub({ onTabCross, enabled = true, style, children }: TabScr
         if (!scrubbing.value) return;
         scrubbing.value = false;
         scrub.value = null;
+        runOnJS(end)(-1);
       });
   }, [
     enabled,

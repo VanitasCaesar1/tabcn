@@ -12,14 +12,13 @@ import {
   getByGestureTestId,
 } from 'react-native-gesture-handler/jest-utils';
 
-import { TabScrub } from '../gestures';
+import { TabScrub, type TabScrubProps } from '../gestures';
 import {
   TabBarRoot,
   type TabBarState,
   TabBarStateProvider,
   TabButton,
   TabIndicator,
-  type TabItem,
   useTabBar,
 } from '../index';
 import { type TabFrame, type TabListContextValue, useTabListContext } from '../TabList';
@@ -50,17 +49,18 @@ function Frames({ frames }: { frames: Record<number, TabFrame> }) {
   return null;
 }
 
+type ScrubCallbacks = Pick<TabScrubProps, 'onTabCross' | 'onScrubStart' | 'onScrubEnd'>;
+
 function ScrubBar({
   frames = LTR,
-  onTabCross,
-}: {
+  ...callbacks
+}: ScrubCallbacks & {
   frames?: Record<number, TabFrame>;
-  onTabCross?: (tab: TabItem) => void;
 }) {
   const { tabs } = useTabBar();
   return (
     <TabBarRoot placement="floating" testID="bar">
-      <TabScrub onTabCross={onTabCross}>
+      <TabScrub {...callbacks}>
         <TabIndicator />
         <Frames frames={frames} />
         {tabs.map((tab) => (
@@ -76,16 +76,15 @@ function ScrubBar({
 function App({
   state,
   frames,
-  onTabCross,
-}: {
+  ...callbacks
+}: ScrubCallbacks & {
   state: TabBarState;
   frames?: Record<number, TabFrame>;
-  onTabCross?: (tab: TabItem) => void;
 }) {
   return (
     <GestureHandlerRootView>
       <TabBarStateProvider value={state}>
-        <ScrubBar frames={frames} onTabCross={onTabCross} />
+        <ScrubBar frames={frames} {...callbacks} />
       </TabBarStateProvider>
     </GestureHandlerRootView>
   );
@@ -153,6 +152,48 @@ describe('TabScrub', () => {
     expect(state.tabs[2]?.press).toHaveBeenCalledTimes(1);
     // The indicator stays on the chosen tab until the navigator makes it active.
     expect(target()).toEqual(LTR[2]);
+  });
+
+  it('reports when a scrub starts and how it ends, before the chosen tab is pressed', async () => {
+    const state = makeTabState();
+    const events: string[] = [];
+    const callbacks: ScrubCallbacks = {
+      onScrubStart: (tab) => events.push(`start ${tab.label}`),
+      onTabCross: (tab) => events.push(`cross ${tab.label}`),
+      onScrubEnd: (tab) => {
+        const pressed = (state.tabs[2]?.press as jest.Mock | undefined)?.mock.calls.length ?? 0;
+        events.push(`end ${tab?.label ?? 'none'} (pressed ${pressed})`);
+      },
+    };
+    await render(<App state={state} {...callbacks} />);
+    await slide([50, 150, 250]);
+    expect(events).toEqual([
+      'start Home',
+      'cross Search',
+      'cross Profile',
+      'end Profile (pressed 0)',
+    ]);
+
+    // Lifted far from the bar: no tab.
+    events.length = 0;
+    await slide([50, 150], 25 + 200);
+    expect(events).toEqual(['start Home', 'cross Search', 'end none (pressed 1)']);
+
+    // The system took the touch: no tab.
+    events.length = 0;
+    const pan = scrubber();
+    await act(async () => {
+      pan.begin({ x: 150, y: 25 });
+      pan.activate({ x: 162, y: 25 });
+      pan.cancel({ x: 162, y: 25 });
+    });
+    expect(events).toEqual(['start Search', 'end none (pressed 1)']);
+
+    // Lifted on the active tab: that tab, and nothing is pressed.
+    events.length = 0;
+    await slide([30, 70]);
+    expect(events).toEqual(['start Home', 'end Home (pressed 1)']);
+    expect(state.tabs[0]?.press).not.toHaveBeenCalled();
   });
 
   it('lets go of the indicator once the chosen tab is active', async () => {
