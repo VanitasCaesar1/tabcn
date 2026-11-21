@@ -869,6 +869,21 @@
           "target": "components/tabcn/sub-tabs.tsx"
         }
       ]
+    },
+    {
+      "name": "panelui-colors",
+      "type": "registry:item",
+      "title": "PanelUI Colors",
+      "description": "Every design's colors from the running PanelUI theme (Panel, Moon, Grass; light and dark), read with Uniwind. Not a design: install it beside one.",
+      "categories": ["theme"],
+      "dependencies": ["uniwind"],
+      "files": [
+        {
+          "path": "registry/themes/panelui-colors.ts",
+          "type": "registry:file",
+          "target": "components/tabcn/panelui-colors.ts"
+        }
+      ]
     }
   ]
 }

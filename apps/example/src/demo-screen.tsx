@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { catalog } from '@/catalog';
 import { demos, designHref, screenBackground, useCurrentDemo } from '@/demos';
+import { PANEL_FAMILIES, useDemoScreenColors, usePanelFamily } from '@/panel-theme';
 import { Pattern } from '@/pattern';
 
 /**
@@ -24,8 +25,11 @@ export function DemoScreen({ index }: { index: number }) {
   const built = catalog.filter((d) => demos[d.id]);
   const next = built[(built.findIndex((d) => d.id === id) + 1) % built.length];
   const title = demo?.tabs[index]?.label ?? '';
-  const text = demo?.dark ? '#ffffff' : '#111114';
-  const chip = demo?.dark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.06)';
+  // Under a PanelUI theme the screen takes the theme's colours and drops the reference's pattern.
+  const themed = useDemoScreenColors();
+  const { family, setFamily } = usePanelFamily();
+  const text = themed?.text ?? (demo?.dark ? '#ffffff' : '#111114');
+  const chip = themed?.chip ?? (demo?.dark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.06)');
   const Extra = demo?.extra;
   const navigation = useNavigation();
 
@@ -37,9 +41,14 @@ export function DemoScreen({ index }: { index: number }) {
 
   return (
     <View
-      style={[styles.screen, { backgroundColor: demo ? screenBackground(demo, index) : undefined }]}
+      style={[
+        styles.screen,
+        {
+          backgroundColor: themed?.background ?? (demo ? screenBackground(demo, index) : undefined),
+        },
+      ]}
     >
-      {demo?.pattern ? <Pattern spec={demo.pattern} centerY={barCenterY} /> : null}
+      {demo?.pattern && !themed ? <Pattern spec={demo.pattern} centerY={barCenterY} /> : null}
       {demo?.blobs?.map((b) => (
         <View
           key={`${b.dx},${b.dy}`}
@@ -88,6 +97,38 @@ export function DemoScreen({ index }: { index: number }) {
           </Pressable>
         ) : null}
       </View>
+      {/* PanelUI's themes, through the bridge an app installs (registry/themes/panelui-colors.ts). */}
+      <View style={styles.themes} role="radiogroup" accessibilityLabel="Theme">
+        {PANEL_FAMILIES.map((option) => {
+          const selected = option.id === family;
+          return (
+            <Pressable
+              key={option.id}
+              role="radio"
+              accessibilityState={{ selected }}
+              accessibilityLabel={
+                option.id === 'tabcn' ? 'Design colours' : `PanelUI ${option.label}`
+              }
+              hitSlop={6}
+              onPress={() => setFamily(option.id)}
+              style={[styles.theme, { backgroundColor: selected ? text : chip }]}
+            >
+              <Text
+                style={[
+                  styles.themeLabel,
+                  {
+                    color: selected
+                      ? (themed?.background ?? (demo?.dark ? '#000000' : '#ffffff'))
+                      : text,
+                  },
+                ]}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
       {/* A panel demo's controls, or a list to scroll. */}
       {Extra ? (
         <Extra
@@ -114,4 +155,12 @@ const styles = StyleSheet.create({
   title: { fontSize: 30, fontWeight: '700' },
   next: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 },
   back: { position: 'absolute', left: 20 },
+  themes: { flexDirection: 'row', gap: 6, paddingHorizontal: 20, paddingTop: 12 },
+  theme: {
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderCurve: 'continuous',
+  },
+  themeLabel: { fontSize: 13, fontWeight: '600' },
 });

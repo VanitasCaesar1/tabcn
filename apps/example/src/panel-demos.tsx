@@ -13,17 +13,20 @@
  * `DemoExtraProps`, so nothing here reads one navigator's context under the other.
  */
 
-import { BarSheet, useBarSheet } from '@registry/bar-sheet/bar-sheet';
+import { BarSheet as BarSheetDesign, useBarSheet } from '@registry/bar-sheet/bar-sheet';
 import {
-  CompanionChip,
+  CompanionChip as CompanionChipDesign,
   type CompanionChipIconProps,
 } from '@registry/companion-chip/companion-chip';
-import { ContextTray } from '@registry/context-tray/context-tray';
-import { LabeledPlus } from '@registry/labeled-plus/labeled-plus';
-import { MiniPlayer } from '@registry/mini-player/mini-player';
+import { ContextTray as ContextTrayDesign } from '@registry/context-tray/context-tray';
+import { LabeledPlus as LabeledPlusDesign } from '@registry/labeled-plus/labeled-plus';
+import { MiniPlayer as MiniPlayerDesign } from '@registry/mini-player/mini-player';
 import * as QuickCreateIcons from '@registry/quick-create/icons';
-import { QuickCreate, useQuickCreate } from '@registry/quick-create/quick-create';
-import { SubTabs, useSubTabs } from '@registry/sub-tabs/sub-tabs';
+import {
+  QuickCreate as QuickCreateDesign,
+  useQuickCreate,
+} from '@registry/quick-create/quick-create';
+import { SubTabs as SubTabsDesign, useSubTabs } from '@registry/sub-tabs/sub-tabs';
 import { type ReactNode, useEffect, useState, useSyncExternalStore } from 'react';
 import {
   AccessibilityInfo,
@@ -60,6 +63,16 @@ import {
 } from 'react-native-tabcn';
 import { useTabBarOverride as useExpoRouterOverride } from 'react-native-tabcn/expo-router';
 import { useTabBarOverride as useReactNavigationOverride } from 'react-native-tabcn/react-navigation';
+import { themed } from '@/panel-theme';
+
+// Each design in the PanelUI theme picked on the demo screen (src/panel-theme.tsx).
+const BarSheet = themed('bar-sheet', BarSheetDesign);
+const CompanionChip = themed('companion-chip', CompanionChipDesign);
+const ContextTray = themed('context-tray', ContextTrayDesign);
+const LabeledPlus = themed('labeled-plus', LabeledPlusDesign);
+const MiniPlayer = themed('mini-player', MiniPlayerDesign);
+const QuickCreate = themed('quick-create', QuickCreateDesign);
+const SubTabs = themed('sub-tabs', SubTabsDesign);
 
 /** What a demo screen passes to its extra content. */
 export interface DemoExtraProps {
