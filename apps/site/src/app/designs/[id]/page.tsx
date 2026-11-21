@@ -17,6 +17,7 @@ import {
   panelUISnippet,
   usageSnippet,
 } from '@/lib/designs';
+import { guideFor } from '@/lib/docs';
 import { absoluteUrl, designPath, groupPath, registryUrl, site, sourceUrl } from '@/lib/site';
 
 type Props = { params: Promise<{ id: string }> };
@@ -63,6 +64,7 @@ export default async function DesignPage({ params }: Props) {
   const design = getDesign(id);
   if (!design) notFound();
   const { previous, next } = neighbours(design.id);
+  const guide = guideFor(design.id);
 
   return (
     <>
@@ -195,6 +197,19 @@ export default async function DesignPage({ params }: Props) {
                   ' Screens write each tab’s live values with useLiveTab(routeName), which needs a TabBarProvider around the navigator.'}
               </>
             )}
+            {guide ? (
+              <>
+                {' '}
+                More in{' '}
+                <Link
+                  href={guide.href}
+                  className="rounded-sm text-foreground underline decoration-border underline-offset-4 outline-hidden transition-[text-decoration-color] duration-150 ease-out hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2"
+                >
+                  {guide.title}
+                </Link>
+                .
+              </>
+            ) : null}
           </p>
           <CodeBlock filename="app/(tabs)/_layout.tsx" code={usageSnippet(design)} />
         </section>
