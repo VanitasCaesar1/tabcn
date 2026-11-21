@@ -70,7 +70,12 @@ import { TopNotch } from '@registry/top-notch/top-notch';
 import type { Href } from 'expo-router';
 import { type ComponentType, createContext, type ReactElement, type ReactNode, use } from 'react';
 import type { TabIconProps } from 'react-native-tabcn';
-import { ComposerDockDemoBar, ComposerDockScreen, ModelSheet } from '@/composer-dock-demo';
+import {
+  ChatDrawer,
+  ComposerDockDemoBar,
+  ComposerDockScreen,
+  ModelSheet,
+} from '@/composer-dock-demo';
 import {
   BarSheetControls,
   BarSheetPanel,
@@ -718,7 +723,12 @@ export const demos: Record<string, Demo> = {
     // tab under the finger), hold Projects, Code or Artifacts for recent items, and focus the
     // field to open the composer over the keyboard.
     render: ({ routes }) => <ComposerDockDemoBar routes={routes} />,
-    panel: () => <ModelSheet />,
+    panel: () => (
+      <>
+        <ModelSheet />
+        <ChatDrawer />
+      </>
+    ),
     screen: ComposerDockScreen,
     background: '#f8f8f6',
     fullScreen: true,

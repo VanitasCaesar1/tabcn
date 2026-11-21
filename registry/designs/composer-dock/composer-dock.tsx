@@ -77,8 +77,8 @@ import { TabScrub } from 'react-native-tabcn/gestures';
 const defaultColors = {
   /** The dock, the same as the screen behind it. */
   background: '#f8f8f6',
-  /** The composer's pill and card. */
-  composer: '#ffffff',
+  /** The composer's pill and card: a faint lift off the screen colour. */
+  composer: 'rgba(255, 255, 255, 0.6)',
   /** Hairline edge of the composer and the menus. */
   border: 'rgba(0, 0, 0, 0.07)',
   /** Text, the active tab's icon, and the voice and Send buttons. */
@@ -87,8 +87,10 @@ const defaultColors = {
   muted: '#a3a29e',
   /** The text field's placeholder. */
   placeholder: '#9b9a96',
-  /** The dictation button's circle and the model chip. */
-  control: '#f1f0ec',
+  /** The model chip. */
+  control: 'rgba(0, 0, 0, 0.05)',
+  /** The dictation glyph. */
+  dictate: '#5f5e5a',
   /** The voice and Send buttons' glyphs. */
   onForeground: '#ffffff',
   /** The menus' cards. */
@@ -181,12 +183,14 @@ interface Frame {
 /** Height of the tab row, without the home indicator's inset. */
 const TAB_ROW = 48;
 /** Between the composer and the tabs. */
-const COMPOSER_GAP = 4;
+const COMPOSER_GAP = 10;
 /** Between the composer and the keyboard. */
-const KEYBOARD_GAP = 8;
+const KEYBOARD_GAP = 6;
 const SIDE = 16;
+/** Each tab's width; the row is centred. */
+const TAB_WIDTH = 80;
 const HOLD_CARD_WIDTH = 232;
-const ATTACH_CARD_WIDTH = 176;
+const ATTACH_CARD_WIDTH = 168;
 
 const fade = { ...tabcnTiming, reduceMotion: ReduceMotion.System };
 const glide = LinearTransition.duration(240)
@@ -412,7 +416,7 @@ function DockTab({
             squareStyle,
           ]}
         />
-        {tab.renderIcon?.({ focused: tab.focused, color, size: 22 })}
+        {tab.renderIcon?.({ focused: tab.focused, color, size: 20 })}
       </View>
     </TabButton>
   );
@@ -495,13 +499,8 @@ function Composer({
     </CircleButton>
   ) : null;
   const dictate = onDictatePress ? (
-    <CircleButton
-      key="dictate"
-      label="Dictate"
-      onPress={onDictatePress}
-      background={colors.control}
-    >
-      <MicGlyph color={colors.foreground} />
+    <CircleButton key="dictate" label="Dictate" onPress={onDictatePress}>
+      <MicGlyph color={colors.dictate} />
     </CircleButton>
   ) : null;
   const action = (
@@ -576,7 +575,7 @@ function Composer({
                 style={[styles.chip, { backgroundColor: colors.control }]}
               >
                 <Text style={[styles.chipText, { color: colors.foreground }]}>{model}</Text>
-                <ChevronGlyph color={colors.foreground} />
+                <GaugeGlyph color={colors.foreground} />
               </Pressable>
             ) : null}
           </View>
@@ -804,67 +803,69 @@ function ArrowUpGlyph({ color }: { color: string }) {
   );
 }
 
-function ChevronGlyph({ color }: { color: string }) {
+/** A small dial: the model's effort, beside its name in the chip. */
+function GaugeGlyph({ color }: { color: string }) {
   return (
-    <Svg width={12} height={12} viewBox="0 0 24 24">
-      <Path d="m6 9 6 6 6-6" stroke={color} {...stroke} strokeWidth={2.4} />
+    <Svg width={13} height={13} viewBox="0 0 24 24">
+      <Path d="M19.8 16.5A9 9 0 1 0 4.2 16.5" stroke={color} {...stroke} strokeWidth={2} />
+      <Path d="m12 13 3.5-4" stroke={color} {...stroke} strokeWidth={2} />
     </Svg>
   );
 }
 
 const styles = StyleSheet.create({
   composer: {
-    marginHorizontal: SIDE,
+    marginHorizontal: 18,
     marginBottom: COMPOSER_GAP,
-    minHeight: 54,
-    borderRadius: 27,
+    minHeight: 48,
+    borderRadius: 24,
     borderWidth: StyleSheet.hairlineWidth,
     borderCurve: 'continuous',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     justifyContent: 'center',
-    boxShadow: '0 1px 6px rgba(0, 0, 0, 0.04)',
   },
   composerOpen: {
-    borderRadius: 24,
-    paddingTop: 6,
-    paddingBottom: 8,
+    marginHorizontal: 10,
+    borderRadius: 22,
+    paddingTop: 4,
+    paddingBottom: 6,
   },
   firstRow: { flexDirection: 'row', alignItems: 'center' },
   fieldBox: { flex: 1 },
   field: {
-    fontSize: 16,
-    lineHeight: 21,
+    fontSize: 15,
+    lineHeight: 20,
     maxHeight: 132,
-    paddingHorizontal: 8,
-    paddingTop: 15,
-    paddingBottom: 15,
+    paddingHorizontal: 6,
+    paddingTop: 13,
+    paddingBottom: 13,
   },
-  fieldOpen: { paddingTop: 10, paddingBottom: 8 },
+  fieldOpen: { paddingHorizontal: 10, paddingTop: 10, paddingBottom: 10 },
   secondRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  ends: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  ends: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   circle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    height: 30,
+    gap: 5,
+    height: 28,
     paddingHorizontal: 11,
-    borderRadius: 15,
+    borderRadius: 14,
   },
   chipText: { fontSize: 13, fontWeight: '500' },
-  tabRow: { height: TAB_ROW, paddingHorizontal: 49 },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  iconBox: { width: 46, height: 36, alignItems: 'center', justifyContent: 'center' },
+  tabRow: { height: TAB_ROW, justifyContent: 'center' },
+  tab: { width: TAB_WIDTH, alignItems: 'center', justifyContent: 'center' },
+  iconBox: { width: 44, height: 34, alignItems: 'center', justifyContent: 'center' },
   heldSquare: { borderRadius: 11, borderCurve: 'continuous' },
   labelTrack: { position: 'absolute', left: 0, top: -20, alignItems: 'center' },
   labelPill: {
@@ -885,11 +886,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     boxShadow: '0 8px 28px rgba(0, 0, 0, 0.10)',
   },
-  groupGap: { marginTop: 8 },
+  groupGap: { marginTop: 10 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 36,
+    minHeight: 34,
     paddingHorizontal: 12,
     gap: 10,
     marginHorizontal: 4,
