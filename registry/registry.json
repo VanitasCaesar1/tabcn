@@ -739,7 +739,8 @@
         "react-native-tabcn",
         "react-native-gesture-handler",
         "expo-haptics",
-        "react-native-svg"
+        "react-native-svg",
+        "expo-glass-effect"
       ],
       "files": [
         {

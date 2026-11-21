@@ -13,6 +13,9 @@
  *   it opens into a two-row card with the model chip (`model`, `onModelPress`) and rides on
  *   top of the keyboard while the tabs slip behind it.
  *
+ * On iOS 26 the composer, the menus' cards and the model chip are Liquid Glass (expo-glass-effect);
+ * elsewhere, or with `material="solid"`, they are flat fills with a hairline edge.
+ *
  * Scrubbing comes from `TabScrub` in 'react-native-tabcn/gestures', so this design needs
  * `react-native-gesture-handler` and a `GestureHandlerRootView` around the app.
  *
@@ -28,6 +31,7 @@
  * or turns. With "reduce motion" on, every change is instant.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 // 'react-native-tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
 // here names it as this design's own dependency, so `shadcn add` installs it.
@@ -168,6 +172,11 @@ export interface ComposerDockProps {
   onScrubTab?: (tab: TabItem | null) => void;
   /** Press and slide along the tabs to move through them. Default true. */
   scrub?: boolean;
+  /**
+   * The composer's, the menus' and the chip's surface: `'glass'` (Liquid Glass, iOS 26),
+   * `'solid'` (a flat fill), or `'auto'` (glass where the system has it). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   colors?: Partial<ComposerDockColors>;
   /** Selection haptics while scrubbing, and a light tap when a hold menu opens. Default true. */
   haptics?: boolean;
@@ -216,10 +225,12 @@ export function ComposerDock({
   menus,
   onScrubTab,
   scrub = true,
+  material = 'auto',
   colors: custom,
   haptics = true,
 }: ComposerDockProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const { tabs, insets } = useTabBar();
   const keyboard = useAnimatedKeyboard();
   const rowRef = useRef<ComponentRef<typeof View>>(null);
@@ -280,6 +291,7 @@ export function ComposerDock({
           attachments ? () => measure(composerRef, (frame) => setAttach(frame)) : undefined
         }
         dimmed={scrubbing !== null}
+        glass={glass}
       />
       <Animated.View ref={rowRef} collapsable={false} style={rowStyle}>
         <TabScrub
@@ -319,6 +331,7 @@ export function ComposerDock({
         centerX={shownHeld ? shownHeld.anchor.x + shownHeld.anchor.width / 2 : 0}
         bottom={shownHeld?.rowTop ?? 0}
         colors={colors}
+        glass={glass}
         label={heldTab ? `${heldTab.label}, recent` : 'Recent'}
       >
         {(close) =>
@@ -356,6 +369,7 @@ export function ComposerDock({
         left={shownAttach?.x ?? SIDE}
         bottom={shownAttach ? shownAttach.y + shownAttach.height : 0}
         colors={colors}
+        glass={glass}
         label="Add to message"
       >
         {(close) =>
@@ -464,6 +478,7 @@ function Composer({
   onDictatePress,
   onAttachPress,
   dimmed,
+  glass,
 }: {
   composerRef: ViewRef;
   colors: ComposerDockColors;
@@ -475,6 +490,7 @@ function Composer({
   onDictatePress?: () => void;
   onAttachPress?: () => void;
   dimmed: boolean;
+  glass: boolean;
 }) {
   const [text, setText] = useState('');
   const [focused, setFocused] = useState(false);
@@ -530,10 +546,19 @@ function Composer({
       style={[
         styles.composer,
         focused ? styles.composerOpen : null,
-        { backgroundColor: colors.composer, borderColor: colors.border },
+        glass
+          ? styles.composerGlass
+          : { backgroundColor: colors.composer, borderColor: colors.border },
         dimStyle,
       ]}
     >
+      {glass ? (
+        <GlassView
+          glassEffectStyle="regular"
+          isInteractive
+          style={[StyleSheet.absoluteFill, { borderRadius: focused ? 22 : 24 }]}
+        />
+      ) : null}
       {/* Every child is keyed, so the field stays mounted (and focused) when the pill opens
           into the card and the buttons move to the second row. */}
       <Animated.View layout={glide} style={styles.firstRow}>
@@ -572,8 +597,15 @@ function Composer({
                 accessibilityLabel={`Model, ${model}`}
                 onPress={onModelPress}
                 hitSlop={6}
-                style={[styles.chip, { backgroundColor: colors.control }]}
+                style={[styles.chip, glass ? null : { backgroundColor: colors.control }]}
               >
+                {glass ? (
+                  <GlassView
+                    glassEffectStyle="regular"
+                    isInteractive
+                    style={[StyleSheet.absoluteFill, styles.chipGlass]}
+                  />
+                ) : null}
                 <Text style={[styles.chipText, { color: colors.foreground }]}>{model}</Text>
                 <GaugeGlyph color={colors.foreground} />
               </Pressable>
@@ -631,6 +663,7 @@ function Popover({
   left,
   bottom,
   colors,
+  glass,
   label,
   children,
 }: {
@@ -643,6 +676,7 @@ function Popover({
   left?: number;
   bottom: number;
   colors: ComposerDockColors;
+  glass: boolean;
   label: string;
   children: (close: (then?: () => void) => void) => ReactNode;
 }) {
@@ -707,11 +741,16 @@ function Popover({
               width,
               left: x,
               bottom: screen.height - bottom + 8,
-              backgroundColor: colors.menu,
-              borderColor: colors.border,
             },
+            glass ? styles.cardGlass : { backgroundColor: colors.menu, borderColor: colors.border },
           ]}
         >
+          {glass ? (
+            <GlassView
+              glassEffectStyle="regular"
+              style={[StyleSheet.absoluteFill, styles.cardGlassFill]}
+            />
+          ) : null}
           {children(close)}
         </View>
       </Animated.View>
@@ -824,6 +863,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     justifyContent: 'center',
   },
+  composerGlass: { borderWidth: 0 },
   composerOpen: {
     marginHorizontal: 10,
     borderRadius: 22,
@@ -863,6 +903,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   chipText: { fontSize: 13, fontWeight: '500' },
+  chipGlass: { borderRadius: 14 },
   tabRow: { height: TAB_ROW, justifyContent: 'center' },
   tab: { width: TAB_WIDTH, alignItems: 'center', justifyContent: 'center' },
   iconBox: { width: 44, height: 34, alignItems: 'center', justifyContent: 'center' },
@@ -886,6 +927,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     boxShadow: '0 8px 28px rgba(0, 0, 0, 0.10)',
   },
+  cardGlass: { borderWidth: 0, boxShadow: '0 8px 28px rgba(0, 0, 0, 0.06)' },
+  cardGlassFill: { borderRadius: 16 },
   groupGap: { marginTop: 10 },
   row: {
     flexDirection: 'row',

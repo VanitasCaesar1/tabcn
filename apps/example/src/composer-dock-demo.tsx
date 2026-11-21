@@ -23,6 +23,7 @@ import {
   SkillsIcon,
   ThumbItemIcon,
 } from '@registry/composer-dock/composer-dock-icons';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from 'react';
@@ -61,6 +62,19 @@ const SOFT = '#8a8984';
 const FAINT = '#dcdbd6';
 const CHIP = 'rgba(0, 0, 0, 0.05)';
 const fade = { ...tabcnTiming, reduceMotion: ReduceMotion.System };
+// Round buttons and the search field are Liquid Glass on iOS 26, as in the app.
+const GLASS = isLiquidGlassAvailable();
+
+function GlassFill({ radius }: { radius: number }) {
+  if (!GLASS) return null;
+  return (
+    <GlassView
+      glassEffectStyle="regular"
+      isInteractive
+      style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
+    />
+  );
+}
 const glide = {
   duration: 320,
   easing: Easing.out(Easing.cubic),
@@ -276,7 +290,7 @@ const NATIVE_SHEET = TurboModuleRegistry.get('TrueSheetModule') != null;
 const TrueSheet: typeof TrueSheetType | null = NATIVE_SHEET
   ? require('@lodev09/react-native-true-sheet').TrueSheet
   : null;
-const SHEET_CONTENT_HEIGHT = 372;
+const SHEET_CONTENT_HEIGHT = 462;
 
 export function ModelSheet() {
   return TrueSheet ? <NativeModelSheet sheet={TrueSheet} /> : <FallbackModelSheet />;
@@ -400,12 +414,18 @@ function ModelSheetContent({
         role="button"
         accessibilityLabel="Close"
         onPress={close}
-        style={styles.roundButton}
+        style={GLASS ? styles.roundGlass : styles.roundButton}
       >
+        <GlassFill radius={19} />
         <Glyph d="M7 7l10 10M17 7 7 17" color={INK} size={18} />
       </Pressable>
       <Text style={styles.sheetTitle}>Model</Text>
-      <Pressable role="button" onPress={say('More models')} style={styles.morePill}>
+      <Pressable
+        role="button"
+        onPress={say('More models')}
+        style={GLASS ? styles.moreGlass : styles.morePill}
+      >
+        <GlassFill radius={19} />
         <Text style={styles.moreText}>More</Text>
       </Pressable>
     </View>
@@ -763,8 +783,9 @@ function DrawerBody({ open }: { open: boolean }) {
               role="button"
               accessibilityLabel="Gifts"
               onPress={say('Gifts')}
-              style={styles.roundButton}
+              style={GLASS ? styles.roundGlass : styles.roundButton}
             >
+              <GlassFill radius={19} />
               <GiftGlyph />
             </Pressable>
           </View>
@@ -814,11 +835,13 @@ function DrawerBody({ open }: { open: boolean }) {
                 close();
                 setTimeout(() => router.back(), 320);
               }}
-              style={styles.roundButton}
+              style={GLASS ? styles.roundGlass : styles.roundButton}
             >
+              <GlassFill radius={19} />
               <GearGlyph />
             </Pressable>
-            <View style={styles.search}>
+            <View style={GLASS ? styles.searchGlass : styles.search}>
+              <GlassFill radius={21} />
               <Glyph
                 d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13ZM20 20l-4.5-4.5"
                 color={SOFT}
@@ -906,8 +929,9 @@ function Header({ title }: { title?: string }) {
           Keyboard.dismiss();
           set({ drawer: true });
         }}
-        style={styles.roundButton}
+        style={GLASS ? styles.roundGlass : styles.roundButton}
       >
+        <GlassFill radius={19} />
         <Glyph d="M5 9h14M5 15h9" color={INK} size={20} />
       </Pressable>
       {title ? <Text style={styles.headerTitle}>{title}</Text> : <View />}
@@ -916,8 +940,9 @@ function Header({ title }: { title?: string }) {
         accessibilityLabel="Incognito chat"
         hitSlop={8}
         onPress={say('Incognito chat')}
-        style={styles.roundButton}
+        style={GLASS ? styles.roundGlass : styles.roundButton}
       >
+        <GlassFill radius={19} />
         <GhostGlyph />
       </Pressable>
     </View>
@@ -1143,6 +1168,23 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(0, 0, 0, 0.05)',
   },
+  roundGlass: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moreGlass: { height: 38, paddingHorizontal: 16, borderRadius: 19, justifyContent: 'center' },
+  searchGlass: {
+    flex: 1,
+    height: 42,
+    borderRadius: 21,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+  },
   headerTitle: { fontSize: 17, fontWeight: '600', color: INK },
   greeting: { marginTop: 8, fontSize: 21, color: INK, fontFamily: 'Charter' },
   chat: { padding: 20, gap: 18 },
@@ -1199,7 +1241,7 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     paddingBottom: 18,
   },
-  sheetHeaderNative: { paddingTop: 22 },
+  sheetHeaderNative: { paddingTop: 22, paddingBottom: 34 },
   sheetTitle: { fontSize: 16, fontWeight: '600', color: INK },
   morePill: {
     height: 38,
