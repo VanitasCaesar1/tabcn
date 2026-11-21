@@ -10,7 +10,7 @@ One place to see every tabcn design move, and to install one. A visitor should b
 
 ## Decisions
 
-1. **Look and structure follow [ui lab](https://lab.xevrion.dev/)** (github.com/xevrion/ui-lab, MIT, © 2026 Yash Bavadiya). We reuse its shell: dark-first theme with a light toggle, left sidebar listing every design by layout group with counts, top bar with search (⌘K), GitHub link and theme toggle, a hero, a "showcase" block, and per-design pages with a large dotted-grid stage, title, one-line description, category pill, "View source", an install box with package-manager tabs, Previous/Next cards and the footer. ui lab's MIT notice is kept in `apps/site/LICENSE-ui-lab` and credited in the footer.
+1. **Look and structure follow [ui lab](https://lab.xevrion.dev/)** (github.com/xevrion/ui-lab, MIT, © 2026 Yash Bavadiya). We reuse its shell: dark-first theme with a light toggle, left sidebar listing every design by layout group with counts, top bar with search (⌘K), GitHub link and theme toggle, a hero, a "showcase" block, and per-design pages with a large dotted-grid stage, title, one-line description, category pill, "View source", an install box with package-manager tabs, Previous/Next cards and the footer. ui lab's MIT notice is kept in `apps/site/LICENSE-ui-lab`. The footer and README credit it no longer (the owner removed both on 2026-11-21); the licence file is what MIT requires and stays.
 2. **Demos are recordings, not live code.** tabcn is React Native and the site does not run react-native-web (web support is out of scope for the library). Each design page plays a short screen recording from the iOS simulator inside a phone frame, with a poster image while it loads.
 3. **Open on your phone.** Each design page shows a QR code that opens the example app in Expo Go at that design, from an EAS Update published under the owner's Expo account. Until that update exists, the QR block links to the repo's "Run the example" instructions instead.
 4. **The site serves the shadcn registry.** `https://vanitascaesar1.github.io/tabcn/r/<id>.json` is generated at build time from `registry/registry.json` and the design files, so the install command is `npx shadcn@latest add https://vanitascaesar1.github.io/tabcn/r/<id>.json`.
@@ -24,7 +24,7 @@ One place to see every tabcn design move, and to install one. A visitor should b
 | `/designs/<id>/` | Stage with the recording in a phone frame, title, description, layout pill, View source, install, Expo Go QR, usage snippet, Previous/Next                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `/r/<id>.json`   | shadcn registry item with file contents inlined                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
-The home hero (the bar board and the fixed install command, both built 2026-11-21) changes the `/` row above. **Owner sign-off: pending.** Still to approve:
+The home hero (the bar board and the fixed install command, both built 2026-11-21) changes the `/` row above. **Merged by the owner** in #15 (2026-11-21), as built:
 
 - the sub copy ("{barCount} tab bars and {panelCount} panels for React Native and Expo. Each one is a single file you copy in with the shadcn CLI and change as you like.");
 - the fixed hero command: always `npx shadcn@latest add https://vanitascaesar1.github.io/tabcn/r/sliding-capsule.json` (the package-manager tabs swap the runner), labelled "Add Sliding Capsule";
@@ -32,7 +32,7 @@ The home hero (the bar board and the fixed install command, both built 2026-11-2
 - removing the hero's Browse designs button;
 - the board's opening bar (`BOARD_START = 'glow-glass'` in `apps/site/src/lib/board.ts`).
 
-Open risk 1: the board opens on Glow Glass while the command adds Sliding Capsule, so the bar in focus and the command name different bars. The label above the command names its bar to soften this; the owner may prefer to open the board on Sliding Capsule instead.
+Open risk 1 (still open): the board opens on Glow Glass while the command adds Sliding Capsule, so the bar in focus and the command name different bars. The label above the command names its bar to soften this; the owner may prefer to open the board on Sliding Capsule instead.
 
 The bar loops in `apps/site/public/bars/` are made by `python3 apps/site/scripts/bar-loops.py <recordings dir>`.
 

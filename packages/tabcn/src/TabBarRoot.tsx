@@ -179,7 +179,9 @@ function useSettledSize(holdWhileMinimizing: boolean) {
   }, []);
   const onSize = useCallback(
     (next: Size) => {
-      if (holdWhileMinimizing && progress.value !== target.value) {
+      // `.get()`, not `.value`: the React Compiler treats a `.value` read in a callback as a
+      // memo dependency and reads it on every render, which Reanimated warns about.
+      if (holdWhileMinimizing && progress.get() !== target.get()) {
         pending.current = { width: next.width, height: next.height };
         return;
       }
@@ -199,7 +201,8 @@ function useSettledSize(holdWhileMinimizing: boolean) {
     (settled, previous) => {
       if (settled && previous === false) runOnJS(flush)();
     },
-    [flush],
+    // No dependency list: native Reanimated ignores it and warns ("Dependencies should only be
+    // used on the web"); the worklet picks up `flush` from its closure.
   );
   return [size, onSize] as const;
 }
@@ -291,8 +294,11 @@ export function TabBarRoot({
       if (panel.state !== 'hidden' && !panel.leaving) peek += panel.peekHeight;
     }
   }
-  // A rail sits beside the screens, so it covers no height at the bottom.
-  const reported = height === null ? null : rail ? 0 : height + bottomGap + peek;
+  // A rail sits beside the screens, so it covers no height at the bottom. An empty floating bar
+  // (a sheet standing in for it) covers none either, though its root keeps 1 pt (see below).
+  const emptyFloating = floating && floatingFrame?.height === 0;
+  const barHeight = emptyFloating ? 0 : height;
+  const reported = barHeight === null ? null : rail ? 0 : barHeight + bottomGap + peek;
   useEffect(() => {
     if (reported !== null) reportHeight(reported);
   }, [reported, reportHeight]);
@@ -467,6 +473,12 @@ export function TabBarRoot({
             right: insets.right,
             bottom: bottomGap,
             alignItems: 'center',
+            // iOS leaves everything inside a zero-height view out of the accessibility tree, so
+            // under an empty bar (Section Sheet) VoiceOver couldn't reach the panels. The root
+            // keeps 1 pt with the bar at its bottom edge: panels and sheets are placed from the
+            // bar's frame, so nothing moves on screen.
+            minHeight: 1,
+            justifyContent: 'flex-end',
           },
           animatedStyle,
         ]}

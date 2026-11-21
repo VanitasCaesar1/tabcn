@@ -171,6 +171,11 @@ These were checked against the installed source of `expo-router` 58.0.32, not ta
 -   **The shadcn CLI works in an Expo project.**
     -   Tested with `shadcn@4.23.0` and a hand-written `components.json`: `shadcn add <item.json>` wrote the design file to its target path without Tailwind or a web framework.
     -   For npm dependencies it detected Expo and ran `npx expo install`. A full dependency install hasn't been confirmed yet (the test project had no `node_modules`).
+    -   **Retested 2026-11-21 in a fresh SDK 58 app (`create-expo-app`, default template) with `react-native-tabcn@0.1.1` from npm.** Three problems, all fixed by the registry change below:
+        -   Without a `components.json`, `shadcn add` for a `registry:component` item starts shadcn's web setup (component library, Tailwind preset) and stalls at "Preflight checks".
+        -   With one, shadcn's transforms run on `registry:component` files and corrupt plain strings: repeated words are dropped, so `rgba(255, 255, 255, 0.12)` became `rgba(255, 255, 0.12)` and `viewBox="0 0 24 24"` became `"0 24"`, which crashes react-native-svg on the first render. The file's header comment was removed too.
+        -   shadcn runs `npx expo install -- <packages>`; the `--` hands the names straight to npm, so they land at npm's latest (`react-native-svg@^15.16.1` where SDK 58 wants `15.16.0`). `npx expo install --fix` afterwards corrects them.
+    -   **Fix:** each item is `registry:item` and each file `registry:file` (with the same `target`). shadcn copies those files byte for byte, needs no `components.json`, and still puts them under `src/` when the app has one. Ten designs installed this way matched their sources exactly, type-checked, bundled, and ran in Expo Go; `expo-doctor` passed after `--fix`.
 
 ### Shape of the solution
 
@@ -289,11 +294,11 @@ These are all the exports a design gets: three components, two hooks and one pla
 -   **One file per design:** `registry/designs/<id>/<id>.tsx`.
 -   **Allowed imports:** `tabcn`, `react`, `react-native`, `react-native-reanimated`, and the npm packages listed in the design's registry entry. No imports between designs and no shared helper files, so shadcn never has to rewrite import paths.
 -   **Props:** each design exports one component. Its props cover only what screen options can't express, such as action-button handlers (`onActionPress`), colours, and a `placement` override where the design allows it.
--   **Registry index:** `registry/registry.json` is the shadcn registry index, with one `registry:component` item per design. Each item lists its file (`target: components/tabcn/<id>.tsx`), its npm `dependencies` (always `tabcn@^<current minor>`, plus `expo-blur` and similar where used), and its title and description from the catalog.
+-   **Registry index:** `registry/registry.json` is the shadcn registry index, with one `registry:item` per design whose files are `registry:file` (see the 2026-11-21 retest above: `registry:component` files are rewritten by shadcn). Each item lists its file (`target: components/tabcn/<id>.tsx`), its npm `dependencies` (always `tabcn@^<current minor>`, plus `expo-blur` and similar where used), and its title and description from the catalog.
 -   **Build and hosting:**
     -   `shadcn build` writes one JSON file per design from `registry/registry.json`.
     -   The tabcn website serves those files at `/r/<id>.json`, so users install with `npx shadcn add https://<site>/r/<id>.json`. The website's own design doc covers how.
-    -   The README documents the one-time `components.json` setup and gives a ready-to-paste copy.
+    -   No `components.json` is needed (`registry:item` installs without one). The README and each design page say to run `npx expo install --fix` after `shadcn add`.
 -   **Expo Go only:** designs may use only native modules that ship in Expo Go. Then the example app runs in Expo Go, which the website's QR codes rely on, and users can try a design without a custom build. A design that needs anything else is out of scope for v1.
 -   **Catalog:** `apps/example/src/catalog.ts` stays the list of designs and their status. `registry.json` holds the install metadata. A check script fails CI if the two don't list the same ids.
 
@@ -387,7 +392,7 @@ The example app uses the same files users copy, so every design is tested exactl
 
 ### Future Improvements
 
--   **A `tabcn add` wrapper.** A small command that writes `components.json` and then calls `shadcn add`, if the one-time setup proves to be friction.
+-   **A `tabcn add` wrapper.** A small command that calls `shadcn add` and then `npx expo install --fix`, if the second step proves to be friction. (Writing `components.json` is no longer needed.)
 -   **Hide on scroll.** A shared value in the core that hides the bar on scroll (native tabs have this behaviour), once three designs want it.
 -   **Web support.** Once the core is stable, if users ask for it.
 

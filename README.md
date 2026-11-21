@@ -22,7 +22,13 @@ Animated tab bars for React Native and Expo, in the style of shadcn/ui: install 
 npx shadcn@latest add https://vanitascaesar1.github.io/tabcn/r/sliding-capsule.json
 ```
 
-This copies the design and its icons into `components/tabcn/` and installs what it needs (`react-native-tabcn`, `expo-haptics`, `react-native-svg`, …). Every design's page on the site has its own command.
+This copies the design and its icons into `components/tabcn/` (or `src/components/tabcn/` if your app has a `src` folder) and installs what it needs (`react-native-tabcn`, `expo-haptics`, `react-native-svg`, …). No `components.json` or Tailwind setup is needed. Every design's page on the site has its own command.
+
+shadcn installs those packages at their latest npm versions, so then line them up with your Expo SDK:
+
+```bash
+npx expo install --fix
+```
 
 ## Usage
 
