@@ -731,6 +731,30 @@
       ]
     },
     {
+      "name": "composer-dock",
+      "type": "registry:item",
+      "title": "Composer Dock",
+      "description": "A chat composer over four icon tabs: scrub the tabs with a name pill over the finger, hold one for its recent items, and the composer rides the keyboard. Needs a GestureHandlerRootView.",
+      "dependencies": [
+        "react-native-tabcn",
+        "react-native-gesture-handler",
+        "expo-haptics",
+        "react-native-svg"
+      ],
+      "files": [
+        {
+          "path": "registry/designs/composer-dock/composer-dock.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/composer-dock.tsx"
+        },
+        {
+          "path": "registry/designs/composer-dock/composer-dock-icons.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/composer-dock-icons.tsx"
+        }
+      ]
+    },
+    {
       "name": "mini-player",
       "type": "registry:item",
       "title": "Mini Player",

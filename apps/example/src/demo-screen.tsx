@@ -29,6 +29,12 @@ export function DemoScreen({ index }: { index: number }) {
   const Extra = demo?.extra;
   const navigation = useNavigation();
 
+  // A design that comes with its own page draws it instead.
+  if (demo?.screen) {
+    const Screen = demo.screen;
+    return <Screen index={index} />;
+  }
+
   return (
     <View
       style={[styles.screen, { backgroundColor: demo ? screenBackground(demo, index) : undefined }]}

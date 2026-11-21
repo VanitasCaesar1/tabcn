@@ -12,6 +12,7 @@ import { ChipRail } from '@registry/chip-rail/chip-rail';
 import * as ChipRailIcons from '@registry/chip-rail/icons';
 import { ColorFlood, colorFloodGreen } from '@registry/color-flood/color-flood';
 import * as ColorFloodIcons from '@registry/color-flood/icons';
+import * as ComposerDockIcons from '@registry/composer-dock/composer-dock-icons';
 import { DarkCapsule } from '@registry/dark-capsule/dark-capsule';
 import * as DarkCapsuleIcons from '@registry/dark-capsule/icons';
 import { FrostedMedia } from '@registry/frosted-media/frosted-media';
@@ -69,7 +70,7 @@ import { TopNotch } from '@registry/top-notch/top-notch';
 import type { Href } from 'expo-router';
 import { type ComponentType, createContext, type ReactElement, type ReactNode, use } from 'react';
 import type { TabIconProps } from 'react-native-tabcn';
-
+import { ComposerDockDemoBar, ComposerDockScreen, ModelSheet } from '@/composer-dock-demo';
 import {
   BarSheetControls,
   BarSheetPanel,
@@ -136,6 +137,11 @@ export interface Demo {
    * the navigator, so it stays across tabs. `render` draws the bar it pairs with.
    */
   panel?: (ctx: DemoContext) => ReactElement;
+  /**
+   * The demo's own screen in place of the title screen, for a design that comes with its
+   * page (Composer Dock's chat app). Gets the tab's index.
+   */
+  screen?: ComponentType<{ index: number }>;
   /** Extra content under the demo screen's title: a panel's controls, a list to scroll. */
   extra?: ComponentType<DemoExtraProps>;
   /** Draw the bar as a rail on the left (`tabBarPosition: 'left'`) when the window is wide. */
@@ -705,6 +711,24 @@ export const demos: Record<string, Demo> = {
       { label: 'Explore', icon: SoftPillIcons.ExploreIcon },
       { label: 'History', icon: SoftPillIcons.HistoryIcon },
       { label: 'Trends', icon: SoftPillIcons.TrendsIcon },
+    ],
+  },
+  'composer-dock': {
+    // A chat app: the composer over four icon tabs. Scrub the tabs (the screen previews the
+    // tab under the finger), hold Projects, Code or Artifacts for recent items, and focus the
+    // field to open the composer over the keyboard.
+    render: ({ routes }) => <ComposerDockDemoBar routes={routes} />,
+    panel: () => <ModelSheet />,
+    screen: ComposerDockScreen,
+    background: '#f8f8f6',
+    fullScreen: true,
+    initialTab: 0,
+    barHeight: 106,
+    tabs: [
+      { label: 'Chat', icon: ComposerDockIcons.ChatIcon },
+      { label: 'Projects', icon: ComposerDockIcons.ProjectsIcon },
+      { label: 'Code', icon: ComposerDockIcons.CodeIcon },
+      { label: 'Artifacts', icon: ComposerDockIcons.ArtifactsIcon },
     ],
   },
   'live-tabs': {
