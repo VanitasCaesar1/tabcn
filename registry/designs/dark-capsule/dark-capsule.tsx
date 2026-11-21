@@ -1,6 +1,8 @@
 /**
  * Dark Capsule: a dark bar with icons only; an outlined capsule slides behind
- * the active tab. The capsule's colours are kept as the reference has them, faint as they are.
+ * the active tab.
+ * Changed from the reference for clarity: the capsule is lighter (#232327, outline #4a4a50)
+ * than the reference's faint #1c1c1f and #38383d, so the active tab reads at a glance.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
@@ -27,10 +29,13 @@ import {
 const defaultColors = {
   /** The bar, which also fills the home-indicator area. */
   background: '#0e0e10',
-  /** The capsule that slides behind the active tab. */
-  capsule: '#1c1c1f',
-  /** The capsule's 1 pt outline. */
-  capsuleBorder: '#38383d',
+  /**
+   * The capsule that slides behind the active tab. Lighter than the reference's #1c1c1f so
+   * the active tab stands out from the bar.
+   */
+  capsule: '#232327',
+  /** The capsule's 1 pt outline. Lighter than the reference's #38383d, for the same reason. */
+  capsuleBorder: '#4a4a50',
   /** The active tab's icon. */
   active: '#ffffff',
   /** The other tabs' icons. */

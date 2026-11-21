@@ -3,12 +3,17 @@
  * white icons and labels; a raised glass capsule slides to the active tab.
  * Uses iOS Liquid Glass where available, and a dark blur elsewhere (on Android, where
  * expo-blur doesn't blur by default, a dark translucent fill).
+ *
+ * Contrast: the capsule, the only active cue, is kept as the reference draws it (low contrast
+ * against the pill). Set `colors.activeForeground` to give the active icon and label a colour
+ * of their own, which crossfades in on tabcnTiming, so the active tab can meet 3:1.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import {
   BadgeCount,
   TabBarRoot,
@@ -16,6 +21,7 @@ import {
   TabIndicator,
   type TabItem,
   TabList,
+  useFocusProgress,
   useTabBar,
 } from 'react-native-tabcn';
 
@@ -28,8 +34,16 @@ const defaultColors = {
   capsule: 'rgba(255, 255, 255, 0.14)',
   /** The capsule's 1 pt edge. */
   capsuleBorder: 'rgba(255, 255, 255, 0.42)',
-  /** Icons and labels, active and inactive alike: only the capsule marks the active tab. */
+  /**
+   * Icons and labels, active and inactive alike: only the capsule marks the active tab. The
+   * inactive ones when `activeForeground` is set.
+   */
   foreground: '#ffffff',
+  /**
+   * The active tab's icon and label, crossfaded in on tabcnTiming. Unset (the default), they
+   * are `foreground` like the rest, as in the reference.
+   */
+  activeForeground: undefined as string | undefined,
   /** Badge fill, drawn only when a tab sets `tabBarBadge`. */
   badge: '#ff3b30',
   /** Badge count text. */
@@ -93,7 +107,10 @@ export function FrostedMedia({
   );
 }
 
-/** Every tab is the same white, active or not: only the capsule marks the active tab. */
+/**
+ * Every tab is the same white, active or not: only the capsule marks the active tab. With
+ * `activeForeground`, the active tab's colour crossfades in over the white instead.
+ */
 function Tab({
   tab,
   colors,
@@ -106,11 +123,38 @@ function Tab({
   haptics: boolean;
 }) {
   const color = colors.foreground;
-  const label = (
-    <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.label, { color }]}>
-      {tab.label}
-    </Text>
-  );
+  const active = colors.activeForeground;
+  // The active colour fades in over the idle one, which stays opaque until late in the
+  // change, so the tab never looks dimmed half-way.
+  const progress = useFocusProgress(tab);
+  const outgoing = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.6, 1], [1, 0], 'clamp'),
+  }));
+  const incoming = useAnimatedStyle(() => ({ opacity: progress.value }));
+  const label =
+    active === undefined ? (
+      <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.label, { color }]}>
+        {tab.label}
+      </Text>
+    ) : (
+      // The idle label sets the width; the active one is laid over it.
+      <View style={styles.labelBox}>
+        <Animated.Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[styles.label, { color }, outgoing]}
+        >
+          {tab.label}
+        </Animated.Text>
+        <Animated.Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[styles.label, styles.over, { color: active }, incoming]}
+        >
+          {tab.label}
+        </Animated.Text>
+      </View>
+    );
   return (
     <TabButton
       tab={tab}
@@ -121,7 +165,18 @@ function Tab({
       <View style={styles.content}>
         {tab.renderIcon ? (
           <View>
-            {tab.renderIcon({ focused: tab.focused, color, size: ICON })}
+            {active === undefined ? (
+              tab.renderIcon({ focused: tab.focused, color, size: ICON })
+            ) : (
+              <>
+                <Animated.View style={outgoing}>
+                  {tab.renderIcon({ focused: tab.focused, color, size: ICON })}
+                </Animated.View>
+                <Animated.View style={[StyleSheet.absoluteFill, incoming]}>
+                  {tab.renderIcon({ focused: tab.focused, color: active, size: ICON })}
+                </Animated.View>
+              </>
+            )}
             <Badge badge={tab.badge} colors={colors} />
           </View>
         ) : null}
@@ -208,6 +263,7 @@ const styles = StyleSheet.create({
   content: { alignItems: 'center', gap: 3.5 },
   label: { fontSize: 9.8, fontWeight: '600' },
   labelBox: { maxWidth: '100%' },
+  over: { position: 'absolute', left: 0, right: 0, textAlign: 'center' },
   dot: { position: 'absolute', top: -1, right: -3, width: 8, height: 8, borderRadius: 4 },
   count: {
     position: 'absolute',

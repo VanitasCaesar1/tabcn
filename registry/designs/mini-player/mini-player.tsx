@@ -1,9 +1,14 @@
 /**
- * Mini Player: a dark, near-opaque now-playing strip that peeks out from behind a floating tab bar
+ * Mini Player: a dark, frosted now-playing strip that peeks out from behind a floating tab bar
  * (artwork, title, artist, play/pause) and opens into a player: large artwork, title,
  * progress, and previous / play / next. Drag the strip up to open it and down to return it,
  * or tap it. Panel states glide on tabcnSpring (no overshoot); the strip and the player's
  * header crossfade, as do the play and pause glyphs. Reduce motion makes every change instant.
+ *
+ * The card blurs what is behind it on iOS and the web (expo-blur), under a translucent dark
+ * fill. Android gets a near-opaque fill instead, with no blur, so it reads the same anywhere.
+ * Changed from the reference for clarity: the card was a near-opaque fill with no blur on every
+ * platform; it now blurs on iOS and the web, so the screen shows through softly behind it.
  *
  * Place it once under the `TabBarProvider` (beside `<Tabs>`, so it stays across tabs) and
  * drive it with `useTabPanel(id)`: `peek()` when a track starts, `hide()` when it stops.
@@ -12,6 +17,7 @@
  * there, so `peek()` and `open()` change its state but show nothing.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useEffect } from 'react';
 // 'react-native-tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
@@ -20,6 +26,7 @@ import 'react-native-gesture-handler';
 import {
   Image,
   type ImageSourcePropType,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -38,9 +45,20 @@ import {
 } from 'react-native-tabcn';
 import { PanelDragArea } from 'react-native-tabcn/gestures';
 
+/**
+ * Whether the card draws a blur: iOS and the web (CSS backdrop-filter). Android's blur is costly
+ * and uneven, so it gets the near-opaque fill alone.
+ */
+const BLUR = Platform.OS !== 'android';
+
 const defaultColors = {
-  /** The card: a near-opaque dark tint (no blur), so it reads the same over any screen. */
-  background: 'rgba(22, 22, 26, 0.94)',
+  /**
+   * The card's fill. Where the card blurs (iOS, web) it sits over the blur at 0.72, so the
+   * screen shows through softly while the text stays readable; on Android, with no blur, it is
+   * near-opaque (0.94) so it reads the same over any screen. A colour you pass is used as is
+   * on every platform.
+   */
+  background: BLUR ? 'rgba(22, 22, 26, 0.72)' : 'rgba(22, 22, 26, 0.94)',
   /** Hairline edge that catches the light. */
   border: 'rgba(255, 255, 255, 0.12)',
   /** Title, glyphs and the progress fill. */
@@ -184,12 +202,13 @@ function Player({
 
   return (
     <PanelDragArea panel={id}>
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: colors.background, borderColor: colors.border, borderRadius: radius },
-        ]}
-      >
+      <View style={[styles.card, { borderColor: colors.border, borderRadius: radius }]}>
+        {/* The blur (iOS, web), then the fill over it; the card's corners clip both. */}
+        {BLUR ? <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} /> : null}
+        <View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
+        />
         <View style={{ height: STRIP + tuck }}>
           {/* Peek strip: the visible part of the card while the panel rests above the bar. */}
           <Animated.View

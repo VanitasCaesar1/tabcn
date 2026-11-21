@@ -1,11 +1,19 @@
 /**
  * Orbs: separate glass circles instead of a bar. Each tab is a frosted orb with its art
- * inside; the centre one is a little larger. The active orb's glass brightens and its rim
- * turns solid white (a crossfade; no orb changes size). Badges are glossy red balls.
+ * inside; the centre one is a little larger. The active orb's glass brightens, a soft white
+ * glow lights its inner edge and its rim turns solid white (a crossfade; no orb changes size).
+ * Badges are glossy red balls.
+ * Changed from the reference for clarity: the active wash is twice as strong (white at 0.4, not
+ * 0.2) and the inner glow is new, so the active orb stands apart from the others.
  *
  * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS and on the
  * web, and a translucent white tint on Android (no blur there: it's reliable and looks nearly the same
  * over the solid colours this design is meant for). Force one with `material`.
+ *
+ * Contrast: the active cue, a brighter wash, inner glow and white rim, is low in contrast over light
+ * screens. The orb art draws its own colours; with icons of your own, set
+ * `colors.activeForeground` to give the active orb's icon a colour of its own, which
+ * crossfades in with the wash and rim, so the active tab can meet 3:1.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
@@ -16,6 +24,7 @@ import Animated, {
   Easing,
   FadeIn,
   FadeOut,
+  interpolate,
   ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
@@ -38,9 +47,14 @@ const defaultColors = {
   glassTint: 'rgba(255, 255, 255, 0.22)',
   /** Every orb's thin rim. */
   rim: 'rgba(255, 255, 255, 0.6)',
-  /** The active orb: a brighter wash over its glass and a solid rim, crossfaded in. */
-  activeTint: 'rgba(255, 255, 255, 0.2)',
+  /**
+   * The active orb: a brighter wash over its glass and a solid rim, crossfaded in. The wash is
+   * twice the reference's 0.2, so the active orb reads clearly.
+   */
+  activeTint: 'rgba(255, 255, 255, 0.4)',
   activeRim: '#ffffff',
+  /** The soft glow inside the active orb's rim (an inset shadow), crossfaded in with it. */
+  activeGlow: 'rgba(255, 255, 255, 0.85)',
   /** The soft blue drop shadow under each orb. */
   shadow: 'rgba(10, 60, 130, 0.28)',
   /** The glossy badge ball. */
@@ -54,6 +68,11 @@ const defaultColors = {
    * reaches icons of your own.
    */
   icon: '#3c54ec',
+  /**
+   * Colour passed to the active orb's `tabBarIcon`, crossfaded in with its wash and rim. Unset
+   * (the default), the active orb gets `icon` like the rest. The orb art ignores it too.
+   */
+  activeForeground: undefined as string | undefined,
 };
 
 export type OrbsColors = typeof defaultColors;
@@ -136,10 +155,16 @@ function Orb({
   surface: Exclude<OrbsMaterial, 'auto'>;
   haptics: boolean;
 }) {
-  // Active cue: a brighter wash and a solid rim crossfade in (focus progress runs on
+  // Active cue: a brighter wash, an inner glow and a solid rim crossfade in (focus progress runs on
   // tabcnTiming, so reduce motion makes it instant). The orb itself never changes size.
   const progress = useFocusProgress(tab);
   const active = useAnimatedStyle(() => ({ opacity: progress.value }));
+  // With `activeForeground`, the idle icon stays opaque until late in the change, under the
+  // active one fading in, so the icon never looks dimmed half-way.
+  const idle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.6, 1], [1, 0], 'clamp'),
+  }));
+  const icon = (color: string) => tab.renderIcon?.({ focused: tab.focused, color, size }) ?? null;
   // Press feedback: a faint darkening inside the glass, never a scale.
   const press = useSharedValue(0);
   const shade = useAnimatedStyle(() => ({ opacity: press.value }));
@@ -190,7 +215,18 @@ function Orb({
         <View style={[StyleSheet.absoluteFill, styles.center]}>
           {/* Icons are drawn in the orb's own box, at the orb's fixed size. */}
           <View style={{ width: size, height: size }}>
-            {tab.renderIcon?.({ focused: tab.focused, color: colors.icon, size })}
+            {colors.activeForeground === undefined ? (
+              icon(colors.icon)
+            ) : (
+              <>
+                <Animated.View style={[StyleSheet.absoluteFill, idle]}>
+                  {icon(colors.icon)}
+                </Animated.View>
+                <Animated.View style={[StyleSheet.absoluteFill, active]}>
+                  {icon(colors.activeForeground)}
+                </Animated.View>
+              </>
+            )}
           </View>
         </View>
         <View
@@ -202,7 +238,11 @@ function Orb({
           style={[
             StyleSheet.absoluteFill,
             styles.activeRim,
-            { borderColor: colors.activeRim },
+            // The inner glow rides on the rim's view, so it crossfades with it.
+            {
+              borderColor: colors.activeRim,
+              boxShadow: `inset 0 0 ${GLOW_RADIUS * (size / LARGE)}px ${colors.activeGlow}`,
+            },
             active,
           ]}
         />
@@ -220,7 +260,10 @@ function Orb({
   );
 }
 
-// Motion: the orbs never change size or move. The active orb's wash and rim crossfade in and
+/** Blur radius of the active orb's inner glow on the large orb; smaller orbs scale it down. */
+const GLOW_RADIUS = 14;
+
+// Motion: the orbs never change size or move. The active orb's wash, glow and rim crossfade in and
 // out on focus progress (tabcnTiming). A press darkens the glass slightly (in on a shortened tabcnTiming, out on tabcnTiming), and the
 // badge fades in and out with no pop. With "reduce motion" on, all of it is instant.
 const PRESS_SHADE = 0.06;

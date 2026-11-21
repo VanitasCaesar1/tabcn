@@ -17,13 +17,15 @@
  * it minimizes, slides away with it for the keyboard, rides above a peeking mini player, and
  * fades out while a panel is open. Needs a `TabBarProvider`.
  *
- * Pressing it darkens its fill (a colour change; nothing scales or moves). Without `onPress`
+ * Pressing it darkens its fill (a colour change; nothing scales or moves) with a light
+ * haptic tick (`haptics={false}` turns it off). Without `onPress`
  * it is plain text to screen readers, not a button. A new count crossfades in on
  * tabcnTiming. With "reduce motion" on, every change is instant. The surface is frosted on
  * iOS and the web, and a translucent fill on Android (no blur there).
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import { type ReactNode, useEffect, useRef } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -68,6 +70,8 @@ export interface CompanionChipProps {
   /** `light` suits light screens; `dark` dark ones. Default `light`. */
   tint?: 'light' | 'dark';
   colors?: Partial<CompanionChipColors>;
+  /** Light haptic tick on press (only when the chip has `onPress`). Default true. */
+  haptics?: boolean;
 }
 
 const darkColors: CompanionChipColors = {
@@ -88,6 +92,7 @@ export function CompanionChip({
   accessibilityLabel,
   tint = 'light',
   colors: custom,
+  haptics = true,
 }: CompanionChipProps) {
   const colors = { ...(tint === 'dark' ? darkColors : defaultColors), ...custom };
   const shape =
@@ -147,6 +152,7 @@ export function CompanionChip({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={spoken || undefined}
+      onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
       onPress={onPress}
       hitSlop={variant === 'count' ? 8 : 0}
       style={style}

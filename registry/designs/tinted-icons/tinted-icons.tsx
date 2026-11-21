@@ -11,8 +11,11 @@
  * changes from the old tab's tint to the new one. Nothing scales, lifts or rotates; presses
  * show no dim or scale; with reduce motion on, everything jumps to the new tab at once.
  * A tab can give the bar its own surface while it is active (Snapchat's Spotlight bar is a
- * dark grey, not black): pass `surfaces`, and the bar colour and the grey of the other icons
- * crossfade on tabcnTiming.
+ * dark grey, not black): pass `surfaces`, keyed by route name, and the bar colour and the grey
+ * of the other icons crossfade on tabcnTiming.
+ * Changed from earlier copies: `surfaces` is keyed by route name instead of tab position,
+ * matching Colour Flood, so it follows a tab when tabs are added, hidden or reordered. This
+ * breaks copies made before: `{ 4: tintedIconsDark }` becomes `{ spotlight: tintedIconsDark }`.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  *
  * Measured on Snapchat's App Store screenshots (a 375 pt iPhone 8-class screen at 2.579 px
@@ -100,11 +103,11 @@ export interface TintedIconsProps {
    */
   tints?: readonly string[];
   /**
-   * A surface for the bar while a tab is active, by tab position (0 is the first tab). Tabs
-   * not listed use `colors.background` and `colors.inactive`. For Snapchat's Spotlight tab
-   * in fifth place: `{ 4: tintedIconsDark }`.
+   * A surface for the bar while a tab is active, keyed by the tab's route name (as Colour
+   * Flood's `surfaces` is). Tabs not listed use `colors.background` and `colors.inactive`.
+   * For Snapchat's Spotlight tab on a route named `spotlight`: `{ spotlight: tintedIconsDark }`.
    */
-  surfaces?: Partial<Record<number, TintedIconsSurface>>;
+  surfaces?: Partial<Record<string, TintedIconsSurface>>;
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
@@ -122,7 +125,7 @@ const MARK_HEIGHT = 5.4;
  */
 const MARK_PATH = 'M3.9 0.3Q4.2 0 4.5 0.3L6.9 2.7Q8.3 4.1 8.3 5.4H0.1Q0.1 4.1 1.5 2.7Z';
 
-const NO_SURFACES: Partial<Record<number, TintedIconsSurface>> = {};
+const NO_SURFACES: Partial<Record<string, TintedIconsSurface>> = {};
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
@@ -134,7 +137,7 @@ export function TintedIcons({
 }: TintedIconsProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs, activeIndex } = useTabBar();
-  const surface = surfaces[activeIndex];
+  const surface = surfaces[tabs[activeIndex]?.routeName ?? ''];
   const background = surface?.background ?? colors.background;
   const inactive = surface?.inactive ?? colors.inactive;
   const tintAt = (index: number) => tints[index % tints.length] ?? colors.inactive;

@@ -6,6 +6,10 @@
  * wider than its slot, that glides to the next tab. Nothing else changes: no colour or
  * weight change, no fill, no scale.
  *
+ * Contrast: the grey capsule, the only active cue, is kept as the app has it (low contrast
+ * against the bar). Set `colors.activeForeground` to give the active icon and label a colour
+ * of their own, which crossfades in on tabcnTiming, so the active tab can meet 3:1.
+ *
  * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS and on
  * the web, and a near-white tint on Android (no blur there). Force one with `material`.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
@@ -14,7 +18,14 @@ import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { Platform, StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  interpolate,
+  ReduceMotion,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
 import {
   BadgeCount,
   TabBarRoot,
@@ -23,6 +34,7 @@ import {
   type TabItem,
   TabList,
   tabcnTiming,
+  useFocusProgress,
   useTabBar,
 } from 'react-native-tabcn';
 
@@ -31,8 +43,13 @@ const defaultColors = {
   background: '#f7f7f7',
   /** Active-tab capsule: measured #e0e0e0 at the top to #eaeaea at the bottom. */
   capsule: '#e5e5e5',
-  /** Icons and labels, active and idle alike. */
+  /** Icons and labels, active and idle alike (the idle ones when `activeForeground` is set). */
   foreground: '#163300',
+  /**
+   * The active tab's icon and label, crossfaded in on tabcnTiming. Unset (the default), they
+   * are `foreground` like the rest, as in the app.
+   */
+  activeForeground: undefined as string | undefined,
   /** The bright 1 px edge of the bar (Liquid Glass draws its own). */
   rim: 'rgba(255, 255, 255, 0.95)',
   /** A faint, diffuse shadow around the bar. */
@@ -170,6 +187,16 @@ function Tab({
   colors: SlidingCapsuleColors;
   haptics: boolean;
 }) {
+  // With `activeForeground`, the active colour fades in over the idle one, which stays opaque
+  // until late in the change, so the tab never looks dimmed half-way.
+  const active = colors.activeForeground;
+  const progress = useFocusProgress(tab);
+  const outgoing = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.6, 1], [1, 0], 'clamp'),
+  }));
+  const incoming = useAnimatedStyle(() => ({ opacity: progress.value }));
+  const icon = (color: string) =>
+    tab.renderIcon?.({ focused: tab.focused, color, size: ICON }) ?? null;
   return (
     <TabButton
       tab={tab}
@@ -177,7 +204,18 @@ function Tab({
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <View style={styles.iconBox}>
-        {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: ICON })}
+        {active === undefined ? (
+          icon(colors.foreground)
+        ) : (
+          <>
+            <Animated.View style={[StyleSheet.absoluteFill, outgoing]}>
+              {icon(colors.foreground)}
+            </Animated.View>
+            <Animated.View style={[StyleSheet.absoluteFill, incoming]}>
+              {icon(active)}
+            </Animated.View>
+          </>
+        )}
         {tab.badge != null ? (
           <Animated.View
             entering={badgeIn}
@@ -201,13 +239,33 @@ function Tab({
           </Animated.View>
         ) : null}
       </View>
-      <Text
-        numberOfLines={1}
-        maxFontSizeMultiplier={1.3}
-        style={[styles.label, { color: colors.foreground }]}
-      >
-        {tab.label}
-      </Text>
+      {active === undefined ? (
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[styles.label, { color: colors.foreground }]}
+        >
+          {tab.label}
+        </Text>
+      ) : (
+        // The idle label sets the width; the active one is laid over it.
+        <View>
+          <Animated.Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.3}
+            style={[styles.label, { color: colors.foreground }, outgoing]}
+          >
+            {tab.label}
+          </Animated.Text>
+          <Animated.Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.3}
+            style={[styles.label, styles.over, { color: active }, incoming]}
+          >
+            {tab.label}
+          </Animated.Text>
+        </View>
+      )}
     </TabButton>
   );
 }
@@ -251,6 +309,12 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     lineHeight: 13,
     fontWeight: '500',
+  },
+  over: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
   },
   badge: {
     position: 'absolute',

@@ -29,6 +29,7 @@ import * as LabeledPlusIcons from '@registry/labeled-plus/icons';
 import { LabeledPlus as LabeledPlusDesign } from '@registry/labeled-plus/labeled-plus';
 import * as LightIconsIcons from '@registry/light-icons/icons';
 import { LightIcons as LightIconsDesign } from '@registry/light-icons/light-icons';
+import * as LiveTabsIcons from '@registry/live-tabs/icons';
 import { LiveTabs as LiveTabsDesign } from '@registry/live-tabs/live-tabs';
 import * as MaterialPillIcons from '@registry/material-pill/icons';
 import { MaterialPill as MaterialPillDesign } from '@registry/material-pill/material-pill';
@@ -82,10 +83,14 @@ import {
 import {
   BarSheetControls,
   BarSheetPanel,
+  CartPillControls,
+  ChatsBadge,
   CompanionChipExtra,
   CompanionChipPanel,
   ContextTrayExtra,
   type DemoExtraProps,
+  GlassBadgesControls,
+  LibraryIcon,
   LiveTabsControls,
   LiveTabsFeed,
   MinimizeList,
@@ -98,6 +103,7 @@ import {
   SubTabsBar,
   SubTabsNote,
   SubTabsPanel,
+  useCartCount,
 } from '@/panel-demos';
 import { themed, useDemoColors } from '@/panel-theme';
 import type { PatternSpec } from '@/pattern';
@@ -240,6 +246,12 @@ function GlowGlassBar({ onActionPress }: { onActionPress: () => void }) {
       )}
     />
   );
+}
+
+/** Cart Pill with the demo's bag count, which "Add to bag" on the screen raises. */
+function CartPillBar({ onActionPress }: { onActionPress: () => void }) {
+  const count = useCartCount();
+  return <CartPill onBackPress={onActionPress} onCartPress={onActionPress} cartCount={count} />;
 }
 
 /** Whether a `#rrggbb` or `rgb()`/`rgba()` colour is light (for picking a blur tint). */
@@ -699,7 +711,7 @@ export const demos: Record<string, Demo> = {
   },
   'tinted-icons': {
     // Snapchat's Spotlight tab (fifth) turns the bar dark grey, as in the app.
-    render: () => <TintedIcons surfaces={{ 4: tintedIconsDark }} />,
+    render: ({ routes }) => <TintedIcons surfaces={{ [routes[4] ?? 't5']: tintedIconsDark }} />,
     // Snapchat Stories: a white page of story cards right above the solid black bar.
     background: '#ffffff',
     initialTab: 3,
@@ -736,10 +748,10 @@ export const demos: Record<string, Demo> = {
     ],
   },
   'cart-pill': {
-    // The full row of the store shot: back disc, pill, purple cart disc with 2 items.
-    render: ({ onActionPress }) => (
-      <CartPill onBackPress={onActionPress} onCartPress={onActionPress} cartCount={2} />
-    ),
+    // The full row of the store shot: back disc, pill, purple cart disc with 2 items. "Add to
+    // bag" on the screen raises the count.
+    render: ({ onActionPress }) => <CartPillBar onActionPress={onActionPress} />,
+    extra: CartPillControls,
     // Shop: a white product grid (shirts on light grey photo cards) scrolls under the frosted pill.
     background: '#ffffff',
     initialTab: 0,
@@ -757,7 +769,13 @@ export const demos: Record<string, Demo> = {
     ],
   },
   'glass-badges': {
-    render: ({ onActionPress }) => <GlassBadges onActionPress={onActionPress} />,
+    // "Bump Chats" on the screen raises the Chats count, so its digits roll.
+    render: ({ onActionPress }) => (
+      <ChatsBadge>
+        <GlassBadges onActionPress={onActionPress} />
+      </ChatsBadge>
+    ),
+    extra: GlassBadgesControls,
     // Telegram: a white chat list scrolls under the glass bar; a yellow avatar sits behind the
     // pill's left end.
     background: '#ffffff',
@@ -847,10 +865,10 @@ export const demos: Record<string, Demo> = {
     initialTab: 0,
     barHeight: 56,
     tabs: [
-      { label: 'Home', icon: MaterialPillIcons.HomeIcon },
-      { label: 'Timer', icon: SoftPillIcons.HistoryIcon },
-      { label: 'Downloads', icon: SideRailIcons.FolderIcon },
-      { label: 'Profile', icon: LightIconsIcons.PersonIcon },
+      { label: 'Home', icon: LiveTabsIcons.HomeIcon },
+      { label: 'Timer', icon: LiveTabsIcons.TimerIcon },
+      { label: 'Downloads', icon: LiveTabsIcons.DownloadIcon },
+      { label: 'Profile', icon: LiveTabsIcons.ProfileIcon },
     ],
   },
   'mini-player': {
@@ -955,7 +973,7 @@ export const demos: Record<string, Demo> = {
     tabs: [
       { label: 'Home', icon: SoftPillIcons.HomeIcon },
       { label: 'Ideas', icon: SoftPillIcons.IdeasIcon },
-      { label: 'Library', icon: SoftPillIcons.ExploreIcon },
+      { label: 'Library', icon: LibraryIcon },
       { label: 'History', icon: SoftPillIcons.HistoryIcon },
       { label: 'Trends', icon: SoftPillIcons.TrendsIcon },
     ],

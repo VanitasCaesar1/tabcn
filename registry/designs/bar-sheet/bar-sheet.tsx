@@ -2,7 +2,8 @@
  * Bar Sheet: a sheet that grows out of the tab bar, for a profile, a comments thread or a
  * filters list. It rises from the bottom edge, passing behind the bar, to its lowest snap
  * point; dragging the header moves it between snap points, and dragging below the lowest
- * one slides it away. At its highest snap point the body scrolls; at the body's top a
+ * one slides it away. Tapping the grabber moves it to the next snap point up, and from the
+ * highest back to the lowest. At its highest snap point the body scrolls; at the body's top a
  * downward drag moves the sheet again. The bar stays visible over the sheet's lower edge.
  *
  * It is a `TabPanel` with snap points, so it needs a `TabBarProvider` around the tabs
@@ -41,6 +42,7 @@ import 'react-native-gesture-handler';
 import {
   type AccessibilityActionEvent,
   AccessibilityInfo,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -221,6 +223,13 @@ function SheetBody({
     }
   };
 
+  // A tap on the grabber steps up a snap point, and from the highest back to the lowest.
+  // Screen-reader users adjust it instead, since the sheet stays at its highest for them.
+  const onGrabberPress = () => {
+    if (screenReader || snap < 0) return;
+    snapTo(snap >= last ? 0 : snap + 1);
+  };
+
   return (
     <View
       style={[
@@ -236,15 +245,8 @@ function SheetBody({
     >
       <PanelDragArea>
         <View style={styles.header}>
-          <View
-            accessible
-            accessibilityRole="adjustable"
-            accessibilityLabel={`${title} sheet`}
-            accessibilityValue={{ text: heightName(snapPoints[snap], snap === last) }}
-            accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-            onAccessibilityAction={onAction}
-            style={styles.grabberArea}
-          >
+          {/* Holds the grabber's place; the control itself is drawn over it, below. */}
+          <View style={styles.grabberArea}>
             <View style={[styles.grabber, { backgroundColor: colors.grabber }]} />
           </View>
           <View style={styles.titleRow}>
@@ -264,6 +266,17 @@ function SheetBody({
             </View>
             {accessory}
           </View>
+          {/* The grabber's control: a 44 pt target over the small bar, drawn last so it is on
+              top. It overlaps the title's top edge, which takes no taps. */}
+          <Pressable
+            accessibilityRole="adjustable"
+            accessibilityLabel={`${title} sheet`}
+            accessibilityValue={{ text: heightName(snapPoints[snap], snap === last) }}
+            accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+            onAccessibilityAction={onAction}
+            onPress={onGrabberPress}
+            style={styles.grabberTarget}
+          />
         </View>
       </PanelDragArea>
       <PanelScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
@@ -286,9 +299,17 @@ const styles = StyleSheet.create({
   },
   grabberArea: {
     alignSelf: 'center',
-    // A comfortable touch target around a small grabber.
     paddingVertical: 10,
     paddingHorizontal: 24,
+  },
+  // The grabber's touch target: 44 pt tall and 88 pt wide, centred on the grabber.
+  grabberTarget: {
+    position: 'absolute',
+    top: 0,
+    left: '50%',
+    width: 88,
+    height: 44,
+    marginLeft: -44,
   },
   grabber: {
     width: 36,

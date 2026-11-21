@@ -37,12 +37,14 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import {
   TabBarCompanion,
   TabBarRoot,
+  TabBarStateProvider,
   TabButton,
   type TabButtonProps,
+  type TabIconProps,
   TabIndicator,
   type TabItem,
   TabList,
@@ -150,10 +152,26 @@ function demoStore<T>(initial: T) {
 
 const PLAYER = 'player';
 
+// Abstract covers drawn for the demo by assets/covers/generate.py.
 const TRACKS = [
-  { title: 'Slow Tide', artist: 'Harbor Lights', duration: 214 },
-  { title: 'Paper Planes', artist: 'Juniper Fields', duration: 187 },
-  { title: 'Night Bus', artist: 'The Quiet Hours', duration: 242 },
+  {
+    title: 'Slow Tide',
+    artist: 'Harbor Lights',
+    duration: 214,
+    artwork: require('../assets/covers/slow-tide.jpg'),
+  },
+  {
+    title: 'Paper Planes',
+    artist: 'Juniper Fields',
+    duration: 187,
+    artwork: require('../assets/covers/paper-planes.jpg'),
+  },
+  {
+    title: 'Night Bus',
+    artist: 'The Quiet Hours',
+    duration: 242,
+    artwork: require('../assets/covers/night-bus.jpg'),
+  },
 ];
 
 /** The panel, with local playback so it moves: progress ticks while playing. */
@@ -348,7 +366,7 @@ export function BarSheetControls({ text, chip }: DemoExtraProps) {
     <View style={styles.block}>
       <Note
         text={text}
-        message={`Sheet: ${where}. Drag its header between 60% and full height, or below 60% to close it. Switching tabs closes it too.`}
+        message={`Sheet: ${where}. Drag its header between 60% and full height, or below 60% to close it; tap the grabber to step between them. Switching tabs closes it too.`}
       />
       <View style={styles.row}>
         <DemoButton label="Open sheet" onPress={sheet.open} text={text} chip={chip} />
@@ -514,6 +532,19 @@ const subTabChoice = demoStore<string | undefined>(undefined);
 
 const PILL = { background: '#fafafa', capsule: '#e5e6e8', foreground: '#151517' };
 
+/**
+ * Library's icon in the Sub-Tabs demo: a stack, a card over two shorter layers, drawn for the
+ * demo on a 24-unit grid to sit beside Soft Pill's glyphs.
+ */
+export function LibraryIcon({ color, size }: TabIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x={4} y={3.5} width={16} height={10} rx={2.5} stroke={color} strokeWidth={2.2} />
+      <Path d="M6.5 17 H17.5 M9 20.5 H15" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 /** Soft Pill, copied, with `useSubTabs` on its Library tab. */
 export function SubTabsBar() {
   const { tabs } = useTabBar();
@@ -553,10 +584,8 @@ function PillTab({
   return (
     <TabButton tab={tab} style={styles.pillTab} {...rest}>
       {tab.renderIcon?.({ focused: tab.focused, color: PILL.foreground, size: 18 })}
-      <Text
-        numberOfLines={1}
-        style={[styles.pillLabel, { fontWeight: tab.focused ? '700' : '500' }]}
-      >
+      {/* One weight in both states, so the label never changes width as the tab changes. */}
+      <Text numberOfLines={1} style={styles.pillLabel}>
         {tab.label}
       </Text>
       {children}
@@ -587,6 +616,72 @@ export function SubTabsNote({ text }: DemoExtraProps) {
         text={text}
         message={`Long-press Library: Albums, Artists and Songs slide up from behind it. With VoiceOver or TalkBack, use its "Show sub-tabs" action.${choice ? ` Last chosen: ${choice}.` : ''}`}
       />
+    </View>
+  );
+}
+
+// Glass Badges: a Chats count that changes -----------------------------------------------------
+
+/** Chats is the third tab. */
+const CHATS_TAB = 2;
+/** The Chats count, starting at the demo's 8. */
+const chatsCount = demoStore(8);
+
+/**
+ * Gives the bar inside it the Chats count from `chatsCount` in place of the screen options'
+ * badge, so a bump rolls the digits without touching the navigator.
+ */
+export function ChatsBadge({ children }: { children: ReactNode }) {
+  const state = useTabBar();
+  const count = chatsCount.useValue();
+  const tabs = state.tabs.map((tab) => (tab.index === CHATS_TAB ? { ...tab, badge: count } : tab));
+  return <TabBarStateProvider value={{ ...state, tabs }}>{children}</TabBarStateProvider>;
+}
+
+export function GlassBadgesControls({ text, chip }: DemoExtraProps) {
+  const count = chatsCount.useValue();
+  return (
+    <View style={styles.block}>
+      <Note
+        text={text}
+        message={`Chats: ${count} unread. Bump it to roll the badge's digits; switch tabs to see its ring crossfade between the glass and the capsule.`}
+      />
+      <View style={styles.row}>
+        <DemoButton
+          label="Bump Chats"
+          onPress={() => chatsCount.set(chatsCount.get() + 1)}
+          text={text}
+          chip={chip}
+        />
+      </View>
+    </View>
+  );
+}
+
+// Cart Pill: a bag that fills ----------------------------------------------------------------
+
+/** Items in the bag, starting at the store shot's 2. */
+const cartItems = demoStore(2);
+
+/** The cart count, for the bar. */
+export const useCartCount = cartItems.useValue;
+
+export function CartPillControls({ text, chip }: DemoExtraProps) {
+  const count = cartItems.useValue();
+  return (
+    <View style={styles.block}>
+      <Note
+        text={text}
+        message={`Bag: ${count} ${count === 1 ? 'item' : 'items'}. The count is cut out of the basket on the cart button.`}
+      />
+      <View style={styles.row}>
+        <DemoButton
+          label="Add to bag"
+          onPress={() => cartItems.set(cartItems.get() + 1)}
+          text={text}
+          chip={chip}
+        />
+      </View>
     </View>
   );
 }
@@ -793,7 +888,7 @@ const styles = StyleSheet.create({
     minWidth: 50,
     height: 50.7,
   },
-  pillLabel: { fontSize: 9.5, color: PILL.foreground },
+  pillLabel: { fontSize: 9.5, fontWeight: '600', color: PILL.foreground },
   sectionRows: { gap: 4, paddingBottom: 24 },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   sectionThumb: { width: 48, height: 48, borderRadius: 10, backgroundColor: '#dfe6da' },

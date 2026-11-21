@@ -4,6 +4,8 @@
  *
  * Motion, as in the app: none in the bar. The full-colour illustrations stay at full opacity
  * whichever tab is focused (no dimming, no indicator); a tab change shows only in the screen.
+ * Pass `selectionIndicator` for a small dot under the active illustration, which fades in and
+ * out on `tabcnTiming` (instant with reduce motion).
  * The centre button darkens a little while held (10% of the bar colour mixed in, 100 ms in,
  * `tabcnTiming` out) instead of shrinking; with reduce motion on it changes instantly.
  * The button is marked with `usePanelAnchor('action')`, so a `TabPanel` can open from it.
@@ -30,6 +32,7 @@ import {
   type TabItem,
   TabList,
   tabcnTiming,
+  useFocusProgress,
   usePanelAnchor,
   useTabBar,
 } from 'react-native-tabcn';
@@ -47,6 +50,8 @@ const defaultColors = {
   badge: '#ff3b30',
   /** The count on a badge. */
   badgeText: '#ffffff',
+  /** The dot under the active tab's illustration, drawn with `selectionIndicator`. */
+  indicator: '#f1eecb',
 };
 
 export type CenterCtaColors = typeof defaultColors;
@@ -61,6 +66,11 @@ export interface CenterCtaProps {
   colors?: Partial<CenterCtaColors>;
   /** Selection haptic on tabs, a medium impact on the centre button. Default true. */
   haptics?: boolean;
+  /**
+   * Draws a small dot (`colors.indicator`) under the active tab's illustration, fading in and
+   * out on tabcnTiming. The app has none. Default false.
+   */
+  selectionIndicator?: boolean;
 }
 
 export function CenterCta({
@@ -69,6 +79,7 @@ export function CenterCta({
   fontFamily,
   colors: custom,
   haptics = true,
+  selectionIndicator = false,
 }: CenterCtaProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs, insets } = useTabBar();
@@ -90,7 +101,14 @@ export function CenterCta({
     <TabBarRoot placement="floating" style={{ width }}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
         {tabs.slice(0, half).map((tab) => (
-          <Tab key={tab.key} tab={tab} size={iconSize} colors={colors} haptics={haptics} />
+          <Tab
+            key={tab.key}
+            tab={tab}
+            size={iconSize}
+            colors={colors}
+            haptics={haptics}
+            indicator={selectionIndicator}
+          />
         ))}
         <View style={styles.middle}>
           <PressableScale
@@ -125,7 +143,14 @@ export function CenterCta({
           </PressableScale>
         </View>
         {tabs.slice(half).map((tab) => (
-          <Tab key={tab.key} tab={tab} size={iconSize} colors={colors} haptics={haptics} />
+          <Tab
+            key={tab.key}
+            tab={tab}
+            size={iconSize}
+            colors={colors}
+            haptics={haptics}
+            indicator={selectionIndicator}
+          />
         ))}
       </TabList>
     </TabBarRoot>
@@ -139,6 +164,8 @@ const EDGE = 8;
 const ICON = 42;
 const BUTTON_WIDTH = 113;
 const BAR_PADDING = 6;
+/** The selection dot's diameter. */
+const INDICATOR = 5;
 /** Share of the bar colour mixed into the button while it is held. */
 const PRESS_MIX = 0.1;
 const PRESS_IN = {
@@ -147,17 +174,22 @@ const PRESS_IN = {
   reduceMotion: ReduceMotion.System,
 };
 
-/** Side tabs never change look: the illustrations can't be recoloured, and the app doesn't dim them. */
+/**
+ * Side tabs never change look: the illustrations can't be recoloured, and the app doesn't dim
+ * them. With `indicator`, a dot under the active one is the only change.
+ */
 function Tab({
   tab,
   size,
   colors,
   haptics,
+  indicator,
 }: {
   tab: TabItem;
   size: number;
   colors: CenterCtaColors;
   haptics: boolean;
+  indicator: boolean;
 }) {
   return (
     <TabButton
@@ -168,8 +200,21 @@ function Tab({
       <View>
         {tab.renderIcon?.({ focused: tab.focused, color: colors.icon, size })}
         <Badge badge={tab.badge} colors={colors} />
+        {indicator ? <SelectionDot tab={tab} color={colors.indicator} /> : null}
       </View>
     </TabButton>
+  );
+}
+
+/** The active tab's dot under its illustration: fades in and out on tabcnTiming. */
+function SelectionDot({ tab, color }: { tab: TabItem; color: string }) {
+  const progress = useFocusProgress(tab);
+  const fade = useAnimatedStyle(() => ({ opacity: progress.value }));
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.indicator, { backgroundColor: color }, fade]}
+    />
   );
 }
 
@@ -236,4 +281,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeText: { fontSize: 11, lineHeight: 14, fontWeight: '700', includeFontPadding: false },
+  // 5 pt, centred 6.5 pt below the illustration: inside the 13.5 pt under a 42 pt one.
+  indicator: {
+    position: 'absolute',
+    top: '100%',
+    left: '50%',
+    marginTop: 4,
+    marginLeft: -INDICATOR / 2,
+    width: INDICATOR,
+    height: INDICATOR,
+    borderRadius: INDICATOR / 2,
+  },
 });

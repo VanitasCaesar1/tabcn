@@ -33,7 +33,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, type TextStyle, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -107,6 +107,17 @@ export interface BadgeDockProps {
   actionIcon?: ReactNode | ((props: { color: string; size: number }) => ReactNode);
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
+  /**
+   * Font of the inactive labels and the action's label, such as Reddit Sans Medium. It is
+   * used as given, at its own weight. Default: the system font at weight 500.
+   */
+  fontFamily?: string;
+  /**
+   * Font of the active label, which crossfades in over the inactive one, such as Reddit Sans
+   * Bold. It is used as given, at its own weight. Default: `fontFamily` at weight 600, or the
+   * system font at weight 600 without one.
+   */
+  activeFontFamily?: string;
 }
 
 /** Tab content height above the bottom safe area (a standard UITabBar). */
@@ -140,13 +151,24 @@ export function BadgeDock({
   actionLabel = 'Create',
   actionIcon,
   haptics = true,
+  fontFamily,
+  activeFontFamily,
 }: BadgeDockProps) {
   const colors = { ...defaultColors, ...custom };
+  const fonts: Fonts = {
+    // A named family is used at its own weight; without one, the system font's weights apply.
+    regular: fontFamily ? { fontFamily, fontWeight: 'normal' } : undefined,
+    bold: activeFontFamily
+      ? { fontFamily: activeFontFamily, fontWeight: 'normal' }
+      : fontFamily
+        ? { fontFamily }
+        : undefined,
+  };
   const { tabs } = useTabBar();
   // With an action, it takes the middle slot: two tabs on each side of four.
   const half = onActionPress ? Math.ceil(tabs.length / 2) : tabs.length;
   const tab = (item: TabItem) => (
-    <Tab key={item.key} tab={item} colors={colors} haptics={haptics} />
+    <Tab key={item.key} tab={item} colors={colors} fonts={fonts} haptics={haptics} />
   );
 
   return (
@@ -161,6 +183,7 @@ export function BadgeDock({
             icon={actionIcon}
             onPress={onActionPress}
             colors={colors}
+            fonts={fonts}
             haptics={haptics}
           />
         ) : null}
@@ -170,13 +193,21 @@ export function BadgeDock({
   );
 }
 
+/** Label fonts: the regular (inactive) and bold (active) weights, unset for the system font. */
+interface Fonts {
+  regular: TextStyle | undefined;
+  bold: TextStyle | undefined;
+}
+
 function Tab({
   tab,
   colors,
+  fonts,
   haptics,
 }: {
   tab: TabItem;
   colors: BadgeDockColors;
+  fonts: Fonts;
   haptics: boolean;
 }) {
   const progress = useFocusProgress(tab, timing);
@@ -207,14 +238,14 @@ function Tab({
         <Animated.Text
           numberOfLines={1}
           maxFontSizeMultiplier={1.3}
-          style={[styles.label, styles.under, { color: colors.inactive }, outgoing]}
+          style={[styles.label, styles.under, fonts.regular, { color: colors.inactive }, outgoing]}
         >
           {tab.label}
         </Animated.Text>
         <Animated.Text
           numberOfLines={1}
           maxFontSizeMultiplier={1.3}
-          style={[styles.label, styles.activeLabel, { color: colors.active }, incoming]}
+          style={[styles.label, styles.activeLabel, fonts.bold, { color: colors.active }, incoming]}
         >
           {tab.label}
         </Animated.Text>
@@ -232,12 +263,14 @@ function Action({
   icon,
   onPress,
   colors,
+  fonts,
   haptics,
 }: {
   label: string;
   icon: BadgeDockProps['actionIcon'];
   onPress: () => void;
   colors: BadgeDockColors;
+  fonts: Fonts;
   haptics: boolean;
 }) {
   const anchor = usePanelAnchor('action');
@@ -259,7 +292,7 @@ function Action({
         maxFontSizeMultiplier={1.3}
         importantForAccessibility="no"
         accessibilityElementsHidden
-        style={[styles.label, { color: colors.inactive }]}
+        style={[styles.label, fonts.regular, { color: colors.inactive }]}
       >
         {label}
       </Text>

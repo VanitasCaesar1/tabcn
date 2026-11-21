@@ -2,6 +2,8 @@
  * Soft Pill: a white pill with icons and labels. One grey capsule slides to the
  * active tab on tabcnSpring (no overshoot), and the label turns bold instantly.
  * No press lift or scale: the tab moves only when the press commits.
+ * Changed from the reference for clarity: labels are 10.5 pt instead of 9.5 pt, so they read
+ * more easily; the tab keeps its 50.7 pt height.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
@@ -139,7 +141,8 @@ const styles = StyleSheet.create({
   tab: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5.5,
+    // Icon 18 + gap 5 + label line 13 + top padding 2.5 = 38.5 pt, inside the fixed 50.7 pt tab.
+    gap: 5,
     paddingTop: 2.5,
     width: TAB_WIDTH,
     flexShrink: 1,
@@ -147,7 +150,9 @@ const styles = StyleSheet.create({
     height: 50.7,
   },
   iconBox: { width: ICON, height: ICON },
-  label: { fontSize: 9.5 },
+  // 10.5 pt (the reference's is 9.5) with a fixed line height, so the tab's content is the
+  // same height on every platform and font scale up to the 1.3 cap stays inside the tab.
+  label: { fontSize: 10.5, lineHeight: 13 },
   dot: { position: 'absolute', top: -1, right: -3, width: 7, height: 7, borderRadius: 3.5 },
   count: {
     position: 'absolute',

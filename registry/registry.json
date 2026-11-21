@@ -727,6 +727,11 @@
           "path": "registry/designs/live-tabs/live-tabs.tsx",
           "type": "registry:file",
           "target": "components/tabcn/live-tabs.tsx"
+        },
+        {
+          "path": "registry/designs/live-tabs/icons.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/live-tabs-icons.tsx"
         }
       ]
     },
@@ -783,6 +788,7 @@
       "description": "Panel: a dark glass now-playing strip that peeks out from behind a floating tab bar and drags or taps open into a large-artwork player with progress and previous/play/next. Needs a TabBarProvider.",
       "dependencies": [
         "react-native-tabcn",
+        "expo-blur",
         "react-native-gesture-handler",
         "react-native-svg",
         "expo-haptics"
@@ -847,7 +853,7 @@
       "type": "registry:item",
       "title": "Companion Chip",
       "description": "Panel: a small frosted control placed against the bar with TabBarCompanion, as a round button, a search pill or a count chip. Needs a TabBarProvider.",
-      "dependencies": ["react-native-tabcn", "expo-blur"],
+      "dependencies": ["react-native-tabcn", "expo-blur", "expo-haptics"],
       "files": [
         {
           "path": "registry/designs/companion-chip/companion-chip.tsx",

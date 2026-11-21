@@ -1,12 +1,24 @@
 /**
  * Gradient Stickers: a cream pill with a two-tone glow along its top edge and
  * sticker icons. A soft tinted capsule glides to the active sticker.
+ *
+ * Contrast: the tinted capsule, the only active cue, is low in contrast against the cream.
+ * The stickers draw their own colours; with icons of your own, set `colors.activeForeground`
+ * to give the active icon a colour of its own, which crossfades in on tabcnTiming, so the
+ * active tab can meet 3:1.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
-import Animated, { Easing, FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  interpolate,
+  ReduceMotion,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
 import {
   TabBarRoot,
   TabButton,
@@ -14,6 +26,7 @@ import {
   type TabItem,
   TabList,
   tabcnTiming,
+  useFocusProgress,
   useTabBar,
 } from 'react-native-tabcn';
 
@@ -33,6 +46,11 @@ const defaultColors = {
    * it reaches icons of your own.
    */
   icon: '#000000',
+  /**
+   * Colour passed to the active tab's `tabBarIcon`, crossfaded in on tabcnTiming. Unset (the
+   * default), the active tab gets `icon` like the rest. The stickers ignore it too.
+   */
+  activeForeground: undefined as string | undefined,
 };
 
 export type GradientStickersColors = typeof defaultColors;
@@ -97,13 +115,31 @@ function Tab({
   colors: GradientStickersColors;
   haptics: boolean;
 }) {
+  // With `activeForeground`, the active colour fades in over the idle one, which stays opaque
+  // until late in the change, so the icon never looks dimmed half-way.
+  const progress = useFocusProgress(tab);
+  const outgoing = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.6, 1], [1, 0], 'clamp'),
+  }));
+  const incoming = useAnimatedStyle(() => ({ opacity: progress.value }));
+  const icon = (color: string) =>
+    tab.renderIcon?.({ focused: tab.focused, color, size: ICON }) ?? null;
   return (
     <TabButton
       tab={tab}
       style={styles.tab}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      {tab.renderIcon?.({ focused: tab.focused, color: colors.icon, size: ICON })}
+      {colors.activeForeground === undefined ? (
+        icon(colors.icon)
+      ) : (
+        <View>
+          <Animated.View style={outgoing}>{icon(colors.icon)}</Animated.View>
+          <Animated.View style={[StyleSheet.absoluteFill, incoming]}>
+            {icon(colors.activeForeground)}
+          </Animated.View>
+        </View>
+      )}
       {tab.badge != null ? (
         <Animated.View
           entering={badgeIn}
@@ -142,7 +178,8 @@ function transparent(color: string): string {
 }
 
 // Motion: only the capsule moves, sliding and resizing on the foundation's default tabcnSpring
-// (critically damped, no overshoot). Stickers look the same on every tab, and a press gives a
+// (critically damped, no overshoot). Stickers look the same on every tab (unless
+// `activeForeground` is set: then the active icon's colour crossfades), and a press gives a
 // haptic, not a scale. The glow, rim and shadow never change. The badge dot fades in and out on
 // tabcnTiming, with no pop; with "reduce motion" on, everything happens instantly.
 const BADGE_FADE_MS = tabcnTiming.duration ?? 200;

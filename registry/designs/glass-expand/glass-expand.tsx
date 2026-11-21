@@ -9,6 +9,10 @@
  * The pill is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS and on the
  * web, and a translucent tint on Android (no blur there). Force one with `material`. Outside Liquid Glass
  * it gets a soft top-to-bottom shading and a 1 pt white rim, as in the app.
+ *
+ * Contrast: the capsule, the only active cue, is kept as the app has it (low contrast against
+ * the pill). Set `colors.activeForeground` to give the active icon a colour of its own, which
+ * crossfades in on tabcnTiming, so the active tab can meet 3:1.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
@@ -17,6 +21,7 @@ import * as Haptics from 'expo-haptics';
 import { Fragment, useEffect, useRef } from 'react';
 import { I18nManager, Platform, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
+  interpolate,
   type SharedValue,
   useAnimatedStyle,
   useSharedValue,
@@ -29,6 +34,7 @@ import {
   type TabItem,
   TabList,
   tabcnSpring,
+  useFocusProgress,
   useTabBar,
 } from 'react-native-tabcn';
 
@@ -50,8 +56,13 @@ const defaultColors = {
   capsule: '#dad9e7',
   /** The app's capsule has no border; set a colour to add a 1 pt one. */
   capsuleBorder: 'transparent',
-  /** Every icon, active or not. */
+  /** Every icon, active or not (the inactive ones when `activeForeground` is set). */
   foreground: '#141417',
+  /**
+   * The active tab's icon, crossfaded in on tabcnTiming. Unset (the default), it is
+   * `foreground` like the rest, as in the app.
+   */
+  activeForeground: undefined as string | undefined,
   /** Badge fill. The app shows none; drawn only when a tab sets `tabBarBadge`. */
   badge: '#ff3b30',
   /** Badge count text. */
@@ -304,6 +315,15 @@ function Tab({
   const iconStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: center.value - ICON / 2 }],
   }));
+  // With `activeForeground`, the active colour fades in over the idle one, which stays opaque
+  // until late in the change, so the icon never looks dimmed half-way.
+  const progress = useFocusProgress(tab);
+  const outgoing = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.6, 1], [1, 0], 'clamp'),
+  }));
+  const incoming = useAnimatedStyle(() => ({ opacity: progress.value }));
+  const icon = (color: string) =>
+    tab.renderIcon?.({ focused: tab.focused, color, size: ICON }) ?? null;
   return (
     <Fragment>
       <TabButton
@@ -313,7 +333,18 @@ function Tab({
         onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
       />
       <Animated.View pointerEvents="none" style={[styles.icon, PHYSICAL_LEFT, iconStyle]}>
-        {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: ICON })}
+        {colors.activeForeground === undefined ? (
+          icon(colors.foreground)
+        ) : (
+          <>
+            <Animated.View style={[styles.layer, outgoing]}>
+              {icon(colors.foreground)}
+            </Animated.View>
+            <Animated.View style={[styles.layer, incoming]}>
+              {icon(colors.activeForeground)}
+            </Animated.View>
+          </>
+        )}
         <Badge badge={tab.badge} colors={colors} />
       </Animated.View>
     </Fragment>
@@ -384,6 +415,16 @@ const styles = StyleSheet.create({
     top: (CAPSULE_HEIGHT - ICON) / 2,
     width: ICON,
     height: ICON,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // One colour of the icon, stacked over the other in the icon's box.
+  layer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
