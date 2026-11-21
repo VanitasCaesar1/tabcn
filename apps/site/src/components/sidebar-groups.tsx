@@ -6,6 +6,7 @@ import { cn } from '@/lib/cn';
 import { isSiteGroup, type SiteGroupId } from '@/lib/groups';
 import { LayoutIcon } from './layout-icons';
 import { TIMING_MS } from './motion';
+import { SidebarDocs } from './sidebar-docs';
 import { type SidebarItem, SidebarLink } from './sidebar-link';
 
 export interface SidebarGroup {
@@ -34,7 +35,7 @@ function store(ids: SiteGroupId[]) {
 
 const plural = (n: number) => `${n} ${n === 1 ? 'design' : 'designs'}`;
 
-// The sidebar's list, shared by the desktop column and the phone menu: one row per group, named
+// The sidebar's list, shared by the desktop column and the phone menu: the docs, then one row per group, named
 // and counted, that opens to show that group's designs. Any number can be open. A design page
 // opens its own group; the home page reopens the groups last left open, or Floating. The server
 // renders the route's group open, so hydration agrees, and saved groups apply just after.
@@ -75,6 +76,7 @@ export function SidebarGroups({ groups }: { groups: SidebarGroup[] }) {
       className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pt-3 pb-10 [mask-image:linear-gradient(to_bottom,transparent,black_12px,black_calc(100%-32px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       style={{ '--timing-ms': `${TIMING_MS}ms` } as React.CSSProperties}
     >
+      <SidebarDocs />
       <ul className="flex flex-col gap-0.5">
         {groups.map((g) => {
           const isOpen = open.includes(g.id);

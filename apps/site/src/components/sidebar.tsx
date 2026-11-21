@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { groups } from '@/lib/designs';
-import { npmVersion } from '@/lib/site';
+import { npmVersion, site } from '@/lib/site';
+import { Arrow } from './arrow';
 import { Logomark } from './logomark';
 import type { SidebarGroup } from './sidebar-groups';
 import { SidebarGroups } from './sidebar-groups';
@@ -44,7 +45,7 @@ const footLink =
 
 // A real column on wide screens: full height, one hairline between it and the page. The brand on
 // top lines up with the header; under it, the design groups, each opening to its designs; links
-// to the quick start and the docs at the foot. (Layout from ui lab,
+// to the quick start and the design notes on GitHub at the foot. (Layout from ui lab,
 // https://lab.xevrion.dev, MIT.)
 export function Sidebar() {
   return (
@@ -52,16 +53,22 @@ export function Sidebar() {
       <div className="flex h-14 shrink-0 items-center border-border border-b px-5">
         <Brand />
       </div>
-      <nav aria-label="Designs" className="flex min-h-0 flex-1 flex-col">
+      <nav aria-label="Docs and designs" className="flex min-h-0 flex-1 flex-col">
         <SidebarGroups groups={sidebarGroups} />
       </nav>
       <div className="flex h-11 shrink-0 items-center gap-4 border-border border-t px-5 text-[12px] text-muted">
-        <Link href="/#quick-start" className={footLink}>
+        <Link href="/docs/#install" className={footLink}>
           Quick start
         </Link>
-        <Link href="/docs/" className={footLink}>
-          Docs
-        </Link>
+        <a
+          href={`${site.repo}/tree/main/docs/designs`}
+          target="_blank"
+          rel="noreferrer"
+          className={footLink}
+        >
+          Design notes
+          <Arrow direction="up-right" className="size-3" />
+        </a>
       </div>
     </aside>
   );
