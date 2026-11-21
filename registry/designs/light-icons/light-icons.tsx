@@ -15,7 +15,12 @@
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import {
   TabBarRoot,
   TabButton,
@@ -33,6 +38,7 @@ const defaultColors = {
   active: '#ffffff',
   /** Idle glyphs: thin strokes peak at #9b to #a1 through the photo's blur. */
   inactive: '#a6a6a6',
+  /** The badge dot; it is ringed in `background`. */
   badge: '#ff453a',
 };
 
@@ -68,7 +74,11 @@ function Tab({
   haptics: boolean;
 }) {
   const progress = useFocusProgress(tab);
-  const idle = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
+  // The active glyph fades in over the idle one, which stays opaque until the last stretch, so
+  // the icon never dims half-way.
+  const idle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.8, 1], [1, 0], 'clamp'),
+  }));
   const active = useAnimatedStyle(() => ({ opacity: progress.value }));
 
   // The badge dot fades in and out (opacity only, no scale pop). It stays mounted so it can

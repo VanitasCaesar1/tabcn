@@ -23,9 +23,11 @@
 import * as Haptics from 'expo-haptics';
 import { type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import Animated, {
+  Easing,
   FadeIn,
   FadeOut,
   interpolateColor,
+  ReduceMotion,
   useAnimatedStyle,
 } from 'react-native-reanimated';
 import {
@@ -35,6 +37,7 @@ import {
   TabButton,
   type TabItem,
   TabList,
+  tabcnTiming,
   useFocusProgress,
   useTabBar,
   useTabIndicator,
@@ -116,6 +119,12 @@ const BARE_FAB_TOP = MENU_TOP + 4;
 const BAR = 80;
 const BAR_PILL = 64;
 const BAR_PAD = 12;
+
+/** Badges fade in and out on tabcn's timing (200 ms ease-out); instant with reduce motion. */
+const FADE_MS = tabcnTiming.duration ?? 200;
+const FADE_EASING = tabcnTiming.easing ?? Easing.bezier(0.25, 0.1, 0.25, 1);
+const badgeIn = FadeIn.duration(FADE_MS).easing(FADE_EASING).reduceMotion(ReduceMotion.System);
+const badgeOut = FadeOut.duration(FADE_MS).easing(FADE_EASING).reduceMotion(ReduceMotion.System);
 
 export function SideRail({
   onMenuPress,
@@ -341,7 +350,11 @@ function Tab({
               <Badge badge={tab.badge} colors={colors} />
             </View>
           </View>
-          <Animated.Text numberOfLines={1} style={[styles.label, label]}>
+          <Animated.Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.3}
+            style={[styles.label, label]}
+          >
             {tab.label}
           </Animated.Text>
         </>
@@ -360,8 +373,8 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SideRailCol
   if (!text) {
     return (
       <Animated.View
-        entering={FadeIn.duration(160)}
-        exiting={FadeOut.duration(120)}
+        entering={badgeIn}
+        exiting={badgeOut}
         style={[styles.dot, { backgroundColor: colors.badge }]}
       />
     );
@@ -369,14 +382,14 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SideRailCol
   const textStyle = [styles.badgeText, { color: colors.badgeText }];
   return (
     <Animated.View
-      entering={FadeIn.duration(160)}
-      exiting={FadeOut.duration(120)}
+      entering={badgeIn}
+      exiting={badgeOut}
       style={[styles.count, { backgroundColor: colors.badge }]}
     >
       {/^\d+$/.test(text) ? (
         <BadgeCount value={Number(text)} max={999} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} style={textStyle}>
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
           {text}
         </Text>
       )}

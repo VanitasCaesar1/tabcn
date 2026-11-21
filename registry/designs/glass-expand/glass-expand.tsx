@@ -6,8 +6,8 @@
  * capsule glides to its new place and every icon glides to its own, all on one critically
  * damped spring: no bounce, no jump, no squeeze. With Reduce Motion on, they move at once.
  *
- * The pill is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS, and a
- * translucent tint on Android (no blur there). Force one with `material`. Outside Liquid Glass
+ * The pill is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS and on the
+ * web, and a translucent tint on Android (no blur there). Force one with `material`. Outside Liquid Glass
  * it gets a soft top-to-bottom shading and a 1 pt white rim, as in the app.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
@@ -15,7 +15,7 @@ import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { Fragment, useEffect, useRef } from 'react';
-import { I18nManager, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { I18nManager, Platform, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
@@ -23,6 +23,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import {
+  BadgeCount,
   TabBarRoot,
   TabButton,
   type TabItem,
@@ -51,17 +52,25 @@ const defaultColors = {
   capsuleBorder: 'transparent',
   /** Every icon, active or not. */
   foreground: '#141417',
+  /** Badge fill. The app shows none; drawn only when a tab sets `tabBarBadge`. */
+  badge: '#ff3b30',
+  /** Badge count text. */
+  badgeText: '#ffffff',
 };
 
 export type GlassExpandColors = typeof defaultColors;
 
-/** `glass`: Liquid Glass (iOS 26+). `blur`: frosted blur. `tint`: translucent fill, no blur. */
+/**
+ * `glass`: Liquid Glass (iOS 26+). `blur`: frosted blur (iOS and web). `tint`: translucent
+ * fill, no blur.
+ */
 export type GlassExpandMaterial = 'auto' | 'glass' | 'blur' | 'tint';
 
 export interface GlassExpandProps {
   colors?: Partial<GlassExpandColors>;
-  /** Default `auto`: glass where available, blur on older iOS, tint on Android. */
+  /** Default `auto`: glass where available, blur on older iOS and web, tint on Android. */
   material?: GlassExpandMaterial;
+  /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
 
@@ -144,7 +153,8 @@ function useGlide(target: number, activeIndex: number): SharedValue<number> {
 function resolveMaterial(material: GlassExpandMaterial): Exclude<GlassExpandMaterial, 'auto'> {
   if (material !== 'auto') return material;
   if (isLiquidGlassAvailable()) return 'glass';
-  return Platform.OS === 'ios' ? 'blur' : 'tint';
+  // expo-blur blurs on web too (CSS backdrop-filter); only Android gets the plain tint.
+  return Platform.OS === 'android' ? 'tint' : 'blur';
 }
 
 export function GlassExpand({
@@ -273,8 +283,35 @@ function Tab({
       />
       <Animated.View pointerEvents="none" style={[styles.icon, iconStyle]}>
         {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: ICON })}
+        <Badge badge={tab.badge} colors={colors} />
       </Animated.View>
     </Fragment>
+  );
+}
+
+/**
+ * A badge at the icon's top right, drawn only when the tab sets one: an empty badge ('') is a
+ * dot, a number a count. Hidden from screen readers: `TabButton` reads it with the label.
+ */
+function Badge({ badge, colors }: { badge: TabItem['badge']; colors: GlassExpandColors }) {
+  if (badge == null) return null;
+  const text = String(badge).trim();
+  if (!text) return <View style={[styles.dot, { backgroundColor: colors.badge }]} />;
+  const textStyle = [styles.badgeText, { color: colors.badgeText }];
+  return (
+    <View
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
+      style={[styles.count, { backgroundColor: colors.badge }]}
+    >
+      {typeof badge === 'number' ? (
+        <BadgeCount value={badge} textStyle={textStyle} />
+      ) : (
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+          {text}
+        </Text>
+      )}
+    </View>
   );
 }
 
@@ -311,5 +348,29 @@ const styles = StyleSheet.create({
     height: ICON,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dot: {
+    position: 'absolute',
+    top: 1,
+    right: 1,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+  },
+  count: {
+    position: 'absolute',
+    top: -3,
+    left: ICON - 12,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '700',
   },
 });

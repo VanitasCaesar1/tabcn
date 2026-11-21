@@ -6,7 +6,8 @@
  *
  * It is a `TabPanel` anchored to the bar's `usePanelAnchor('action')` element, so it needs a
  * `TabBarProvider` around the tabs navigator and a bar design that marks its action button
- * (Labeled + Plus, Pill + Plus, Glow Glass, Segment + Search, Center CTA):
+ * (Labeled + Plus, Pill + Plus, Glow Glass, Segment + Search, Center CTA, Tile Plus, Offset
+ * Plus, Glass Badges, and Cart Pill's cart button):
  *
  * ```tsx
  * function Bar() {
@@ -178,6 +179,7 @@ function ActionList({
                 </View>
                 <Text
                   numberOfLines={1}
+                  maxFontSizeMultiplier={1.3}
                   adjustsFontSizeToFit
                   minimumFontScale={0.8}
                   style={[styles.label, { color: colors.foreground }]}

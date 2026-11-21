@@ -22,7 +22,8 @@
  * them is active. The white look is from memory of the app, not measured; by default the
  * bar stays black, as in every screenshot.
  *
- * The bar is opaque, as in the app: no glass or blur.
+ * The bar is opaque, as in the app: no glass or blur. The greys of the inactive tabs are kept
+ * as the app has them (the light scheme's are low contrast).
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  *
  * Measured on the app's App Store screenshot (v47.8, a 402 pt screen at 2.4 px per pt):
@@ -77,6 +78,7 @@ const defaultColors = {
   actionGlyph: '#161823',
   /** Not in the screenshots: the app's red count bubble on Inbox. */
   badge: '#fe2c55',
+  /** The count on a badge. */
   badgeText: '#ffffff',
 };
 
@@ -341,7 +343,11 @@ function Tab({
         ) : null}
         <Badge badge={tab.badge} colors={dark} />
       </View>
-      <Animated.Text numberOfLines={1} style={[styles.label, { fontFamily }, label]}>
+      <Animated.Text
+        numberOfLines={1}
+        maxFontSizeMultiplier={1.3}
+        style={[styles.label, { fontFamily }, label]}
+      >
         {tab.label}
       </Animated.Text>
     </TabButton>
@@ -381,7 +387,7 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: OffsetPlusC
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} style={textStyle}>
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
           {text}
         </Text>
       )}

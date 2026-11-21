@@ -1,27 +1,41 @@
 /**
  * Dark Capsule: a dark bar with icons only; an outlined capsule slides behind
- * the active tab.
+ * the active tab. The capsule's colours are kept as the reference has them, faint as they are.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
-import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  interpolate,
+  ReduceMotion,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
 import {
   TabBarRoot,
   TabButton,
   TabIndicator,
   type TabItem,
   TabList,
+  tabcnTiming,
   useFocusProgress,
   useTabBar,
 } from 'react-native-tabcn';
 
 const defaultColors = {
+  /** The bar, which also fills the home-indicator area. */
   background: '#0e0e10',
+  /** The capsule that slides behind the active tab. */
   capsule: '#1c1c1f',
+  /** The capsule's 1 pt outline. */
   capsuleBorder: '#38383d',
+  /** The active tab's icon. */
   active: '#ffffff',
+  /** The other tabs' icons. */
   inactive: '#8a8a90',
+  /** The badge dot; it is ringed in `background`. */
   badge: '#ff453a',
 };
 
@@ -29,6 +43,7 @@ export type DarkCapsuleColors = typeof defaultColors;
 
 export interface DarkCapsuleProps {
   colors?: Partial<DarkCapsuleColors>;
+  /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
 
@@ -85,7 +100,10 @@ function Tab({
           {tab.renderIcon?.({ focused: true, color: colors.active, size: 26 })}
         </Animated.View>
         {tab.badge != null ? (
-          <View
+          <Animated.View
+            entering={badgeIn}
+            exiting={badgeOut}
+            pointerEvents="none"
             style={[
               styles.badge,
               { backgroundColor: colors.badge, borderColor: colors.background },
@@ -97,13 +115,23 @@ function Tab({
   );
 }
 
+// The badge dot fades in and out on tabcnTiming, with no pop; instant with reduce motion on.
+const BADGE_FADE_MS = tabcnTiming.duration ?? 200;
+const BADGE_EASING = tabcnTiming.easing ?? Easing.linear;
+const badgeIn = FadeIn.duration(BADGE_FADE_MS)
+  .easing(BADGE_EASING)
+  .reduceMotion(ReduceMotion.System);
+const badgeOut = FadeOut.duration(BADGE_FADE_MS)
+  .easing(BADGE_EASING)
+  .reduceMotion(ReduceMotion.System);
+
 const styles = StyleSheet.create({
   // Docked like the app it comes from: full width and flush with the bottom edge, with the
   // background running under the home indicator. Side padding keeps the reference's tab spacing.
   dock: {
     paddingHorizontal: 16,
   },
-  bar: { height: 62, borderRadius: 21 },
+  bar: { height: 62 },
   capsule: { borderRadius: 999, borderWidth: 1 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   iconBox: { width: 30, height: 30 },

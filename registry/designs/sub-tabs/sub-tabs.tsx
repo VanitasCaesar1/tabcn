@@ -41,6 +41,7 @@ import * as Haptics from 'expo-haptics';
 import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
 import {
   type AccessibilityActionInfo,
+  I18nManager,
   type LayoutChangeEvent,
   Pressable,
   StyleSheet,
@@ -61,6 +62,8 @@ const defaultColors = {
   foreground: '#151517',
   /** The highlight behind an item while it is pressed. */
   pressed: 'rgba(0, 0, 0, 0.06)',
+  /** The soft shadow under the drawer. */
+  shadow: 'rgba(0, 0, 0, 0.12)',
 };
 
 export type SubTabsColors = typeof defaultColors;
@@ -187,8 +190,11 @@ export function useSubTabs(name: string, options: UseSubTabsOptions = {}): SubTa
     [anchorLayout, width, screenWidth],
   );
 
+  // `shift` is a move to the right on screen. In a right-to-left layout React Native swaps
+  // `left` and `marginLeft` to the right side, so the margin's sign flips with it.
+  const margin = (I18nManager.isRTL ? -shift : shift) - (width ?? 0) / 2;
   const style: ViewStyle = width
-    ? { position: 'absolute', top: 0, bottom: 0, left: '50%', width, marginLeft: shift - width / 2 }
+    ? { position: 'absolute', top: 0, bottom: 0, left: '50%', width, marginLeft: margin }
     : { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 };
 
   return {
@@ -242,7 +248,14 @@ function Drawer({
   return (
     <Animated.View style={[{ paddingBottom: spacing }, fade]}>
       <View
-        style={[styles.surface, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        style={[
+          styles.surface,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            boxShadow: `0 8px 24px ${colors.shadow}`,
+          },
+        ]}
       >
         {items.map((item, index) => (
           <Pressable
@@ -262,6 +275,7 @@ function Drawer({
           >
             <Text
               numberOfLines={1}
+              maxFontSizeMultiplier={1.3}
               adjustsFontSizeToFit
               minimumFontScale={0.8}
               style={[styles.label, { color: colors.foreground }]}
@@ -282,10 +296,10 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     overflow: 'hidden',
     paddingVertical: 4,
-    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
   },
+  // 44 pt: the least comfortable touch target.
   item: {
-    height: 40,
+    height: 44,
     justifyContent: 'center',
     paddingHorizontal: 6,
     marginHorizontal: 4,

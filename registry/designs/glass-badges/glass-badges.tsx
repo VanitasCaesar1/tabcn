@@ -14,8 +14,10 @@
  * their digits roll when the count changes. The magnifier dims at once on touch and fades
  * back on release. Nothing scales, lifts or bounces. Reduce motion makes all of it instant.
  *
- * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS, and a
- * nearly solid light fill on Android (no blur there). Force one with `material`.
+ * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS and on
+ * the web, and a nearly solid light fill on Android (no blur there). Force one with
+ * `material`. The system blue of the active tab is kept as the app has it (low contrast on
+ * the capsule).
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
@@ -59,6 +61,7 @@ const defaultColors = {
   glassTint: undefined as string | undefined,
   /** The 1 px brighter line along the top edge of the blur and tint surfaces. */
   rim: 'rgba(255, 255, 255, 0.9)',
+  /** The soft drop shadow under the pill and the search circle. */
   shadow: 'rgba(0, 0, 0, 0.12)',
   /** The active capsule: black at 6.5%, which reads #e8e8e8 over the glass. */
   capsule: 'rgba(0, 0, 0, 0.065)',
@@ -66,7 +69,9 @@ const defaultColors = {
   foreground: '#404040',
   /** Active icon and label: iOS 26 system blue. */
   active: '#0088ff',
+  /** The red count badge. */
   badge: '#ff3b30',
+  /** The count on a badge. */
   badgeText: '#ffffff',
   /** The ring round a badge on an inactive tab: the glass colour. */
   badgeRing: '#f9f9f9',
@@ -88,7 +93,7 @@ export interface GlassBadgesProps {
   /** Content of that button. Default: Telegram's magnifier, in `colors.foreground`. */
   actionIcon?: ReactNode;
   colors?: Partial<GlassBadgesColors>;
-  /** Default `auto`: glass where available, blur on older iOS, tint on Android. */
+  /** Default `auto`: glass where available, blur on older iOS and the web, tint on Android. */
   material?: GlassBadgesMaterial;
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
@@ -129,7 +134,7 @@ const BADGE_EASING = Easing.bezier(0.25, 0.1, 0.25, 1);
 function resolveMaterial(material: GlassBadgesMaterial): Surface {
   if (material !== 'auto') return material;
   if (isLiquidGlassAvailable()) return 'glass';
-  return Platform.OS === 'ios' ? 'blur' : 'tint';
+  return Platform.OS === 'android' ? 'tint' : 'blur';
 }
 
 export function GlassBadges({
@@ -278,7 +283,7 @@ function Tab({
         <Badge tab={tab} colors={colors} progress={progress} />
       </View>
       <View pointerEvents="none" style={styles.labelBox}>
-        <Animated.Text numberOfLines={1} style={[styles.label, label]}>
+        <Animated.Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.label, label]}>
           {tab.label}
         </Animated.Text>
       </View>
@@ -321,7 +326,9 @@ function Badge({
       {typeof tab.badge === 'number' ? (
         <BadgeCount value={tab.badge} textStyle={[styles.badgeText, text]} />
       ) : (
-        <Text style={[styles.badgeText, text]}>{tab.badge}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={[styles.badgeText, text]}>
+          {tab.badge}
+        </Text>
       )}
     </Animated.View>
   );

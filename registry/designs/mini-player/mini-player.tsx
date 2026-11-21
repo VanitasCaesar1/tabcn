@@ -1,5 +1,5 @@
 /**
- * Mini Player: a dark glass now-playing strip that peeks out from behind a floating tab bar
+ * Mini Player: a dark, near-opaque now-playing strip that peeks out from behind a floating tab bar
  * (artwork, title, artist, play/pause) and opens into a player: large artwork, title,
  * progress, and previous / play / next. Drag the strip up to open it and down to return it,
  * or tap it. Panel states glide on tabcnSpring (no overshoot); the strip and the player's
@@ -32,7 +32,7 @@ import { type PanelState, TabPanel, tabcnTiming, useTabBar, useTabPanel } from '
 import { PanelDragArea } from 'react-native-tabcn/gestures';
 
 const defaultColors = {
-  /** The card: a near-opaque dark tint, so it reads as glass over any screen. */
+  /** The card: a near-opaque dark tint (no blur), so it reads the same over any screen. */
   background: 'rgba(22, 22, 26, 0.94)',
   /** Hairline edge that catches the light. */
   border: 'rgba(255, 255, 255, 0.12)',
@@ -44,8 +44,9 @@ const defaultColors = {
   track: 'rgba(255, 255, 255, 0.16)',
   /** Square behind missing artwork. */
   artwork: '#2e2e35',
-  /** The big play button and the glyph on it. */
+  /** The big play button. */
   control: '#ffffff',
+  /** The glyph on the big play button. */
   onControl: '#151517',
 };
 
@@ -99,6 +100,7 @@ export interface MiniPlayerProps {
   colors?: Partial<MiniPlayerColors>;
   /** Corner radius of the card. Default 24. */
   radius?: number;
+  /** Selection haptic on every button and on tapping the strip. Default true. */
   haptics?: boolean;
 }
 
@@ -170,10 +172,18 @@ function Player({
             >
               <Artwork track={track} size={STRIP_ART} radius={9} colors={colors} />
               <View style={styles.stripText}>
-                <Text numberOfLines={1} style={[styles.stripTitle, { color: colors.foreground }]}>
+                <Text
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={1.3}
+                  style={[styles.stripTitle, { color: colors.foreground }]}
+                >
                   {track.title}
                 </Text>
-                <Text numberOfLines={1} style={[styles.stripArtist, { color: colors.muted }]}>
+                <Text
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={1.3}
+                  style={[styles.stripArtist, { color: colors.muted }]}
+                >
                   {track.artist}
                 </Text>
               </View>
@@ -198,7 +208,12 @@ function Player({
           >
             <View style={[styles.grabber, { backgroundColor: colors.track }]} />
             <View style={styles.header}>
-              <Text style={[styles.headerLabel, { color: colors.muted }]}>Now playing</Text>
+              <Text
+                maxFontSizeMultiplier={1.3}
+                style={[styles.headerLabel, { color: colors.muted }]}
+              >
+                Now playing
+              </Text>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Close player"

@@ -22,7 +22,12 @@ import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  interpolate,
   interpolateColor,
+  ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -131,7 +136,11 @@ function Tab({
     width: PILL_WIDTH * progress.value,
     opacity: progress.value,
   }));
-  const outline = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
+  // The filled icon fades in over the outline, which stays opaque until the last stretch, so
+  // the icon never dims half-way.
+  const outline = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.8, 1], [1, 0], 'clamp'),
+  }));
   const filled = useAnimatedStyle(() => ({ opacity: progress.value }));
   const label = useAnimatedStyle(() => ({
     color: interpolateColor(progress.value, [0, 1], [colors.inactive, colors.activeLabel]),
@@ -160,6 +169,7 @@ function Tab({
           </View>
           <Animated.Text
             numberOfLines={1}
+            maxFontSizeMultiplier={1.3}
             style={[styles.label, fontFamily ? { fontFamily } : styles.medium, label]}
           >
             {tab.label}
@@ -187,17 +197,27 @@ function StateLayer({ pressed, color }: { pressed: boolean; color: string }) {
 
 /**
  * Material 3 badges on the icon's top end: a 6 pt dot for an empty badge, a 16 pt capsule
- * with the count otherwise. The tab's accessibility label already reads the badge.
+ * with the count otherwise. They fade in and out on tabcnTiming (instant with reduce motion
+ * on); a changing count rolls its digits. The tab's accessibility label already reads the badge.
  */
 function Badge({ badge, colors }: { badge: TabItem['badge']; colors: MaterialPillColors }) {
   if (badge == null) return null;
   const text = String(badge).trim();
   if (text === '') {
-    return <View pointerEvents="none" style={[styles.dot, { backgroundColor: colors.badge }]} />;
+    return (
+      <Animated.View
+        entering={badgeIn}
+        exiting={badgeOut}
+        pointerEvents="none"
+        style={[styles.dot, { backgroundColor: colors.badge }]}
+      />
+    );
   }
   const textStyle = [styles.badgeText, { color: colors.badgeText }];
   return (
-    <View
+    <Animated.View
+      entering={badgeIn}
+      exiting={badgeOut}
       pointerEvents="none"
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
@@ -210,9 +230,17 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: MaterialPil
           {text}
         </Text>
       )}
-    </View>
+    </Animated.View>
   );
 }
+
+const BADGE_EASING = tabcnTiming.easing ?? Easing.linear;
+const badgeIn = FadeIn.duration(tabcnTiming.duration ?? 200)
+  .easing(BADGE_EASING)
+  .reduceMotion(ReduceMotion.System);
+const badgeOut = FadeOut.duration(tabcnTiming.duration ?? 200)
+  .easing(BADGE_EASING)
+  .reduceMotion(ReduceMotion.System);
 
 const styles = StyleSheet.create({
   bar: {

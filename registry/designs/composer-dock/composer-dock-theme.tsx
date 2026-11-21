@@ -18,8 +18,8 @@ export const defaultColors = {
   border: 'rgba(0, 0, 0, 0.07)',
   /** Text, the active tab's icon, and the voice and Send buttons. */
   foreground: '#1f1e1d',
-  /** The other tabs' icons. */
-  muted: '#a3a29e',
+  /** The other tabs' icons (3.5:1 on the default screen). */
+  muted: '#858480',
   /** The text field's placeholder. */
   placeholder: '#9b9a96',
   /** The model chip. */

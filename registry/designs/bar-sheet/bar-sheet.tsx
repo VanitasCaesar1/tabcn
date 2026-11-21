@@ -64,7 +64,9 @@ const defaultColors = {
   /** The title. */
   foreground: '#141416',
   /** The subtitle. */
-  muted: 'rgba(20, 20, 22, 0.55)',
+  muted: 'rgba(20, 20, 22, 0.62)',
+  /** The soft shadow the sheet casts upward. */
+  shadow: 'rgba(0, 0, 0, 0.08)',
 };
 
 export type BarSheetColors = typeof defaultColors;
@@ -215,6 +217,7 @@ function SheetBody({
         {
           backgroundColor: colors.surface,
           borderColor: colors.border,
+          boxShadow: `0 -6px 24px ${colors.shadow}`,
           borderTopLeftRadius: radius,
           borderTopRightRadius: radius,
         },
@@ -265,7 +268,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderCurve: 'continuous',
     overflow: 'hidden',
-    boxShadow: '0 -6px 24px rgba(0, 0, 0, 0.08)',
   },
   header: {
     paddingHorizontal: 20,

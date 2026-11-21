@@ -28,9 +28,13 @@
  */
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { I18nManager, StyleSheet, Text, View } from 'react-native';
 import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut as FadeOutAnimation,
   interpolate,
+  ReduceMotion,
   runOnJS,
   type SharedValue,
   useAnimatedProps,
@@ -203,7 +207,7 @@ function Mark({ color }: { color: string }) {
   }));
   const fillProps = useAnimatedProps(() => ({ fill: fill.value }));
   return (
-    <Animated.View pointerEvents="none" style={[styles.mark, style]}>
+    <Animated.View pointerEvents="none" style={[styles.mark, PHYSICAL_LEFT, style]}>
       <Svg width={MARK_WIDTH} height={MARK_HEIGHT} viewBox={`0 0 ${MARK_WIDTH} ${MARK_HEIGHT}`}>
         <AnimatedPath d={MARK_PATH} animatedProps={fillProps} />
       </Svg>
@@ -312,16 +316,28 @@ function FadeOut({ onDone, children }: { onDone: () => void; children: ReactNode
 
 /**
  * Snapchat's bar shows no badges; this one sits on the icon's top-right corner: a dot for an
- * empty badge, a count capsule otherwise. The tab's accessibility label already reads it.
+ * empty badge, a count capsule otherwise. It fades in and out on tabcnTiming (instant with
+ * reduce motion on). The tab's accessibility label already reads it.
  */
 function Badge({ tab, colors }: { tab: TabItem; colors: TintedIconsColors }) {
   if (tab.badge == null) return null;
   const text = String(tab.badge).trim();
   const fill = { backgroundColor: colors.badge };
-  if (text === '') return <View pointerEvents="none" style={[styles.dot, fill]} />;
+  if (text === '') {
+    return (
+      <Animated.View
+        entering={badgeIn}
+        exiting={badgeOut}
+        pointerEvents="none"
+        style={[styles.dot, fill]}
+      />
+    );
+  }
   const textStyle = [styles.badgeText, { color: colors.badgeText }];
   return (
-    <View
+    <Animated.View
+      entering={badgeIn}
+      exiting={badgeOut}
       pointerEvents="none"
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
@@ -332,9 +348,27 @@ function Badge({ tab, colors }: { tab: TabItem; colors: TintedIconsColors }) {
       ) : (
         <Text style={textStyle}>{text}</Text>
       )}
-    </View>
+    </Animated.View>
   );
 }
+
+const BADGE_EASING = tabcnTiming.easing ?? Easing.linear;
+const badgeIn = FadeIn.duration(tabcnTiming.duration ?? 200)
+  .easing(BADGE_EASING)
+  .reduceMotion(ReduceMotion.System);
+const badgeOut = FadeOutAnimation.duration(tabcnTiming.duration ?? 200)
+  .easing(BADGE_EASING)
+  .reduceMotion(ReduceMotion.System);
+
+/**
+ * Tab frames are physical (from the left edge), but in a right-to-left layout React Native reads
+ * `left` as the start edge, the right, unless the app turned that swap off. Pin to the physical
+ * left either way, so `translateX` by a frame's `x` lands on the tab.
+ */
+const PHYSICAL_LEFT =
+  I18nManager.isRTL && (I18nManager.getConstants?.().doLeftAndRightSwapInRTL ?? true)
+    ? { right: 0 }
+    : { left: 0 };
 
 const styles = StyleSheet.create({
   // Docked full width with square corners and no top line; five equal slots edge to edge.
@@ -345,7 +379,6 @@ const styles = StyleSheet.create({
   // The triangle's flat side rests on the 48 pt row's bottom edge.
   mark: {
     position: 'absolute',
-    left: 0,
     top: BAR - MARK_HEIGHT,
     width: MARK_WIDTH,
     height: MARK_HEIGHT,

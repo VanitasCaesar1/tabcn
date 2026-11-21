@@ -24,8 +24,15 @@ import * as Haptics from 'expo-haptics';
 // 'react-native-tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
 // here names it as this design's own dependency, so `shadcn add` installs it.
 import 'react-native-gesture-handler';
-import { StyleSheet, Text } from 'react-native';
-import { TabBarRoot, TabButton, TabIndicator, type TabItem, useTabBar } from 'react-native-tabcn';
+import { StyleSheet, Text, View } from 'react-native';
+import {
+  BadgeCount,
+  TabBarRoot,
+  TabButton,
+  TabIndicator,
+  type TabItem,
+  useTabBar,
+} from 'react-native-tabcn';
 import { TabScrub } from 'react-native-tabcn/gestures';
 
 const defaultColors = {
@@ -39,6 +46,10 @@ const defaultColors = {
   accent: '#0a64d6',
   /** The other tabs' icons and labels. */
   muted: 'rgba(21, 21, 23, 0.62)',
+  /** Badge fill, drawn only when a tab sets `tabBarBadge`. */
+  badge: '#ff3b30',
+  /** Badge count text. */
+  badgeText: '#ffffff',
 };
 
 export type ScrubPillColors = typeof defaultColors;
@@ -86,11 +97,42 @@ function Tab({
       style={styles.tab}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      {tab.renderIcon?.({ focused: tab.focused, color, size: ICON })}
-      <Text numberOfLines={1} style={[styles.label, { color }]}>
+      {tab.renderIcon ? (
+        <View>
+          {tab.renderIcon({ focused: tab.focused, color, size: ICON })}
+          <Badge badge={tab.badge} colors={colors} />
+        </View>
+      ) : null}
+      <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.label, { color }]}>
         {tab.label}
       </Text>
     </TabButton>
+  );
+}
+
+/**
+ * A badge at the icon's top right, drawn only when the tab sets one: an empty badge ('') is a
+ * dot, a number a count. Hidden from screen readers: `TabButton` reads it with the label.
+ */
+function Badge({ badge, colors }: { badge: TabItem['badge']; colors: ScrubPillColors }) {
+  if (badge == null) return null;
+  const text = String(badge).trim();
+  if (!text) return <View style={[styles.dot, { backgroundColor: colors.badge }]} />;
+  const textStyle = [styles.badgeText, { color: colors.badgeText }];
+  return (
+    <View
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
+      style={[styles.count, { backgroundColor: colors.badge }]}
+    >
+      {typeof badge === 'number' ? (
+        <BadgeCount value={badge} textStyle={textStyle} />
+      ) : (
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+          {text}
+        </Text>
+      )}
+    </View>
   );
 }
 
@@ -100,6 +142,8 @@ const LENS_INSET = { x: 2, y: 2 };
 
 const styles = StyleSheet.create({
   pill: {
+    // Fits the screen when the tabs' full width doesn't: they shrink instead.
+    maxWidth: '100%',
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderCurve: 'continuous',
@@ -112,6 +156,8 @@ const styles = StyleSheet.create({
   },
   tab: {
     width: 68,
+    flexShrink: 1,
+    minWidth: 54,
     height: 54,
     alignItems: 'center',
     justifyContent: 'center',
@@ -121,4 +167,17 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
+  dot: { position: 'absolute', top: -1, right: -3, width: 8, height: 8, borderRadius: 4 },
+  count: {
+    position: 'absolute',
+    top: -5,
+    left: ICON - 8,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { fontSize: 10, lineHeight: 13, fontWeight: '700' },
 });

@@ -70,6 +70,7 @@ import {
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import {
+  BadgeCount,
   type SnapPoint,
   TabBarRoot,
   TabButton,
@@ -99,6 +100,10 @@ const defaultColors = {
   foreground: '#151517',
   /** The other sections' labels. */
   muted: 'rgba(21, 21, 23, 0.6)',
+  /** Badge fill, drawn after a section's label only when its tab sets `tabBarBadge`. */
+  badge: '#ff3b30',
+  /** Badge count text. */
+  badgeText: '#ffffff',
 };
 
 export type SectionSheetColors = typeof defaultColors;
@@ -330,15 +335,47 @@ function Section({
     <TabButton
       tab={tab}
       style={styles.section}
+      // 32 pt segments: reach 44 pt above and below.
+      hitSlop={HIT_SLOP}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <Text
         numberOfLines={1}
+        maxFontSizeMultiplier={1.3}
         style={[styles.label, { color: tab.focused ? colors.foreground : colors.muted }]}
       >
         {tab.label}
       </Text>
+      <Badge badge={tab.badge} colors={colors} />
     </TabButton>
+  );
+}
+
+const HIT_SLOP = { top: 6, bottom: 6 };
+
+/**
+ * A badge after the section's label, drawn only when the tab sets one: an empty badge ('') is
+ * a dot, a number a count. Hidden from screen readers: `TabButton` reads it with the label.
+ */
+function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SectionSheetColors }) {
+  if (badge == null) return null;
+  const text = String(badge).trim();
+  if (!text) return <View style={[styles.dot, { backgroundColor: colors.badge }]} />;
+  const textStyle = [styles.badgeText, { color: colors.badgeText }];
+  return (
+    <View
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
+      style={[styles.count, { backgroundColor: colors.badge }]}
+    >
+      {typeof badge === 'number' ? (
+        <BadgeCount value={badge} textStyle={textStyle} />
+      ) : (
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+          {text}
+        </Text>
+      )}
+    </View>
   );
 }
 
@@ -421,14 +458,27 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 72,
     height: 32,
+    flexDirection: 'row',
+    gap: 5,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
   label: {
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: '600',
   },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  count: {
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { fontSize: 10, lineHeight: 13, fontWeight: '700' },
   bodies: {
     flex: 1,
   },

@@ -28,15 +28,7 @@ import {
 } from '@registry/quick-create/quick-create';
 import { SubTabs as SubTabsDesign, useSubTabs } from '@registry/sub-tabs/sub-tabs';
 import { type ReactNode, useEffect, useState, useSyncExternalStore } from 'react';
-import {
-  AccessibilityInfo,
-  Alert,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -271,6 +263,9 @@ export function QuickCreateBar() {
   return <LabeledPlus onActionPress={toggle} />;
 }
 
+/** The action last picked from the menu, shown on the demo screen (Alert does nothing on web). */
+const quickCreatePick = demoStore<string | undefined>(undefined);
+
 export function QuickCreatePanel() {
   return (
     <QuickCreate
@@ -279,17 +274,17 @@ export function QuickCreatePanel() {
         {
           label: 'Voice',
           icon: QuickCreateIcons.MicIcon,
-          onPress: () => Alert.alert('Voice', 'Start a recording.'),
+          onPress: () => quickCreatePick.set('Voice: start a recording'),
         },
         {
           label: 'Text',
           icon: QuickCreateIcons.TextIcon,
-          onPress: () => Alert.alert('Text', 'Start a script.'),
+          onPress: () => quickCreatePick.set('Text: start a script'),
         },
         {
           label: 'Upload',
           icon: QuickCreateIcons.UploadIcon,
-          onPress: () => Alert.alert('Upload', 'Pick a file.'),
+          onPress: () => quickCreatePick.set('Upload: pick a file'),
         },
       ]}
     />
@@ -299,12 +294,14 @@ export function QuickCreatePanel() {
 /** The + button is the main control; these do the same from the screen. */
 export function QuickCreateControls({ text, chip }: DemoExtraProps) {
   const menu = useTabPanel(CREATE);
+  const picked = quickCreatePick.useValue();
   return (
     <View style={styles.block}>
       <Note
         text={text}
         message="Tap + to open the create menu; tap it again or pick an action to close it."
       />
+      {picked ? <Note text={text} message={`Last picked: ${picked}.`} /> : null}
       <View style={styles.row}>
         <DemoButton label="Open menu" onPress={menu.open} text={text} chip={chip} />
         <DemoButton label="Close menu" onPress={menu.hide} text={text} chip={chip} />
@@ -645,7 +642,12 @@ export function LiveTabsFeed({ timer, download }: { timer: string; download: str
   }, [running]);
   useEffect(() => {
     setTimerText(remaining > 0 ? clock(remaining) : undefined);
-    timerProgress.value = 1 - remaining / TIMER_SECONDS;
+    // Glide through each second instead of jumping; a restart snaps back to empty.
+    const next = 1 - remaining / TIMER_SECONDS;
+    timerProgress.value =
+      remaining === TIMER_SECONDS
+        ? next
+        : withTiming(next, { duration: 1000, easing: Easing.linear });
   }, [remaining, setTimerText, timerProgress]);
 
   // The download loops 0 → 1 on the UI thread; pausing holds it where it is.

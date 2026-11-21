@@ -24,7 +24,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { I18nManager, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -41,8 +41,8 @@ const defaultColors = {
   border: 'rgba(255, 255, 255, 0.9)',
   /** The label and the close glyph. */
   foreground: '#141417',
-  /** The percentage. */
-  muted: 'rgba(20, 20, 23, 0.5)',
+  /** The percentage (about 5:1 on `surface`). */
+  muted: 'rgba(20, 20, 23, 0.62)',
   /** The progress bar's empty track. */
   track: 'rgba(60, 50, 140, 0.1)',
   /** The progress bar's fill. */
@@ -63,6 +63,7 @@ export interface ContextTrayProps {
   colors?: Partial<ContextTrayColors>;
   /** Screen-reader label of the close button. Default "Close". */
   closeLabel?: string;
+  /** Selection haptic on pressing the close button. Default true. */
   haptics?: boolean;
 }
 
@@ -77,6 +78,7 @@ const GLYPH = 16;
 const STROKE = 2;
 
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
+const RTL = I18nManager.isRTL;
 
 export function ContextTray({
   label,
@@ -98,7 +100,13 @@ export function ContextTray({
   useEffect(() => {
     fill.value = withSpring(value, tabcnSpring);
   }, [value, fill]);
-  const fillStyle = useAnimatedStyle(() => ({ width: `${fill.value * 100}%` }));
+  // The fill is as wide as the track and slides in from the start edge (a transform, so no
+  // layout on each frame), keeping its rounded end. Hidden until the track is measured.
+  const trackWidth = useSharedValue(0);
+  const fillStyle = useAnimatedStyle(() => ({
+    opacity: trackWidth.value > 0 ? 1 : 0,
+    transform: [{ translateX: (fill.value - 1) * trackWidth.value * (RTL ? -1 : 1) }],
+  }));
 
   const surface = { backgroundColor: colors.surface, borderColor: colors.border };
 
@@ -114,11 +122,18 @@ export function ContextTray({
         <View style={[styles.row, rail && styles.railRow]}>
           <Label text={label} color={colors.foreground} rail={rail} />
           {hasProgress ? (
-            <Text style={[styles.percent, { color: colors.muted }]}>{percent}%</Text>
+            <Text maxFontSizeMultiplier={1.3} style={[styles.percent, { color: colors.muted }]}>
+              {percent}%
+            </Text>
           ) : null}
         </View>
         {hasProgress ? (
-          <View style={[styles.track, { backgroundColor: colors.track }]}>
+          <View
+            onLayout={(e) => {
+              trackWidth.value = e.nativeEvent.layout.width;
+            }}
+            style={[styles.track, { backgroundColor: colors.track }]}
+          >
             <Animated.View style={[styles.fill, { backgroundColor: colors.progress }, fillStyle]} />
           </View>
         ) : null}
@@ -177,6 +192,7 @@ function Label({ text, color, rail }: { text: string; color: string; rail: boole
       {previous !== null ? (
         <Animated.Text
           numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
           accessibilityElementsHidden
           importantForAccessibility="no"
           style={[textStyle, outStyle]}
@@ -184,7 +200,11 @@ function Label({ text, color, rail }: { text: string; color: string; rail: boole
           {previous}
         </Animated.Text>
       ) : null}
-      <Animated.Text numberOfLines={1} style={[textStyle, previous !== null && inStyle]}>
+      <Animated.Text
+        numberOfLines={1}
+        maxFontSizeMultiplier={1.3}
+        style={[textStyle, previous !== null && inStyle]}
+      >
         {shown}
       </Animated.Text>
     </View>
@@ -220,7 +240,7 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   track: { height: TRACK, borderRadius: TRACK / 2, marginTop: 8, overflow: 'hidden' },
-  fill: { height: TRACK, borderRadius: TRACK / 2 },
+  fill: { width: '100%', height: TRACK, borderRadius: TRACK / 2 },
   // A circle as tall as the bar.
   close: {
     height: '100%',

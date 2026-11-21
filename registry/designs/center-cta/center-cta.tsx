@@ -7,10 +7,13 @@
  * The centre button darkens a little while held (10% of the bar colour mixed in, 100 ms in,
  * `tabcnTiming` out) instead of shrinking; with reduce motion on it changes instantly.
  * The button is marked with `usePanelAnchor('action')`, so a `TabPanel` can open from it.
+ *
+ * The bar is 371 pt wide where that fits, and narrows to keep 8 pt from the screen's edges
+ * on a smaller screen. The button's text stays on one line, shrinking a little if it must.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   interpolateColor,
@@ -31,9 +34,14 @@ import {
 } from 'react-native-tabcn';
 
 const defaultColors = {
+  /** The bar. Also the colour mixed into the button while it is held. */
   background: '#2f302a',
+  /** The centre button's face. */
   button: '#f1eecb',
+  /** The centre button's text. */
   buttonText: '#2f302a',
+  /** The colour handed to tab icons. The bundled illustrations are full colour and ignore it. */
+  icon: '#ffffff',
 };
 
 export type CenterCtaColors = typeof defaultColors;
@@ -46,6 +54,7 @@ export interface CenterCtaProps {
   /** Font for the centre button, e.g. a handwritten face. Default: system font. */
   fontFamily?: string;
   colors?: Partial<CenterCtaColors>;
+  /** Selection haptic on tabs, a medium impact on the centre button. Default true. */
   haptics?: boolean;
 }
 
@@ -57,7 +66,10 @@ export function CenterCta({
   haptics = true,
 }: CenterCtaProps) {
   const colors = { ...defaultColors, ...custom };
-  const { tabs } = useTabBar();
+  const { tabs, insets } = useTabBar();
+  const window = useWindowDimensions();
+  // The measured width where it fits; narrower, keeping EDGE from each side, where it doesn't.
+  const width = Math.min(WIDTH, window.width - insets.left - insets.right - EDGE * 2);
   const half = Math.ceil(tabs.length / 2);
   const anchor = usePanelAnchor('action');
   const pressed = useSharedValue(0);
@@ -67,10 +79,10 @@ export function CenterCta({
     backgroundColor: interpolateColor(pressed.value * PRESS_MIX, [0, 1], [button, background]),
   }));
   return (
-    <TabBarRoot placement="floating" style={styles.outer}>
+    <TabBarRoot placement="floating" style={{ width }}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
         {tabs.slice(0, half).map((tab) => (
-          <Tab key={tab.key} tab={tab} haptics={haptics} />
+          <Tab key={tab.key} tab={tab} color={colors.icon} haptics={haptics} />
         ))}
         <View style={styles.middle}>
           <PressableScale
@@ -89,6 +101,10 @@ export function CenterCta({
           >
             <Animated.View style={[styles.face, face]}>
               <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+                maxFontSizeMultiplier={1.3}
                 style={[
                   styles.buttonText,
                   { color: colors.buttonText },
@@ -101,13 +117,16 @@ export function CenterCta({
           </PressableScale>
         </View>
         {tabs.slice(half).map((tab) => (
-          <Tab key={tab.key} tab={tab} haptics={haptics} />
+          <Tab key={tab.key} tab={tab} color={colors.icon} haptics={haptics} />
         ))}
       </TabList>
     </TabBarRoot>
   );
 }
 
+/** The bar's measured width, and the space kept from each screen edge when it can't fit. */
+const WIDTH = 371;
+const EDGE = 8;
 /** Share of the bar colour mixed into the button while it is held. */
 const PRESS_MIX = 0.1;
 const PRESS_IN = {
@@ -117,24 +136,29 @@ const PRESS_IN = {
 };
 
 /** Side tabs never change look: the illustrations can't be recoloured, and the app doesn't dim them. */
-function Tab({ tab, haptics }: { tab: TabItem; haptics: boolean }) {
+function Tab({ tab, color, haptics }: { tab: TabItem; color: string; haptics: boolean }) {
   return (
     <TabButton
       tab={tab}
       style={styles.tab}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      {tab.renderIcon?.({ focused: tab.focused, color: '#ffffff', size: 42 })}
+      {tab.renderIcon?.({ focused: tab.focused, color, size: 42 })}
     </TabButton>
   );
 }
 
 const styles = StyleSheet.create({
-  outer: { width: 371, maxWidth: '100%' },
   bar: { height: 69, borderRadius: 24, alignItems: 'stretch', paddingHorizontal: 6 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   middle: { justifyContent: 'center' },
   button: { width: 113, height: 49 },
-  face: { flex: 1, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
+  face: {
+    flex: 1,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
   buttonText: { fontSize: 19 },
 });

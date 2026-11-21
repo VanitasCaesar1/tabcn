@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+import { I18nManager, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   type SharedValue,
   useAnimatedReaction,
@@ -12,6 +12,16 @@ import Animated, {
 import { tabcnSpring } from './motion';
 import { useTabBar } from './state';
 import { useTabListContext } from './TabList';
+
+/**
+ * Tab frames are physical (measured from the left edge), but in a right-to-left layout React
+ * Native reads `left` as the start edge, the right, unless the app turned that swap off. Pin the
+ * indicator to the physical left either way, so `translateX` by a frame's `x` lands on the tab.
+ */
+export function physicalLeft(): { left: 0 } | { right: 0 } {
+  const swaps = I18nManager.getConstants?.().doLeftAndRightSwapInRTL ?? true;
+  return I18nManager.isRTL && swaps ? { right: 0 } : { left: 0 };
+}
 
 export interface TabIndicatorOptions {
   /** Shrinks the indicator inside the tab's frame: one value for every side, or `{ x, y }`. Default 0. */
@@ -74,9 +84,10 @@ export function useTabIndicator(options: TabIndicatorOptions = {}): TabIndicator
     },
   );
 
+  const edge = physicalLeft();
   const style = useAnimatedStyle(() => ({
     position: 'absolute',
-    left: 0,
+    ...edge,
     top: 0,
     width: width.value,
     height: height.value,

@@ -204,12 +204,14 @@ function Tab({
       <View>
         <Animated.Text
           numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
           style={[styles.label, styles.under, { color: colors.inactive }, outgoing]}
         >
           {tab.label}
         </Animated.Text>
         <Animated.Text
           numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
           style={[styles.label, styles.activeLabel, { color: colors.active }, incoming]}
         >
           {tab.label}
@@ -250,6 +252,7 @@ function Action({
       <View style={styles.icon}>{icon}</View>
       <Text
         numberOfLines={1}
+        maxFontSizeMultiplier={1.3}
         importantForAccessibility="no"
         accessibilityElementsHidden
         style={[styles.label, { color: colors.inactive }]}

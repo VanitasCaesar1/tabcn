@@ -21,13 +21,18 @@
  * and every icon is centred on one line. The 3D shots put that line about 60 pt above the
  * screen's bottom edge: a 50 pt bar with its icons centred, over the home-indicator inset.
  * Colours: Cash green #00e013; inactive icons measure #00860b on green and #949494 on white,
- * both black at about 40%.
+ * both black at about 40%. These icon colours are kept as the app has them, low as their
+ * contrast is (2.6-2.9:1); pass `colors` or a surface to raise it.
  */
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { processColor, StyleSheet, Text, View } from 'react-native';
 import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut as FadeOutAnimation,
   interpolate,
+  ReduceMotion,
   runOnJS,
   type SharedValue,
   useAnimatedStyle,
@@ -74,6 +79,8 @@ export const colorFloodGreen = '#00e013';
 /**
  * The older Cash App look for the Pay tab: white icons over the green, the inactive ones at
  * about 65% (measured #a9f3c4 over the 3D renders' green). Use it as a `surfaces` entry.
+ * White on this green is low in contrast (1.8:1 active), so it suits a brand moment more than
+ * an everyday bar.
  */
 export const colorFloodWhiteOnGreen: ColorFloodSurface = {
   background: colorFloodGreen,
@@ -276,16 +283,28 @@ function FadeOut({ onDone, children }: { onDone: () => void; children: ReactNode
 
 /**
  * Cash App draws no badges; this one sits on the icon's top-right corner: a dot for an empty
- * badge, a count capsule otherwise. The tab's accessibility label already reads it.
+ * badge, a count capsule otherwise. It fades in and out on tabcnTiming (instant with reduce
+ * motion on). The tab's accessibility label already reads it.
  */
 function Badge({ tab, colors }: { tab: TabItem; colors: ColorFloodColors }) {
   if (tab.badge == null) return null;
   const text = String(tab.badge).trim();
   const fill = { backgroundColor: colors.badge };
-  if (text === '') return <View pointerEvents="none" style={[styles.dot, fill]} />;
+  if (text === '') {
+    return (
+      <Animated.View
+        entering={badgeIn}
+        exiting={badgeOut}
+        pointerEvents="none"
+        style={[styles.dot, fill]}
+      />
+    );
+  }
   const textStyle = [styles.badgeText, { color: colors.badgeText }];
   return (
-    <View
+    <Animated.View
+      entering={badgeIn}
+      exiting={badgeOut}
       pointerEvents="none"
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
@@ -296,9 +315,17 @@ function Badge({ tab, colors }: { tab: TabItem; colors: ColorFloodColors }) {
       ) : (
         <Text style={textStyle}>{text}</Text>
       )}
-    </View>
+    </Animated.View>
   );
 }
+
+const BADGE_EASING = tabcnTiming.easing ?? Easing.linear;
+const badgeIn = FadeIn.duration(tabcnTiming.duration ?? 200)
+  .easing(BADGE_EASING)
+  .reduceMotion(ReduceMotion.System);
+const badgeOut = FadeOutAnimation.duration(tabcnTiming.duration ?? 200)
+  .easing(BADGE_EASING)
+  .reduceMotion(ReduceMotion.System);
 
 const styles = StyleSheet.create({
   // Docked full width with square corners; the colour change is the only edge.

@@ -105,7 +105,11 @@ export function ScrubLabel({ tab, colors }: { tab: TabItem | null; colors: Compo
       style={[styles.labelTrack, style]}
     >
       <View style={[styles.labelPill, { backgroundColor: colors.label }]}>
-        <Text numberOfLines={1} style={[styles.labelText, { color: colors.labelText }]}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[styles.labelText, { color: colors.labelText }]}
+        >
           {text}
         </Text>
       </View>

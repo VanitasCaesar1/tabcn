@@ -7,6 +7,7 @@
  * The plus is marked with `usePanelAnchor('action')`, so a `TabPanel` can open from it.
  * The capsule is slightly domed (a soft inner shade at its edge) and casts a wide, soft
  * shadow.
+ * The light grey of the inactive icons and the plus is kept as the app has it (low contrast).
  *
  * Measured on the app (App Store shot, 2.59 px/pt on a 402 pt screen), with three tabs:
  * the capsule is 247 x 54 pt, icon centres sit 39, 97, 155 and 209 pt from its left
@@ -28,11 +29,21 @@ import {
 } from 'react-native-tabcn';
 
 const defaultColors = {
+  /** The capsule's white. */
   background: '#fdfeff',
+  /** Active icon. */
   active: '#1a1a1a',
+  /** Inactive icons. */
   inactive: '#b8b9bb',
   /** The plus glyph: the same grey as the inactive icons in the app. */
   plus: '#b8b9bb',
+  /**
+   * The wide soft shadow under the capsule. Its faint contact shadow is drawn from it at
+   * lower opacity.
+   */
+  shadow: 'rgba(30, 40, 60, 0.14)',
+  /** The soft inner shade along the capsule's edge that makes it look domed. */
+  bevel: 'rgba(30, 36, 48, 0.1)',
 };
 
 export type PillPlusColors = typeof defaultColors;
@@ -43,6 +54,7 @@ export interface PillPlusProps {
   /** Screen-reader label for the plus. Default "Create". */
   actionLabel?: string;
   colors?: Partial<PillPlusColors>;
+  /** Selection haptic on tabs, a light impact on the plus. Default true. */
   haptics?: boolean;
 }
 
@@ -57,8 +69,13 @@ export function PillPlus({
   const anchor = usePanelAnchor('action');
   return (
     <TabBarRoot placement="floating">
-      <View style={styles.raised}>
-        <View style={[styles.pill, { backgroundColor: colors.background }]}>
+      <View style={[styles.raised, { boxShadow: raisedShadow(colors.shadow) }]}>
+        <View
+          style={[
+            styles.pill,
+            { backgroundColor: colors.background, boxShadow: bevelShadow(colors.bevel) },
+          ]}
+        >
           <TabList style={styles.list}>
             {tabs.map((tab) => (
               <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
@@ -123,26 +140,50 @@ const PLUS_SLOT = 50;
 /** The plus: 18.6 pt tip to tip, 2.2 pt bars with round ends. */
 const PLUS = 18.6;
 const PLUS_STROKE = 2.2;
+/** A faint contact shadow under a wide soft one that darkens the page ~20 pt out. */
+function raisedShadow(color: string) {
+  return `0 0 2px ${fade(color, 0.1 / 0.14)}, 0 1.5px 3px ${fade(color, 0.08 / 0.14)}, 0 4px 18px ${color}`;
+}
+
 /** Domed white: a soft shade all round the inside edge, a little more along the bottom. */
-const BEVEL = 'inset 0 0 5px rgba(30, 36, 48, 0.07), inset 0 -6px 6px -3px rgba(30, 36, 48, 0.1)';
+function bevelShadow(color: string) {
+  return `inset 0 0 5px ${fade(color, 0.07 / 0.1)}, inset 0 -6px 6px -3px ${color}`;
+}
+
+/** `color` with its opacity multiplied by `factor`. Hex and rgb()/rgba(); others unchanged. */
+function fade(color: string, factor: number): string {
+  const hex = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(color)?.[1];
+  let rgb: number[];
+  let alpha = 1;
+  if (hex) {
+    const full = hex.length <= 4 ? [...hex].map((c) => c + c).join('') : hex;
+    rgb = [0, 2, 4].map((i) => Number.parseInt(full.slice(i, i + 2), 16));
+    if (full.length === 8) alpha = Number.parseInt(full.slice(6, 8), 16) / 255;
+  } else {
+    const parts = /^rgba?\(([^)]+)\)$/i
+      .exec(color)?.[1]
+      ?.split(/[\s,/]+/)
+      .filter(Boolean);
+    if (!parts || parts.length < 3 || parts.some((p) => p.endsWith('%'))) return color;
+    rgb = parts.slice(0, 3).map(Number);
+    if (parts[3] !== undefined) alpha = Number(parts[3]);
+  }
+  return `rgba(${rgb.join(', ')}, ${Math.round(alpha * factor * 1000) / 1000})`;
+}
 
 const styles = StyleSheet.create({
-  // A faint contact shadow under a wide soft one that darkens the page ~20 pt out.
   raised: {
     borderRadius: HEIGHT / 2,
-    boxShadow:
-      '0 0 2px rgba(30, 40, 60, 0.1), 0 1.5px 3px rgba(30, 40, 60, 0.08), 0 4px 18px rgba(30, 40, 60, 0.14)',
   },
   pill: {
     flexDirection: 'row',
     height: HEIGHT,
     borderRadius: HEIGHT / 2,
     // First icon centre 39 pt in (10 + SLOT / 2); the plus centre 38 pt from the right end.
-    paddingLeft: 10,
-    paddingRight: 13,
+    paddingStart: 10,
+    paddingEnd: 13,
     // The icons sit 1.5 pt below the capsule's middle in the app.
     paddingTop: 3,
-    boxShadow: BEVEL,
   },
   list: { alignItems: 'stretch' },
   tab: { width: SLOT, alignItems: 'center', justifyContent: 'center' },

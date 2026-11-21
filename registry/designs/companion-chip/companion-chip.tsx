@@ -4,7 +4,7 @@
  *
  * - `round`: a 48 pt circle with an icon, such as a locate button on a map;
  * - `pill`: an icon and a label, such as a search pill;
- * - `count`: a compact chip with a label and a number, such as "32 views".
+ * - `count`: a compact chip with a number and a label, such as "32 views".
  *
  * ```tsx
  * const focused = useIsFocused();
@@ -17,8 +17,10 @@
  * it minimizes, slides away with it for the keyboard, rides above a peeking mini player, and
  * fades out while a panel is open. Needs a `TabBarProvider`.
  *
- * Pressing it darkens its fill (a colour change; nothing scales or moves). A new count
- * crossfades in on tabcnTiming. With "reduce motion" on, every change is instant.
+ * Pressing it darkens its fill (a colour change; nothing scales or moves). Without `onPress`
+ * it is plain text to screen readers, not a button. A new count crossfades in on
+ * tabcnTiming. With "reduce motion" on, every change is instant. The surface is frosted on
+ * iOS and the web, and a translucent fill on Android (no blur there).
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
@@ -38,6 +40,8 @@ const defaultColors = {
   foreground: '#151517',
   /** The count in a `count` chip. */
   accent: '#2f6bff',
+  /** The soft shadow under the chip. */
+  shadow: 'rgba(0, 0, 0, 0.12)',
 };
 
 export type CompanionChipColors = typeof defaultColors;
@@ -53,13 +57,13 @@ export interface CompanionChipProps {
   variant?: 'round' | 'pill' | 'count';
   /** Draws the chip's icon: any tab icon component fits. A `count` chip draws it smaller. */
   icon?: (props: CompanionChipIconProps) => ReactNode;
-  /** The pill's text, or the count chip's text before the number. */
+  /** The pill's text, or the count chip's text after the number. */
   label?: string;
   /** The count chip's number. */
   count?: number;
-  /** Runs when the chip is pressed. */
+  /** Runs when the chip is pressed. Without it the chip is not a button. */
   onPress?: () => void;
-  /** Screen-reader label. Default: the label and count, which a `round` chip needs instead. */
+  /** Screen-reader label. Default: the count and label, which a `round` chip needs instead. */
   accessibilityLabel?: string;
   /** `light` suits light screens; `dark` dark ones. Default `light`. */
   tint?: 'light' | 'dark';
@@ -72,6 +76,7 @@ const darkColors: CompanionChipColors = {
   border: 'rgba(255, 255, 255, 0.12)',
   foreground: '#ffffff',
   accent: '#8fb2ff',
+  shadow: 'rgba(0, 0, 0, 0.12)',
 };
 
 export function CompanionChip({
@@ -88,44 +93,65 @@ export function CompanionChip({
   const shape =
     variant === 'round' ? styles.round : variant === 'pill' ? styles.pill : styles.count;
   const spoken =
-    accessibilityLabel ?? [label, count === undefined ? undefined : String(count)].join(' ').trim();
+    accessibilityLabel ?? [count === undefined ? undefined : String(count), label].join(' ').trim();
+  const style = [
+    styles.base,
+    shape,
+    { borderColor: colors.border, boxShadow: `0 6px 18px ${colors.shadow}` },
+  ];
+  const content = (pressed: boolean) => (
+    <>
+      {Platform.OS !== 'android' ? (
+        <BlurView intensity={28} tint={tint} style={StyleSheet.absoluteFill} />
+      ) : null}
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: pressed ? colors.pressed : colors.surface },
+        ]}
+      />
+      {/* An element, not a call: icon components may use hooks (or the React Compiler's). */}
+      {Icon ? <Icon color={colors.foreground} size={variant === 'count' ? 14 : 20} /> : null}
+      {variant === 'count' && count !== undefined ? (
+        <Count value={count} color={colors.accent} />
+      ) : null}
+      {variant !== 'round' && label ? (
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[
+            variant === 'pill' ? styles.pillLabel : styles.countLabel,
+            { color: colors.foreground },
+          ]}
+        >
+          {label}
+        </Text>
+      ) : null}
+    </>
+  );
+
+  // Without an action it is information, not a control: read as text, and no press look.
+  if (!onPress) {
+    return (
+      <View
+        accessible
+        accessibilityRole="text"
+        accessibilityLabel={spoken || undefined}
+        style={style}
+      >
+        {content(false)}
+      </View>
+    );
+  }
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={spoken || undefined}
       onPress={onPress}
       hitSlop={variant === 'count' ? 8 : 0}
-      style={[styles.base, shape, { borderColor: colors.border }]}
+      style={style}
     >
-      {({ pressed }) => (
-        <>
-          {Platform.OS === 'ios' ? (
-            <BlurView intensity={28} tint={tint} style={StyleSheet.absoluteFill} />
-          ) : null}
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              { backgroundColor: pressed ? colors.pressed : colors.surface },
-            ]}
-          />
-          {/* An element, not a call: icon components may use hooks (or the React Compiler's). */}
-          {Icon ? <Icon color={colors.foreground} size={variant === 'count' ? 14 : 20} /> : null}
-          {variant !== 'round' && label ? (
-            <Text
-              numberOfLines={1}
-              style={[
-                variant === 'pill' ? styles.pillLabel : styles.countLabel,
-                { color: colors.foreground },
-              ]}
-            >
-              {label}
-            </Text>
-          ) : null}
-          {variant === 'count' && count !== undefined ? (
-            <Count value={count} color={colors.accent} />
-          ) : null}
-        </>
-      )}
+      {({ pressed }) => content(pressed)}
     </Pressable>
   );
 }
@@ -143,7 +169,9 @@ function Count({ value, color }: { value: number; color: string }) {
   }, [value, opacity]);
   const fade = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
-    <Animated.Text style={[styles.countValue, { color }, fade]}>{String(value)}</Animated.Text>
+    <Animated.Text maxFontSizeMultiplier={1.3} style={[styles.countValue, { color }, fade]}>
+      {String(value)}
+    </Animated.Text>
   );
 }
 
@@ -155,7 +183,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
     borderCurve: 'continuous',
-    boxShadow: '0 6px 18px rgba(0, 0, 0, 0.12)',
   },
   round: {
     width: 48,

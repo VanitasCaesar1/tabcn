@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { catalog } from '@/catalog';
 import { DemoFeed } from '@/demo-feed';
-import { demos, designHref, screenBackground, useCurrentDemo } from '@/demos';
+import { demos, designHref, isDarkScreen, screenBackground, useCurrentDemo } from '@/demos';
 import { embed } from '@/embed';
 import { PANEL_FAMILIES, useDemoScreenColors, usePanelFamily } from '@/panel-theme';
 import { Pattern } from '@/pattern';
@@ -30,8 +30,10 @@ export function DemoScreen({ index }: { index: number }) {
   // Under a PanelUI theme the screen takes the theme's colours and drops the reference's pattern.
   const themed = useDemoScreenColors();
   const { family, setFamily } = usePanelFamily();
-  const text = themed?.text ?? (demo?.dark ? '#ffffff' : '#111114');
-  const chip = themed?.chip ?? (demo?.dark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.06)');
+  // Light ink on a dark screen: per tab, so a demo can mix light and dark screens (Offset Plus).
+  const darkScreen = demo ? isDarkScreen(demo, index) : false;
+  const text = themed?.text ?? (darkScreen ? '#ffffff' : '#111114');
+  const chip = themed?.chip ?? (darkScreen ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.06)');
   const Extra = demo?.extra;
   const navigation = useNavigation();
 
@@ -122,7 +124,7 @@ export function DemoScreen({ index }: { index: number }) {
                     styles.themeLabel,
                     {
                       color: selected
-                        ? (themed?.background ?? (demo?.dark ? '#000000' : '#ffffff'))
+                        ? (themed?.background ?? (darkScreen ? '#000000' : '#ffffff'))
                         : text,
                     },
                   ]}

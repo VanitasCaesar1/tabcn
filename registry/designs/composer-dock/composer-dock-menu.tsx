@@ -8,7 +8,15 @@ import { BlurView } from 'expo-blur';
 import { GlassView } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { createContext, type ReactNode, use, useEffect, useRef, useState } from 'react';
-import { BackHandler, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  BackHandler,
+  Pressable,
+  processColor,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import Animated, {
   Easing,
   interpolate,
@@ -29,6 +37,19 @@ import {
 } from './composer-dock-theme';
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+
+/**
+ * The blur that clears over a growing menu takes the screen's tone: dark on a dark
+ * `background`, light otherwise.
+ */
+function blurTint(background: string): 'light' | 'dark' {
+  const value = processColor(background);
+  if (typeof value !== 'number') return 'light';
+  const r = (value >>> 16) & 255;
+  const g = (value >>> 8) & 255;
+  const b = value & 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b < 128 ? 'dark' : 'light';
+}
 
 interface RowFrame {
   y: number;
@@ -242,7 +263,7 @@ export function Popover({
         {grow ? (
           <AnimatedBlurView
             pointerEvents="none"
-            tint="light"
+            tint={blurTint(colors.background)}
             animatedProps={blurProps}
             style={[StyleSheet.absoluteFill, styles.cardLargeFill]}
           />

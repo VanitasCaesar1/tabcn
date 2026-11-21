@@ -18,18 +18,28 @@ import {
 } from 'react-native-tabcn';
 
 const defaultColors = {
+  /** The pill's cream fill; the glow fades into it. */
   background: '#fef0c3',
   /** The glow along the top edge, left to right. */
   glow: ['#ffd392', '#ffd392', '#fff5c1', '#dcee82', '#dcee82'] as const,
+  /** The pill's light edge. */
   rim: 'rgba(255, 250, 214, 0.9)',
+  /** The tinted capsule behind the active sticker. */
   capsule: 'rgba(214, 160, 60, 0.22)',
+  /** The badge dot. */
   badge: '#ff4b4b',
+  /**
+   * Colour passed to `tabBarIcon`. The traced stickers draw their own colours and ignore it;
+   * it reaches icons of your own.
+   */
+  icon: '#000000',
 };
 
 export type GradientStickersColors = typeof defaultColors;
 
 export interface GradientStickersProps {
   colors?: Partial<GradientStickersColors>;
+  /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
 
@@ -51,7 +61,7 @@ export function GradientStickers({ colors: custom, haptics = true }: GradientSti
             style={styles.glow}
           >
             <LinearGradient
-              colors={[`${colors.background}00`, colors.background]}
+              colors={[transparent(colors.background), colors.background]}
               locations={[0.5, 1]}
               style={StyleSheet.absoluteFill}
             />
@@ -62,7 +72,7 @@ export function GradientStickers({ colors: custom, haptics = true }: GradientSti
               style={[styles.capsule, { backgroundColor: colors.capsule }]}
             />
             {tabs.map((tab) => (
-              <Tab key={tab.key} tab={tab} badge={colors.badge} haptics={haptics} />
+              <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
             ))}
           </TabList>
         </View>
@@ -71,23 +81,47 @@ export function GradientStickers({ colors: custom, haptics = true }: GradientSti
   );
 }
 
-function Tab({ tab, badge, haptics }: { tab: TabItem; badge: string; haptics: boolean }) {
+function Tab({
+  tab,
+  colors,
+  haptics,
+}: {
+  tab: TabItem;
+  colors: GradientStickersColors;
+  haptics: boolean;
+}) {
   return (
     <TabButton
       tab={tab}
       style={styles.tab}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      {tab.renderIcon?.({ focused: tab.focused, color: '#000000', size: ICON })}
+      {tab.renderIcon?.({ focused: tab.focused, color: colors.icon, size: ICON })}
       {tab.badge != null ? (
         <Animated.View
           entering={badgeIn}
           exiting={badgeOut}
-          style={[styles.badge, { backgroundColor: badge }]}
+          style={[styles.badge, { backgroundColor: colors.badge }]}
         />
       ) : null}
     </TabButton>
   );
+}
+
+/**
+ * `color` with zero alpha, so the glow fades into the fill without a grey midpoint. Handles
+ * #rgb, #rgba, #rrggbb, #rrggbbaa, rgb() and rgba(); anything else fades through 'transparent'.
+ */
+function transparent(color: string): string {
+  const hex = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(color.trim())?.[1];
+  if (hex) {
+    const full =
+      hex.length <= 4 ? [...hex.slice(0, 3)].map((c) => c + c).join('') : hex.slice(0, 6);
+    return `#${full}00`;
+  }
+  const rgb = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i.exec(color.trim());
+  if (rgb) return `rgba(${rgb[1]}, ${rgb[2]}, ${rgb[3]}, 0)`;
+  return 'transparent';
 }
 
 // Motion: only the capsule moves, sliding and resizing on the foundation's default tabcnSpring

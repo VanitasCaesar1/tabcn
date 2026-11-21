@@ -5,7 +5,7 @@
  * Specs: docs/designs/panels.md, docs/designs/bottom-components.md (Sheets).
  */
 import { type ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, BackHandler, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, BackHandler, Platform, StyleSheet, View } from 'react-native';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -29,6 +29,12 @@ import {
   warnOnce,
 } from './provider';
 import type { TabFrame } from './TabList';
+
+/** The bit of the DOM's `document` the web Escape handler uses (the package has no DOM types). */
+interface KeyTarget {
+  addEventListener(type: 'keydown', listener: (event: { key: string }) => void): void;
+  removeEventListener(type: 'keydown', listener: (event: { key: string }) => void): void;
+}
 
 /** Where the root sits on screen, so sheets can size themselves without measuring the window. */
 export interface SheetGeometry {
@@ -361,6 +367,17 @@ function PanelView({
       return true;
     });
     return () => sub.remove();
+  }, [open, store, id, rest]);
+
+  // On the web, Escape does what Android back does: an open panel returns to rest.
+  useEffect(() => {
+    const doc = (globalThis as { document?: KeyTarget }).document;
+    if (!open || Platform.OS !== 'web' || !doc) return;
+    const onKey = (event: { key: string }) => {
+      if (event.key === 'Escape' && store.isNavigatorFocused()) store.setPanelState(id, rest);
+    };
+    doc.addEventListener('keydown', onKey);
+    return () => doc.removeEventListener('keydown', onKey);
   }, [open, store, id, rest]);
 
   const contentStyle = useAnimatedStyle(() => ({

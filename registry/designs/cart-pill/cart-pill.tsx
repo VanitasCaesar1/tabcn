@@ -14,15 +14,17 @@
  * it instant. The cart is marked with `usePanelAnchor('action')`, so a `TabPanel` can open
  * from it.
  *
- * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS, and the
- * app's solid #f7f7f7 fallback on Android (no blur there). Force one with `material`. The
- * edge blur is iOS only; turn it off with `edgeBlur={false}`.
+ * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS and on
+ * the web, and the app's solid #f7f7f7 fallback on Android (no blur there). Force one with
+ * `material`. The edge blur is iOS only; turn it off with `edgeBlur={false}`. The grey of the
+ * inactive icons is kept as the app has it (low contrast). The back chevron mirrors in a
+ * right-to-left layout.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-import { Platform, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { I18nManager, Platform, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -78,6 +80,7 @@ const defaultColors = {
   cartGlyph: '#ffffff',
   /** Tab badges (the app shows none on its tabs): Shop purple with white text. */
   badge: '#5432ea',
+  /** The count on a tab badge. */
   badgeText: '#ffffff',
 };
 
@@ -99,7 +102,7 @@ export interface CartPillProps {
   /** Screen-reader label for the cart button; the count is added to it. Default "Cart". */
   cartLabel?: string;
   colors?: Partial<CartPillColors>;
-  /** Default `auto`: glass where available, blur on older iOS, solid fill on Android. */
+  /** Default `auto`: glass where available, blur on older iOS and the web, solid fill on Android. */
   material?: CartPillMaterial;
   /** The soft blur behind the bottom edge of the screen (iOS only). Default true. */
   edgeBlur?: boolean;
@@ -147,7 +150,7 @@ const fadeOut = FadeOut.duration(200).easing(FADE_EASING).reduceMotion(ReduceMot
 function resolveMaterial(material: CartPillMaterial): Surface {
   if (material !== 'auto') return material;
   if (isLiquidGlassAvailable()) return 'glass';
-  return Platform.OS === 'ios' ? 'blur' : 'tint';
+  return Platform.OS === 'android' ? 'tint' : 'blur';
 }
 
 export function CartPill({
@@ -167,9 +170,11 @@ export function CartPill({
   const window = useWindowDimensions();
   const shadow = { boxShadow: `0 4px 24px ${colors.shadow}` };
 
-  // 51 pt a tab, as in the app (216 pt for four), narrowed only when the buttons would not
-  // fit beside it.
-  const room = window.width - insets.left - insets.right - (SIDE + DISC + MIN_GAP) * 2;
+  // 51 pt a tab, as in the app (216 pt for four), narrowed only when it would not fit. Room
+  // for the buttons is kept on both sides (so the pill stays centred) only when one shows.
+  const sides = onBackPress != null || onCartPress != null;
+  const room =
+    window.width - insets.left - insets.right - (sides ? (SIDE + DISC + MIN_GAP) * 2 : SIDE * 2);
   const pillWidth = Math.max(BAR, Math.min(INSET * 2 + SLOT * Math.max(1, tabs.length), room));
 
   // The app's bar sits 19 pt above the screen edge, inside the home indicator's inset.
@@ -182,8 +187,11 @@ export function CartPill({
       {edgeBlur && Platform.OS === 'ios' ? <EdgeBlur below={bottom} insets={insets} /> : null}
       {/* The buttons that are there when the bar first shows don't fade in. */}
       <LayoutAnimationConfig skipEntering>
-        {/* Both sides keep their room, so the pill stays centred with or without buttons. */}
-        <View style={styles.side}>
+        {/*
+          With a button, both sides keep their room, so the pill stays centred; without one they
+          take none. They stay mounted either way, so a leaving button can fade out.
+        */}
+        <View style={sides ? styles.side : styles.noSide}>
           {onBackPress ? (
             <BackButton
               label={backLabel}
@@ -207,7 +215,7 @@ export function CartPill({
             ))}
           </TabList>
         </View>
-        <View style={styles.side}>
+        <View style={sides ? styles.side : styles.noSide}>
           {onCartPress ? (
             <CartButton
               count={cartCount ?? 0}
@@ -332,7 +340,7 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: CartPillCol
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} style={textStyle}>
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
           {text}
         </Text>
       )}
@@ -387,7 +395,9 @@ function BackButton({
       >
         <Glass surface={surface} colors={colors} />
         <Animated.View style={dim.style}>
-          <Chevron color={colors.chevron} />
+          <View style={I18nManager.isRTL ? styles.mirrored : null}>
+            <Chevron color={colors.chevron} />
+          </View>
         </Animated.View>
       </PressableScale>
     </Animated.View>
@@ -496,6 +506,10 @@ const styles = StyleSheet.create({
     width: DISC,
     height: DISC,
   },
+  noSide: {
+    width: 0,
+    height: DISC,
+  },
   pill: {
     height: BAR,
     borderRadius: BAR / 2,
@@ -578,6 +592,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: Platform.select({ ios: 'ui-rounded' }),
     includeFontPadding: false,
+  },
+  mirrored: {
+    transform: [{ scaleX: -1 }],
   },
   edge: {
     position: 'absolute',

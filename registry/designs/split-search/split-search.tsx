@@ -10,8 +10,10 @@
  * active tab's icon, while the search circle stays; scrolling up, or tapping the minimized
  * circle (`useRestoreTabBar`, no tab change), brings the full pill back.
  *
- * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS, and a
- * translucent white tint on Android (no blur there). Force one with `material`.
+ * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS and on
+ * the web, and a translucent white tint on Android (no blur there). Force one with `material`.
+ * The system blue of the active tab is kept as the app has it (low contrast on the capsule).
+ * The capsule's position assumes a left-to-right layout.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
@@ -54,6 +56,7 @@ const defaultColors = {
   glassTint: undefined as string | undefined,
   /** The 0.4 pt white rim of the blur and tint surfaces (Liquid Glass draws its own). */
   rim: '#ffffff',
+  /** The soft drop shadow under the pill and the search circle. */
   shadow: 'rgba(0, 0, 0, 0.08)',
   /** The flat selection capsule: #e9e9ed over the pill, as iOS's tertiary fill. */
   capsule: 'rgba(118, 118, 128, 0.13)',
@@ -61,7 +64,9 @@ const defaultColors = {
   foreground: '#191919',
   /** Active icon and label: iOS 26 system blue. */
   active: '#0088ff',
+  /** The count badge at an icon's top right. */
   badge: '#ff3b30',
+  /** The count on a badge. */
   badgeText: '#ffffff',
 };
 
@@ -73,7 +78,7 @@ type Surface = Exclude<SplitSearchMaterial, 'auto'>;
 
 export interface SplitSearchProps {
   colors?: Partial<SplitSearchColors>;
-  /** Default `auto`: glass where available, blur on older iOS, tint on Android. */
+  /** Default `auto`: glass where available, blur on older iOS and the web, tint on Android. */
   material?: SplitSearchMaterial;
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
@@ -105,7 +110,7 @@ const ICON_DROP = BAR / 2 - ICON_CENTER;
 function resolveMaterial(material: SplitSearchMaterial): Surface {
   if (material !== 'auto') return material;
   if (isLiquidGlassAvailable()) return 'glass';
-  return Platform.OS === 'ios' ? 'blur' : 'tint';
+  return Platform.OS === 'android' ? 'tint' : 'blur';
 }
 
 export function SplitSearch({
@@ -177,6 +182,7 @@ export function SplitSearch({
                 kept={kept}
                 center={keptCenter}
                 pillWidth={pillWidth}
+                slot={slot}
                 searchActive={search?.focused ?? false}
                 minimized={minimized}
                 color={colors.capsule}
@@ -258,6 +264,7 @@ function Capsule({
   kept,
   center,
   pillWidth,
+  slot,
   searchActive,
   minimized,
   color,
@@ -266,6 +273,7 @@ function Capsule({
   kept: number;
   center: number;
   pillWidth: number;
+  slot: number;
   searchActive: boolean;
   minimized: SharedValue<number>;
   color: string;
@@ -284,7 +292,10 @@ function Capsule({
     () => {
       const label = labelWidths.value[kept];
       if (label === undefined) return null;
-      const w = Math.min(pillWidth - INSET * 2, Math.max(CAPSULE_MIN, label + CAPSULE_PAD * 2));
+      // The least width never reaches past the slot's own 4 pt margins: on a narrow screen
+      // a short label's capsule would otherwise cover its neighbours.
+      const least = Math.min(CAPSULE_MIN, slot + INSET * 2);
+      const w = Math.min(pillWidth - INSET * 2, Math.max(least, label + CAPSULE_PAD * 2));
       const left = Math.min(Math.max(center - w / 2, INSET), pillWidth - INSET - w);
       return { left, w };
     },
@@ -376,6 +387,7 @@ function PillTab({
       <View pointerEvents="none" style={styles.labelBox}>
         <Animated.Text
           numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
           style={[styles.label, label]}
           onLayout={(e) => {
             const w = e.nativeEvent.layout.width;
@@ -453,7 +465,9 @@ function Badge({ tab, colors }: { tab: TabItem; colors: SplitSearchColors }) {
       {typeof tab.badge === 'number' ? (
         <BadgeCount value={tab.badge} textStyle={[styles.badgeText, text]} />
       ) : (
-        <Text style={[styles.badgeText, text]}>{tab.badge}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={[styles.badgeText, text]}>
+          {tab.badge}
+        </Text>
       )}
     </View>
   );

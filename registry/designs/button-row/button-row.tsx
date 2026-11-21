@@ -17,6 +17,7 @@
  * Not glass: the buttons are solid white. Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
+import { useState } from 'react';
 import { Platform, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import Animated, { interpolate, interpolateColor, useAnimatedStyle } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
@@ -96,6 +97,11 @@ const ICON = 24;
 const ICON_SIDE_SPACE = 4.6;
 /** Glyph to word: 8.2 pt measured between the inks, less the 'S's own ~0.5 pt side bearing. */
 const LABEL_GAP = 7.7;
+/**
+ * Below this width (a 320 pt screen leaves the pill about 64 pt) the label would be cut to a
+ * letter, so the pill shows its icon alone; its name is still read by screen readers.
+ */
+const MIN_LABELLED_PILL = 100;
 
 /**
  * The fade, measured over photos scrolling under the row by how much of their contrast is
@@ -289,21 +295,26 @@ function WideTab({
   const label = useAnimatedStyle(() => ({
     color: interpolateColor(progress.value, [0, 1], [colors.foreground, colors.active]),
   }));
+  const [narrow, setNarrow] = useState(false);
   return (
     <TabButton
       tab={tab}
       style={[styles.button, styles.pill, surface]}
+      onLayout={(e) => setNarrow(e.nativeEvent.layout.width < MIN_LABELLED_PILL)}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      <View style={[styles.icon, styles.pillIcon]}>
+      <View style={[styles.icon, !narrow && styles.pillIcon]}>
         <Icon tab={tab} colors={colors} />
       </View>
-      <Animated.Text
-        numberOfLines={1}
-        style={[styles.label, fontFamily ? { fontFamily } : styles.medium, label]}
-      >
-        {tab.label}
-      </Animated.Text>
+      {narrow ? null : (
+        <Animated.Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[styles.label, fontFamily ? { fontFamily } : styles.medium, label]}
+        >
+          {tab.label}
+        </Animated.Text>
+      )}
       <Badge tab={tab} colors={colors} />
     </TabButton>
   );
@@ -323,7 +334,9 @@ function Badge({ tab, colors }: { tab: TabItem; colors: ButtonRowColors }) {
       {typeof tab.badge === 'number' ? (
         <BadgeCount value={tab.badge} textStyle={[styles.badgeText, text]} />
       ) : (
-        <Text style={[styles.badgeText, text]}>{tab.badge}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={[styles.badgeText, text]}>
+          {tab.badge}
+        </Text>
       )}
     </View>
   );

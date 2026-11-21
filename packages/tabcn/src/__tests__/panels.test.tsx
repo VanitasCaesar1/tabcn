@@ -4,7 +4,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { type ReactNode, useEffect } from 'react';
-import { AccessibilityInfo, BackHandler, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, BackHandler, Platform, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   createGestureController,
@@ -365,6 +365,37 @@ describe('panel accessibility', () => {
     expect(controls.create?.state).toBe('hidden');
     expect(handlers).toHaveLength(0);
     add.mockRestore();
+  });
+
+  it('on the web, Escape closes an open panel; other keys do nothing', async () => {
+    const listeners: ((event: { key: string }) => void)[] = [];
+    const doc = {
+      addEventListener: (_type: string, listener: (event: { key: string }) => void) => {
+        listeners.push(listener);
+      },
+      removeEventListener: (_type: string, listener: (event: { key: string }) => void) => {
+        listeners.splice(listeners.indexOf(listener), 1);
+      },
+    };
+    const os = jest.replaceProperty(Platform, 'OS', 'web');
+    const hadDocument = 'document' in globalThis;
+    const previous = (globalThis as { document?: unknown }).document;
+    (globalThis as { document?: unknown }).document = doc;
+    try {
+      await render(<App state={makeTabState()} panels={[{ id: 'create' }]} />);
+      expect(listeners).toHaveLength(0);
+      await act(async () => controls.create?.open());
+      expect(listeners).toHaveLength(1);
+      await act(async () => listeners[0]?.({ key: 'Enter' }));
+      expect(controls.create?.state).toBe('open');
+      await act(async () => listeners[0]?.({ key: 'Escape' }));
+      expect(controls.create?.state).toBe('hidden');
+      expect(listeners).toHaveLength(0);
+    } finally {
+      os.restore();
+      if (hadDocument) (globalThis as { document?: unknown }).document = previous;
+      else delete (globalThis as { document?: unknown }).document;
+    }
   });
 });
 

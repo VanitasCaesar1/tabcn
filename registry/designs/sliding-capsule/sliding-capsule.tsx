@@ -6,8 +6,8 @@
  * wider than its slot, that glides to the next tab. Nothing else changes: no colour or
  * weight change, no fill, no scale.
  *
- * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS, and
- * a near-white tint on Android (no blur there). Force one with `material`.
+ * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS and on
+ * the web, and a near-white tint on Android (no blur there). Force one with `material`.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
@@ -37,18 +37,29 @@ const defaultColors = {
   rim: 'rgba(255, 255, 255, 0.95)',
   /** A faint, diffuse shadow around the bar. */
   shadow: 'rgba(0, 0, 0, 0.06)',
+  /** Badge fill. */
   badge: '#ff3b30',
+  /** Badge count text. */
+  badgeText: '#ffffff',
 };
 
 export type SlidingCapsuleColors = typeof defaultColors;
 
-/** `glass`: Liquid Glass (iOS 26+). `blur`: frosted blur. `tint`: near-white fill, no blur. */
+/**
+ * `glass`: Liquid Glass (iOS 26+). `blur`: frosted blur (iOS and web). `tint`: near-white fill,
+ * no blur.
+ */
 export type SlidingCapsuleMaterial = 'auto' | 'glass' | 'blur' | 'tint';
 
 export interface SlidingCapsuleProps {
   colors?: Partial<SlidingCapsuleColors>;
-  /** Default `auto`: glass where available, blur on older iOS, tint on Android. */
+  /** Default `auto`: glass where available, blur on older iOS and web, tint on Android. */
   material?: SlidingCapsuleMaterial;
+  /**
+   * Appearance of the Liquid Glass (iOS 26+). Default `light`, as in Wise. Pass `auto` or
+   * `dark` with dark `colors`, so light glyphs don't sit on light glass.
+   */
+  glassColorScheme?: 'auto' | 'light' | 'dark';
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
@@ -60,6 +71,8 @@ export interface SlidingCapsuleProps {
  * above the home-indicator safe area.
  */
 const TAB_WIDTH = 89.5;
+/** On a narrow screen the tabs shrink to fit, down to this width. */
+const MIN_TAB_WIDTH = 64;
 const BAR_HEIGHT = 62.5;
 const BAR_PADDING = 7.5;
 const CAPSULE_INSET = { x: -3.5, y: 4 };
@@ -82,12 +95,14 @@ function resolveMaterial(
 ): Exclude<SlidingCapsuleMaterial, 'auto'> {
   if (material !== 'auto') return material;
   if (isLiquidGlassAvailable()) return 'glass';
-  return Platform.OS === 'ios' ? 'blur' : 'tint';
+  // expo-blur blurs on web too (CSS backdrop-filter); only Android gets the plain tint.
+  return Platform.OS === 'android' ? 'tint' : 'blur';
 }
 
 export function SlidingCapsule({
   colors: custom,
   material = 'auto',
+  glassColorScheme = 'light',
   haptics = true,
 }: SlidingCapsuleProps) {
   const colors = { ...defaultColors, ...custom };
@@ -101,7 +116,7 @@ export function SlidingCapsule({
           {surface === 'glass' ? (
             <GlassView
               glassEffectStyle="regular"
-              colorScheme="light"
+              colorScheme={glassColorScheme}
               style={StyleSheet.absoluteFill}
             />
           ) : (
@@ -115,7 +130,8 @@ export function SlidingCapsule({
                   {
                     backgroundColor: colors.background,
                     opacity: surface === 'blur' ? 0.75 : 0.97,
-                    experimental_backgroundImage: BAR_SHEEN,
+                    // `backgroundImage` works on iOS, Android and the web alike.
+                    backgroundImage: BAR_SHEEN,
                   },
                 ]}
               />
@@ -127,7 +143,7 @@ export function SlidingCapsule({
             inset={CAPSULE_INSET}
             style={[
               styles.capsule,
-              { backgroundColor: colors.capsule, experimental_backgroundImage: CAPSULE_SHEEN },
+              { backgroundColor: colors.capsule, backgroundImage: CAPSULE_SHEEN },
             ]}
           />
           {tabs.map((tab) => (
@@ -169,16 +185,27 @@ function Tab({
             style={[styles.badge, { backgroundColor: colors.badge }]}
           >
             {typeof tab.badge === 'number' ? (
-              <BadgeCount value={tab.badge} textStyle={styles.badgeText} />
+              <BadgeCount
+                value={tab.badge}
+                textStyle={[styles.badgeText, { color: colors.badgeText }]}
+              />
             ) : (
-              <Text numberOfLines={1} style={styles.badgeText}>
+              <Text
+                numberOfLines={1}
+                maxFontSizeMultiplier={1.3}
+                style={[styles.badgeText, { color: colors.badgeText }]}
+              >
                 {tab.badge}
               </Text>
             )}
           </Animated.View>
         ) : null}
       </View>
-      <Text numberOfLines={1} style={[styles.label, { color: colors.foreground }]}>
+      <Text
+        numberOfLines={1}
+        maxFontSizeMultiplier={1.3}
+        style={[styles.label, { color: colors.foreground }]}
+      >
         {tab.label}
       </Text>
     </TabButton>
@@ -187,6 +214,8 @@ function Tab({
 
 const styles = StyleSheet.create({
   bar: {
+    // Fits the screen when the tabs' full width doesn't: they shrink instead.
+    maxWidth: '100%',
     borderRadius: BAR_HEIGHT / 2,
   },
   clip: {
@@ -209,6 +238,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
     width: TAB_WIDTH,
+    flexShrink: 1,
+    minWidth: MIN_TAB_WIDTH,
     height: BAR_HEIGHT,
     paddingTop: 0.75,
   },
@@ -233,7 +264,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeText: {
-    color: '#fff',
     fontSize: 11,
     fontWeight: '700',
   },

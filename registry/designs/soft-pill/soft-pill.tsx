@@ -5,8 +5,9 @@
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import {
+  BadgeCount,
   TabBarRoot,
   TabButton,
   TabIndicator,
@@ -16,15 +17,23 @@ import {
 } from 'react-native-tabcn';
 
 const defaultColors = {
+  /** The pill's fill. */
   background: '#fafafa',
+  /** The capsule that slides behind the active tab. */
   capsule: '#e5e6e8',
+  /** Icons and labels, active and inactive alike (the label turns bold when active). */
   foreground: '#151517',
+  /** Badge fill, drawn only when a tab sets `tabBarBadge`. */
+  badge: '#ff3b30',
+  /** Badge count text. */
+  badgeText: '#ffffff',
 };
 
 export type SoftPillColors = typeof defaultColors;
 
 export interface SoftPillProps {
   colors?: Partial<SoftPillColors>;
+  /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
 
@@ -53,9 +62,15 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: SoftPillColors; h
       style={styles.tab}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: ICON })}
+      {tab.renderIcon ? (
+        <View style={styles.iconBox}>
+          {tab.renderIcon({ focused: tab.focused, color: colors.foreground, size: ICON })}
+          <Badge badge={tab.badge} colors={colors} />
+        </View>
+      ) : null}
       <Text
         numberOfLines={1}
+        maxFontSizeMultiplier={1.3}
         style={[
           styles.label,
           { color: colors.foreground, fontWeight: tab.focused ? '700' : '500' },
@@ -67,9 +82,37 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: SoftPillColors; h
   );
 }
 
+/**
+ * A badge at the icon's top right, drawn only when the tab sets one: an empty badge ('') is a
+ * dot, a number a count. Hidden from screen readers: `TabButton` reads it with the label.
+ */
+function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SoftPillColors }) {
+  if (badge == null) return null;
+  const text = String(badge).trim();
+  if (!text) return <View style={[styles.dot, { backgroundColor: colors.badge }]} />;
+  const textStyle = [styles.badgeText, { color: colors.badgeText }];
+  return (
+    <View
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
+      style={[styles.count, { backgroundColor: colors.badge }]}
+    >
+      {typeof badge === 'number' ? (
+        <BadgeCount value={badge} textStyle={textStyle} />
+      ) : (
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+          {text}
+        </Text>
+      )}
+    </View>
+  );
+}
+
 /** The traced icons' 40-unit box, in points, at the reference's scale. */
 const ICON = 18;
 const TAB_WIDTH = 63;
+/** On a narrow screen the tabs shrink to fit, down to this width. */
+const MIN_TAB_WIDTH = 50;
 /**
  * The active capsule is wider than its tab and overlaps its neighbours' padding:
  * a negative x inset grows the indicator past the tab's frame (63 + 2 * 3.75 = 70.5 pt).
@@ -79,6 +122,8 @@ const CAPSULE_INSET = { x: -CAPSULE_OVERHANG, y: 0 };
 
 const styles = StyleSheet.create({
   pill: {
+    // Fits the screen when the tabs' full width doesn't: they shrink instead.
+    maxWidth: '100%',
     borderRadius: 999,
     paddingVertical: 3.8,
     paddingHorizontal: 8,
@@ -91,7 +136,23 @@ const styles = StyleSheet.create({
     gap: 5.5,
     paddingTop: 2.5,
     width: TAB_WIDTH,
+    flexShrink: 1,
+    minWidth: MIN_TAB_WIDTH,
     height: 50.7,
   },
+  iconBox: { width: ICON, height: ICON },
   label: { fontSize: 9.5 },
+  dot: { position: 'absolute', top: -1, right: -3, width: 7, height: 7, borderRadius: 3.5 },
+  count: {
+    position: 'absolute',
+    top: -6,
+    left: ICON - 6,
+    minWidth: 15,
+    height: 15,
+    borderRadius: 7.5,
+    paddingHorizontal: 3.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { fontSize: 9.5, lineHeight: 12, fontWeight: '700' },
 });

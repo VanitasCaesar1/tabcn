@@ -99,7 +99,7 @@ import {
   SubTabsNote,
   SubTabsPanel,
 } from '@/panel-demos';
-import { themed } from '@/panel-theme';
+import { themed, useDemoColors } from '@/panel-theme';
 import type { PatternSpec } from '@/pattern';
 
 // Each design in the PanelUI theme picked on the demo screen (src/panel-theme.tsx).
@@ -204,8 +204,91 @@ export function screenBackground(demo: Demo, index: number) {
   return demo.backgrounds?.[index] ?? demo.background;
 }
 
+/**
+ * Whether a demo's tab has a dark screen, for light text on it: the tab's own entry in
+ * `backgrounds` decides by its brightness, otherwise the demo's `dark`.
+ */
+export function isDarkScreen(demo: Demo, index: number) {
+  const own = demo.backgrounds?.[index];
+  if (!own) return demo.dark ?? false;
+  const hex = /^#([0-9a-f]{6})$/i.exec(own)?.[1];
+  if (!hex) return demo.dark ?? false;
+  const [r, g, b] = [0, 2, 4].map((i) => Number.parseInt(hex.slice(i, i + 2), 16) / 255) as [
+    number,
+    number,
+    number,
+  ];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.5;
+}
+
 /** Window width (pt) from which a `railWhenWide` demo shows its rail: iPads, landscape. */
 export const RAIL_MIN_WIDTH = 600;
+
+/** Strava's Record action: white on the dark bar, or the PanelUI theme's ink. */
+function AccentDarkBar({ onActionPress }: { onActionPress: () => void }) {
+  const colors = useDemoColors('accent-dark');
+  return (
+    <AccentDark
+      onActionPress={onActionPress}
+      actionIcon={
+        <AccentDarkIcons.RecordIcon
+          focused={false}
+          color={colors?.foreground ?? '#ffffff'}
+          size={24}
+        />
+      }
+    />
+  );
+}
+
+/** Reddit's Create action, in the inactive ink of the bar or of the PanelUI theme. */
+function BadgeDockBar({ onActionPress }: { onActionPress: () => void }) {
+  const colors = useDemoColors('badge-dock');
+  return (
+    <BadgeDock
+      onActionPress={onActionPress}
+      actionIcon={
+        <BadgeDockIcons.CreateIcon
+          focused={false}
+          color={colors?.inactive ?? '#b7bbbe'}
+          size={26}
+        />
+      }
+    />
+  );
+}
+
+/**
+ * Glow Glass is dark glass by default. Under a PanelUI theme its surface follows the theme, so
+ * the blur and the action icon follow too: light blur on a light card.
+ */
+function GlowGlassBar({ onActionPress }: { onActionPress: () => void }) {
+  const colors = useDemoColors('glow-glass');
+  const light = colors?.background ? isLightColor(colors.background) : false;
+  return (
+    <GlowGlass
+      onActionPress={onActionPress}
+      tint={light ? 'light' : 'dark'}
+      actionIcon={
+        <GlowGlassIcons.SpendIcon
+          focused={false}
+          color={colors?.inactiveIcon ?? '#76777c'}
+          size={21.5}
+        />
+      }
+    />
+  );
+}
+
+/** Whether a `#rrggbb` or `rgb()`/`rgba()` colour is light (for picking a blur tint). */
+function isLightColor(color: string) {
+  const hex = /^#([0-9a-f]{6})/i.exec(color)?.[1];
+  const parts = hex
+    ? [0, 2, 4].map((k) => Number.parseInt(hex.slice(k, k + 2), 16))
+    : (/rgba?\(([^)]+)\)/i.exec(color)?.[1]?.split(',').slice(0, 3).map(Number) ?? [0, 0, 0]);
+  const [r = 0, g = 0, b = 0] = parts.map((v) => v / 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5;
+}
 
 /** Built designs, keyed by catalog id. */
 export const demos: Record<string, Demo> = {
@@ -219,7 +302,7 @@ export const demos: Record<string, Demo> = {
     tabs: [
       { label: 'Home', icon: () => null },
       { label: 'Trade', icon: () => null },
-      { label: 'Predict', icon: () => null },
+      { label: 'Predict', icon: () => null, badge: 3 },
       { label: 'Explore', icon: () => null },
       { label: 'Leaders', icon: () => null },
     ],
@@ -265,7 +348,7 @@ export const demos: Record<string, Demo> = {
     dark: true,
     tabs: [
       { label: 'Scratch', icon: OrbsIcons.ScratchIcon },
-      { label: 'Chat', icon: OrbsIcons.ChatIcon },
+      { label: 'Chat', icon: OrbsIcons.ChatIcon, badge: '' },
       { label: 'Places', icon: OrbsIcons.PlacesIcon },
     ],
   },
@@ -288,7 +371,7 @@ export const demos: Record<string, Demo> = {
     barHeight: 82,
     tabs: [
       { label: 'Steps', icon: GlassExpandIcons.SneakerIcon },
-      { label: 'Water', icon: GlassExpandIcons.DropIcon },
+      { label: 'Water', icon: GlassExpandIcons.DropIcon, badge: '' },
       { label: 'Plan', icon: GlassExpandIcons.ListSparkleIcon },
       { label: 'Settings', icon: GlassExpandIcons.HexNutIcon },
     ],
@@ -311,7 +394,7 @@ export const demos: Record<string, Demo> = {
     barHeight: 58.5,
     tabs: [
       { label: 'Home', icon: SoftPillIcons.HomeIcon },
-      { label: 'Ideas', icon: SoftPillIcons.IdeasIcon },
+      { label: 'Ideas', icon: SoftPillIcons.IdeasIcon, badge: 3 },
       { label: 'Explore', icon: SoftPillIcons.ExploreIcon },
       { label: 'History', icon: SoftPillIcons.HistoryIcon },
       { label: 'Trends', icon: SoftPillIcons.TrendsIcon },
@@ -326,7 +409,7 @@ export const demos: Record<string, Demo> = {
     tabs: [
       { label: 'Home', icon: GradientStickersIcons.HouseIcon },
       { label: 'Map', icon: GradientStickersIcons.MapIcon },
-      { label: 'Shop', icon: GradientStickersIcons.ShopIcon },
+      { label: 'Shop', icon: GradientStickersIcons.ShopIcon, badge: '' },
       { label: 'Bag', icon: GradientStickersIcons.BagIcon },
       { label: 'Me', icon: GradientStickersIcons.CatIcon },
     ],
@@ -347,16 +430,11 @@ export const demos: Record<string, Demo> = {
     tabs: [
       { label: 'Home', icon: FrostedMediaIcons.BlobIcon },
       { label: 'My Apps', icon: FrostedMediaIcons.DotsIcon },
-      { label: 'Timer', icon: FrostedMediaIcons.PlayIcon },
+      { label: 'Timer', icon: FrostedMediaIcons.PlayIcon, badge: '' },
     ],
   },
   'glow-glass': {
-    render: ({ onActionPress }) => (
-      <GlowGlass
-        onActionPress={onActionPress}
-        actionIcon={<GlowGlassIcons.SpendIcon focused={false} color="#76777c" size={21.5} />}
-      />
-    ),
+    render: ({ onActionPress }) => <GlowGlassBar onActionPress={onActionPress} />,
     background: '#1f1810',
     pattern: { kind: 'wood', light: '#2a1d12', dark: '#1b130f' },
     barHeight: 58.5,
@@ -380,7 +458,7 @@ export const demos: Record<string, Demo> = {
       { label: 'Discover', icon: TopNotchIcons.DiscoverIcon },
       { label: 'Sleep', icon: TopNotchIcons.SleepIcon },
       { label: 'Create', icon: TopNotchIcons.CreateIcon },
-      { label: 'You', icon: TopNotchIcons.YouIcon },
+      { label: 'You', icon: TopNotchIcons.YouIcon, badge: '' },
     ],
   },
   'solid-dark': {
@@ -390,7 +468,7 @@ export const demos: Record<string, Demo> = {
     barHeight: 45,
     tabs: [
       { label: 'Home', icon: SolidDarkIcons.HomeIcon },
-      { label: 'Messages', icon: SolidDarkIcons.ChatIcon },
+      { label: 'Messages', icon: SolidDarkIcons.ChatIcon, badge: 2 },
       { label: 'Create', icon: SolidDarkIcons.CreateIcon },
       { label: 'Console', icon: SolidDarkIcons.ConsoleIcon },
       { label: 'Profile', icon: SolidDarkIcons.ProfileIcon },
@@ -420,7 +498,7 @@ export const demos: Record<string, Demo> = {
       { label: 'Videos', icon: DarkCapsuleIcons.VideoIcon },
       { label: 'Search', icon: DarkCapsuleIcons.SearchIcon },
       { label: 'Create', icon: DarkCapsuleIcons.SparkNoteIcon },
-      { label: 'Library', icon: DarkCapsuleIcons.LibraryIcon },
+      { label: 'Library', icon: DarkCapsuleIcons.LibraryIcon, badge: '' },
       { label: 'Profile', icon: DarkCapsuleIcons.AvatarIcon },
     ],
   },
@@ -434,7 +512,7 @@ export const demos: Record<string, Demo> = {
       { label: 'Route', icon: LightIconsIcons.RouteIcon },
       { label: 'Search', icon: LightIconsIcons.SearchIcon },
       { label: 'Record', icon: LightIconsIcons.RecordIcon },
-      { label: 'Chats', icon: LightIconsIcons.BubbleIcon },
+      { label: 'Chats', icon: LightIconsIcons.BubbleIcon, badge: '' },
       { label: 'Profile', icon: LightIconsIcons.PersonIcon },
     ],
   },
@@ -448,7 +526,7 @@ export const demos: Record<string, Demo> = {
       { label: 'Home', icon: PlayfulTilesIcons.BirdhouseIcon },
       { label: 'Rewards', icon: PlayfulTilesIcons.ChestIcon },
       { label: 'Leagues', icon: PlayfulTilesIcons.CupIcon },
-      { label: 'Friends', icon: PlayfulTilesIcons.HeartChatIcon },
+      { label: 'Friends', icon: PlayfulTilesIcons.HeartChatIcon, badge: 1 },
       { label: 'Practice', icon: PlayfulTilesIcons.BirdIcon },
       { label: 'More', icon: PlayfulTilesIcons.MoreIcon },
     ],
@@ -463,7 +541,7 @@ export const demos: Record<string, Demo> = {
       { label: 'Home', icon: SlidingCapsuleIcons.HomeIcon },
       { label: 'Card', icon: SlidingCapsuleIcons.CardIcon },
       { label: 'Recipients', icon: SlidingCapsuleIcons.RecipientsIcon },
-      { label: 'Payments', icon: SlidingCapsuleIcons.PaymentsIcon },
+      { label: 'Payments', icon: SlidingCapsuleIcons.PaymentsIcon, badge: 2 },
     ],
   },
   'labeled-plus': {
@@ -477,7 +555,7 @@ export const demos: Record<string, Demo> = {
     ],
     tabs: [
       { label: 'Home', icon: LabeledPlusIcons.HomeIcon },
-      { label: 'Creator', icon: LabeledPlusIcons.CreatorIcon },
+      { label: 'Creator', icon: LabeledPlusIcons.CreatorIcon, badge: '' },
     ],
   },
   'mono-type': {
@@ -490,7 +568,7 @@ export const demos: Record<string, Demo> = {
       { label: 'Grow', icon: MonoTypeIcons.CrystalIcon },
       { label: 'Charts', icon: MonoTypeIcons.WheelIcon },
       { label: 'Transits', icon: MonoTypeIcons.ClockIcon },
-      { label: 'Audio', icon: MonoTypeIcons.HeadphonesIcon },
+      { label: 'Audio', icon: MonoTypeIcons.HeadphonesIcon, badge: '' },
     ],
   },
   'split-search': {
@@ -510,7 +588,7 @@ export const demos: Record<string, Demo> = {
       { label: 'For You', icon: SplitSearchIcons.ForYouIcon },
       { label: 'Products', icon: SplitSearchIcons.ProductsIcon },
       { label: 'Go Further', icon: SplitSearchIcons.GoFurtherIcon },
-      { label: 'Bag', icon: SplitSearchIcons.BagIcon },
+      { label: 'Bag', icon: SplitSearchIcons.BagIcon, badge: 2 },
       { label: 'Search', icon: SplitSearchIcons.SearchIcon },
     ],
   },
@@ -521,7 +599,7 @@ export const demos: Record<string, Demo> = {
     barHeight: 64,
     tabs: [
       { label: 'Home', icon: MaterialPillIcons.HomeIcon },
-      { label: 'Activity', icon: MaterialPillIcons.ActivityIcon },
+      { label: 'Activity', icon: MaterialPillIcons.ActivityIcon, badge: 3 },
       { label: 'Automations', icon: MaterialPillIcons.AutomationsIcon },
     ],
   },
@@ -535,9 +613,9 @@ export const demos: Record<string, Demo> = {
     barHeight: 80,
     railWhenWide: true,
     tabs: [
-      { label: 'Home', icon: SideRailIcons.HomeIcon },
+      { label: 'Home', icon: SideRailIcons.HomeIcon, badge: 3 },
       { label: 'Starred', icon: SideRailIcons.StarIcon },
-      { label: 'Shared', icon: SideRailIcons.SharedIcon },
+      { label: 'Shared', icon: SideRailIcons.SharedIcon, badge: '' },
       { label: 'Files', icon: SideRailIcons.FolderIcon },
     ],
   },
@@ -562,7 +640,7 @@ export const demos: Record<string, Demo> = {
     tabs: [
       { label: 'Home', icon: SearchDockIcons.HomeIcon },
       { label: 'Search', icon: SearchDockIcons.SearchIcon },
-      { label: 'Profile', icon: SearchDockIcons.AvatarIcon },
+      { label: 'Profile', icon: SearchDockIcons.AvatarIcon, badge: 4 },
     ],
   },
   'button-row': {
@@ -580,7 +658,7 @@ export const demos: Record<string, Demo> = {
       { label: 'Home', icon: ButtonRowIcons.HomeIcon },
       { label: 'Pickup', icon: ButtonRowIcons.MapIcon },
       { label: 'Search', icon: ButtonRowIcons.SearchIcon },
-      { label: 'Carts', icon: ButtonRowIcons.CartIcon },
+      { label: 'Carts', icon: ButtonRowIcons.CartIcon, badge: 2 },
       { label: 'Account', icon: ButtonRowIcons.AccountIcon },
     ],
   },
@@ -601,12 +679,7 @@ export const demos: Record<string, Demo> = {
   },
   'accent-dark': {
     // Strava: Record opens a full-screen recorder, so it is the bar's action slot, not a tab.
-    render: ({ onActionPress }) => (
-      <AccentDark
-        onActionPress={onActionPress}
-        actionIcon={<AccentDarkIcons.RecordIcon focused={false} color="#ffffff" size={24} />}
-      />
-    ),
+    render: ({ onActionPress }) => <AccentDarkBar onActionPress={onActionPress} />,
     // Strava's dark screens: flat #141414 above the one-step-lighter #212220 bar.
     background: '#141414',
     dark: true,
@@ -617,7 +690,7 @@ export const demos: Record<string, Demo> = {
       { label: 'Home', icon: AccentDarkIcons.HomeIcon },
       { label: 'Maps', icon: AccentDarkIcons.MapsIcon },
       { label: 'Groups', icon: AccentDarkIcons.GroupsIcon },
-      { label: 'You', icon: AccentDarkIcons.YouIcon },
+      { label: 'You', icon: AccentDarkIcons.YouIcon, badge: '' },
     ],
   },
   'tile-plus': {
@@ -629,22 +702,29 @@ export const demos: Record<string, Demo> = {
     tabs: [
       { label: 'Home', icon: TilePlusIcons.HomeIcon },
       { label: 'Messages', icon: TilePlusIcons.MessagesIcon },
-      { label: 'Activity', icon: TilePlusIcons.ActivityIcon },
+      { label: 'Activity', icon: TilePlusIcons.ActivityIcon, badge: '' },
       { label: 'Profile', icon: TilePlusIcons.ProfileIcon },
     ],
   },
   'offset-plus': {
-    render: ({ onActionPress }) => <OffsetPlus onActionPress={onActionPress} />,
+    // Inbox and Profile are white pages in TikTok, and the bar fades to its light colours there.
+    render: ({ onActionPress, routes }) => (
+      <OffsetPlus
+        onActionPress={onActionPress}
+        lightRoutes={[routes[2] ?? 't3', routes[3] ?? 't4']}
+      />
+    ),
     // TikTok: the For You video (a dark, warm frame in the store shot) runs right down to the
     // bar's hard top edge.
     background: '#3c0e01',
+    backgrounds: [undefined, undefined, '#ffffff', '#ffffff'],
     dark: true,
     initialTab: 0,
     barHeight: 49,
     tabs: [
       { label: 'Home', icon: OffsetPlusIcons.HomeIcon },
       { label: 'Friends', icon: OffsetPlusIcons.FriendsIcon },
-      { label: 'Inbox', icon: OffsetPlusIcons.InboxIcon },
+      { label: 'Inbox', icon: OffsetPlusIcons.InboxIcon, badge: 5 },
       { label: 'Profile', icon: OffsetPlusIcons.ProfileIcon },
     ],
   },
@@ -657,14 +737,16 @@ export const demos: Record<string, Demo> = {
     barHeight: 48,
     tabs: [
       { label: 'Map', icon: TintedIconsIcons.MapIcon },
-      { label: 'Chat', icon: TintedIconsIcons.ChatIcon },
+      { label: 'Chat', icon: TintedIconsIcons.ChatIcon, badge: 3 },
       { label: 'Camera', icon: TintedIconsIcons.CameraIcon },
       { label: 'Stories', icon: TintedIconsIcons.StoriesIcon },
       { label: 'Spotlight', icon: TintedIconsIcons.SpotlightIcon },
     ],
   },
   'badge-dock': {
-    render: () => <BadgeDock />,
+    // Create is the bar's action slot (it opens a composer, not a screen), as in Reddit. The badges
+    // show all three forms: a dot, a count, and a capped "99+".
+    render: ({ onActionPress }) => <BadgeDockBar onActionPress={onActionPress} />,
     // Reddit (dark): the feed is the same #171717 as the bar, so the bar doesn't stand out.
     background: '#171717',
     dark: true,
@@ -672,10 +754,9 @@ export const demos: Record<string, Demo> = {
     barHeight: 49,
     tabs: [
       { label: 'Home', icon: BadgeDockIcons.HomeIcon },
-      { label: 'Communities', icon: BadgeDockIcons.CommunitiesIcon },
-      { label: 'Create', icon: BadgeDockIcons.CreateIcon },
+      { label: 'Communities', icon: BadgeDockIcons.CommunitiesIcon, badge: '' },
       { label: 'Chat', icon: BadgeDockIcons.ChatIcon, badge: 2 },
-      { label: 'Inbox', icon: BadgeDockIcons.InboxIcon, badge: 3 },
+      { label: 'Inbox', icon: BadgeDockIcons.InboxIcon, badge: 120 },
     ],
   },
   'cart-pill': {
@@ -713,7 +794,7 @@ export const demos: Record<string, Demo> = {
     ],
     tabs: [
       { label: 'Contacts', icon: GlassBadgesIcons.ContactsIcon },
-      { label: 'Calls', icon: GlassBadgesIcons.CallsIcon },
+      { label: 'Calls', icon: GlassBadgesIcons.CallsIcon, badge: 3 },
       { label: 'Chats', icon: GlassBadgesIcons.ChatsIcon, badge: 8 },
       { label: 'Settings', icon: GlassBadgesIcons.SettingsIcon },
     ],
@@ -739,7 +820,7 @@ export const demos: Record<string, Demo> = {
     tabs: [
       { label: 'Explore', icon: () => null },
       { label: 'Guides', icon: () => null },
-      { label: 'Saved', icon: () => null },
+      { label: 'Saved', icon: () => null, badge: 3 },
     ],
   },
   'scrub-pill': {
@@ -751,7 +832,7 @@ export const demos: Record<string, Demo> = {
     barHeight: 62,
     tabs: [
       { label: 'Home', icon: SoftPillIcons.HomeIcon },
-      { label: 'Ideas', icon: SoftPillIcons.IdeasIcon },
+      { label: 'Ideas', icon: SoftPillIcons.IdeasIcon, badge: 3 },
       { label: 'Explore', icon: SoftPillIcons.ExploreIcon },
       { label: 'History', icon: SoftPillIcons.HistoryIcon },
       { label: 'Trends', icon: SoftPillIcons.TrendsIcon },

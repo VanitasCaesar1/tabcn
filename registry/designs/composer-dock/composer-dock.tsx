@@ -41,7 +41,7 @@
 import { isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { type ComponentRef, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { I18nManager, StyleSheet, View } from 'react-native';
 // 'react-native-tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
 // here names it as this design's own dependency, so `shadcn add` installs it.
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -91,7 +91,10 @@ export interface ComposerDockProps {
   model?: string;
   /** Runs when the model chip is pressed (open a model picker). */
   onModelPress?: () => void;
-  /** Runs when the voice button is pressed (shown while the field is empty). */
+  /**
+   * Runs when the voice button is pressed. The button shows while the field is empty; leave
+   * this out to hide it (Send still appears once there is text).
+   */
   onVoicePress?: () => void;
   /** Runs when the dictation button is pressed. Leave out to hide the button. */
   onDictatePress?: () => void;
@@ -162,7 +165,9 @@ export function ComposerDock({
   const holdGesture = useMemo(() => {
     const holdAt = (x: number) => {
       const { tabs: list, menus: all, rowWidth: width } = latest.current;
-      const index = Math.floor((x - (width - list.length * TAB_WIDTH) / 2) / TAB_WIDTH);
+      const slot = Math.floor((x - (width - list.length * TAB_WIDTH) / 2) / TAB_WIDTH);
+      // The row runs right to left in RTL, so the first tab is the rightmost slot.
+      const index = I18nManager.isRTL ? list.length - 1 - slot : slot;
       const tab = list[index];
       const node = tab ? icons.get(tab.key) : undefined;
       if (!tab || !node || !all?.[tab.routeName]) return;
