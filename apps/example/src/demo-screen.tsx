@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { catalog } from '@/catalog';
+import { DemoFeed } from '@/demo-feed';
 import { demos, designHref, screenBackground, useCurrentDemo } from '@/demos';
 import { embed } from '@/embed';
 import { PANEL_FAMILIES, useDemoScreenColors, usePanelFamily } from '@/panel-theme';
@@ -143,7 +144,10 @@ export function DemoScreen({ index }: { index: number }) {
           barHeight={barHeight}
           goToFirstTab={() => navigation.navigate('index' as never)}
         />
-      ) : null}
+      ) : (
+        // App-like content for the bar to sit over, unless the demo brings its own.
+        <DemoFeed index={index} text={text} barHeight={barHeight} />
+      )}
     </View>
   );
 }

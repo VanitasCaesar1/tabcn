@@ -42,7 +42,8 @@ export function Pattern({ spec, centerY }: { spec: PatternSpec; centerY: number 
   const { width: W, height: H } = useWindowDimensions();
   const cx = W / 2;
   const svg = (children: React.ReactNode) => (
-    <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+    // An explicit size: on web an absolutely placed <svg> keeps its 300 × 150 default otherwise.
+    <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" pointerEvents="none">
       {children}
     </Svg>
   );
