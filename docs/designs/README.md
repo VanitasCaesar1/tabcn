@@ -8,5 +8,6 @@ Write the design here before building anything that changes the public API of `t
 | [`website.md`](website.md): the tabcn site (ui-lab-style pages, demo videos, Expo Go QR, registry hosting)                                                                                 | Approved 2026-11-20 |
 | [`panels.md`](panels.md): panels that slide out from behind the tab bar (provider, anchors, override slot, `react-native-tabcn/gestures`), plus mini player, context tray and quick-create | Approved 2026-11-20 |
 | [`motion-and-rail.md`](motion-and-rail.md): minimize on scroll, rolling badge counts, and a side rail for tablets                                                                          | Proposed 2026-11-20 |
+| [`composer-dock-split.md`](composer-dock-split.md): Composer Dock split into files of one registry item; same-item imports                                                                 | Approved 2026-11-21 |
 
 The npm package is published as `react-native-tabcn`: npm turned down `tabcn` as too close to `table`. Docs written before that (2026-11-21) say `tabcn` for the package and `tabcn/<entry>` for its entry points; read those as `react-native-tabcn` and `react-native-tabcn/<entry>`.

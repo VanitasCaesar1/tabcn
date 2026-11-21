@@ -750,6 +750,26 @@
           "target": "components/tabcn/composer-dock.tsx"
         },
         {
+          "path": "registry/designs/composer-dock/composer-dock-theme.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/composer-dock-theme.tsx"
+        },
+        {
+          "path": "registry/designs/composer-dock/composer-dock-composer.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/composer-dock-composer.tsx"
+        },
+        {
+          "path": "registry/designs/composer-dock/composer-dock-tabs.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/composer-dock-tabs.tsx"
+        },
+        {
+          "path": "registry/designs/composer-dock/composer-dock-menu.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/composer-dock-menu.tsx"
+        },
+        {
           "path": "registry/designs/composer-dock/composer-dock-icons.tsx",
           "type": "registry:file",
           "target": "components/tabcn/composer-dock-icons.tsx"
