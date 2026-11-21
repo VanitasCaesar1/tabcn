@@ -9,35 +9,58 @@ concurrency: release-${{ github.ref }}
 permissions:
   contents: write
   pull-requests: write
+  # npm trusted publishing (OIDC): npm checks this workflow's identity instead of a token. The
+  # package's trusted publisher on npmjs.com is VanitasCaesar1/tabcn, release.yml.
   id-token: write
+  # Lets the release job start site.yml once a new version is on npm (see the last step).
+  actions: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    # Releasing needs an npm token. Until the NPM_TOKEN secret is added, skip instead of failing
-    # every push to main (changesets would otherwise try to publish the unpublished package).
-    env:
-      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.0
+      # No registry-url: that writes an npm config that sends a token, and trusted publishing
+      # needs none.
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          registry-url: https://registry.npmjs.org
       - run: bun install --frozen-lockfile
-      # Opens a "Version packages" PR from pending changesets; publishes to npm when that PR is merged.
+      # With pending changesets, opens (or updates) the "Version packages" PR. It doesn't publish:
+      # its publish step writes a token line into npm's config, which trusted publishing can't use.
       - uses: changesets/action@v1
-        if: env.HAS_NPM_TOKEN == 'true'
+        id: changesets
         with:
           version: bun run version-packages
-          publish: bun run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          # setup-node's npm config reads the token from NODE_AUTH_TOKEN.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          # Signs the published package with this workflow's identity (id-token: write above).
-          NPM_CONFIG_PROVENANCE: true
+      # With none pending (the Version packages PR was just merged, or nothing changed), publish
+      # whatever version isn't on npm yet. `changeset publish` skips versions npm already has, so
+      # most pushes publish nothing. Trusted publishing needs npm 11.5.1 or later, and adds
+      # provenance on its own.
+      - name: Publish to npm
+        id: publish
+        if: steps.changesets.outputs.hasChangesets == 'false'
+        run: |
+          npm install -g npm@^11.5.1
+          before=$(git tag | sort)
+          bun run release
+          after=$(git tag | sort)
+          new=$(comm -13 <(echo "$before") <(echo "$after") | tr '\n' ' ')
+          if [ -n "${new// }" ]; then git push origin --tags; fi
+          echo "tags=${new}" >> "$GITHUB_OUTPUT"
+      # site.yml also builds on this push, at the same moment as the publish, so it reads npm before
+      # the new version is there. Once npm serves it, build the site again so the hero, the sidebar
+      # and the Quick start show the new version.
+      - name: Rebuild the site with the new version
+        if: steps.publish.outputs.tags != ''
+        # Waits up to two minutes for the version just published (not merely any version) to show.
+        run: |
+          want=$(jq -r .version packages/tabcn/package.json)
+          for i in $(seq 1 12); do npm view "react-native-tabcn@${want}" version >/dev/null 2>&1 && break; sleep 10; done
+          gh workflow run site.yml --ref main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

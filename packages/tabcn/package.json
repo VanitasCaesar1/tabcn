@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "description": "Animated, copy-and-own tab bars for React Native and Expo.",
   "license": "MIT",
+  "homepage": "https://vanitascaesar1.github.io/tabcn/",
+  "bugs": {
+    "url": "https://github.com/VanitasCaesar1/tabcn/issues"
+  },
   "keywords": [
     "react-native",
     "expo",
