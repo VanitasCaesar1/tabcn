@@ -1,16 +1,22 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Arrow } from '@/components/arrow';
 import { CodeBlock } from '@/components/code-block';
 import { InstallCommand } from '@/components/install-command';
 import { LivePhone } from '@/components/live-phone';
 import { OpenOnPhone } from '@/components/open-on-phone';
+import { Pager } from '@/components/pager';
 import { DesignPhone } from '@/components/phone';
 import { PropsTable } from '@/components/props-table';
 import { SiteHeader } from '@/components/site-header';
-import { cn } from '@/lib/cn';
-import { designs, getDesign, groupLabel, neighbours, usageSnippet } from '@/lib/designs';
+import {
+  designs,
+  getDesign,
+  groupLabel,
+  neighbours,
+  panelUISnippet,
+  usageSnippet,
+} from '@/lib/designs';
 import { absoluteUrl, designPath, groupPath, registryUrl, site, sourceUrl } from '@/lib/site';
 
 type Props = { params: Promise<{ id: string }> };
@@ -193,6 +199,26 @@ export default async function DesignPage({ params }: Props) {
           <CodeBlock filename="app/(tabs)/_layout.tsx" code={usageSnippet(design)} />
         </section>
 
+        {design.panelUI ? (
+          <section aria-labelledby="panelui-heading">
+            <h2 id="panelui-heading" className="pl-1 font-medium text-[13px]">
+              With PanelUI
+            </h2>
+            <p className="mt-1 mb-2.5 pl-1 text-pretty text-muted text-sm">
+              In an app with PanelUI&rsquo;s theme, add{' '}
+              <Link
+                href="/docs/panelui/"
+                className="rounded-sm text-foreground underline decoration-border underline-offset-4 outline-hidden transition-[text-decoration-color] duration-150 ease-out hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2"
+              >
+                PanelUI Colors
+              </Link>{' '}
+              and pass its colours, so the {design.kind === 'panel' ? 'panel' : 'bar'} follows
+              Panel, Moon and Grass.
+            </p>
+            <CodeBlock filename="app/(tabs)/_layout.tsx" code={panelUISnippet(design)} />
+          </section>
+        ) : null}
+
         <section aria-labelledby="props-heading">
           <h2 id="props-heading" className="pl-1 font-medium text-[13px]">
             Props
@@ -210,42 +236,11 @@ export default async function DesignPage({ params }: Props) {
         <OpenOnPhone id={design.id} title={design.title} />
 
         {/* Walks the designs in the sidebar's and the catalogue's order. */}
-        <nav aria-label="More designs" className="grid grid-cols-2 gap-3">
-          {[
-            { entry: previous, label: 'Previous', align: 'items-start' },
-            { entry: next, label: 'Next', align: 'items-end text-right' },
-          ].map(({ entry, label, align }) =>
-            entry ? (
-              <Link
-                key={label}
-                href={designPath(entry.id)}
-                className={cn(
-                  'group/pager flex flex-col gap-1 rounded-2xl border border-border p-4 outline-hidden transition-[background-color] duration-150 ease-out hover:bg-surface focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:bg-foreground/10 active:duration-100',
-                  align,
-                )}
-              >
-                <span className="flex items-center gap-1 text-muted text-xs">
-                  {label === 'Previous' && (
-                    <Arrow
-                      direction="left"
-                      className="size-3 transition-[translate] duration-150 ease-out group-hover/pager:-translate-x-0.5 motion-reduce:transition-none"
-                    />
-                  )}
-                  {label}
-                  {label === 'Next' && (
-                    <Arrow
-                      direction="right"
-                      className="size-3 transition-[translate] duration-150 ease-out group-hover/pager:translate-x-0.5 motion-reduce:transition-none"
-                    />
-                  )}
-                </span>
-                <span className="truncate font-medium text-sm">{entry.title}</span>
-              </Link>
-            ) : (
-              <span key={label} />
-            ),
-          )}
-        </nav>
+        <Pager
+          label="More designs"
+          previous={previous && { href: designPath(previous.id), title: previous.title }}
+          next={next && { href: designPath(next.id), title: next.title }}
+        />
       </main>
     </>
   );

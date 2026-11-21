@@ -16,6 +16,15 @@ const root = join(process.cwd(), '../..');
 const publicDir = join(process.cwd(), 'public');
 // The example app's web build, for live previews; see scripts/build-preview.ts.
 const hasPreview = existsSync(join(publicDir, 'preview', 'index.html'));
+// Designs PanelUI Colors has a mapping for: the keys of `panelUIColorMaps`.
+const panelUISource = readFileSync(join(root, 'registry/themes/panelui-colors.ts'), 'utf8');
+const panelUIIds = new Set(
+  [
+    ...panelUISource
+      .slice(panelUISource.indexOf('export const panelUIColorMaps'))
+      .matchAll(/^ {2}'?([a-z-]+)'?: \{/gm),
+  ].map((m) => m[1]),
+);
 // Designs the example app draws in the PanelUI theme picked: `themed('<id>', …)` in its demos.
 const themedIds = new Set(
   ['demos.tsx', 'panel-demos.tsx'].flatMap((file) =>
@@ -56,6 +65,8 @@ export interface Design {
   preview: string | null;
   /** The preview's PanelUI theme switch recolours this design (see the example's `themed()`). */
   themed: boolean;
+  /** PanelUI Colors maps this design's colours (registry/themes/panelui-colors.ts). */
+  panelUI: boolean;
   /** Absolute URL of the link-preview image: its own, or the site's while it's missing. */
   ogImage: string;
   /** basePath-aware URLs of the tab bar stills, one per tab state, in order. */
@@ -287,6 +298,7 @@ function load(): Design[] {
       video: media(`${entry.id}.mp4`),
       preview: hasPreview ? asset(`/preview/?embed=1&design=${entry.id}`) : null,
       themed: themedIds.has(entry.id),
+      panelUI: panelUIIds.has(entry.id),
       poster: media(`${entry.id}.jpg`),
       ogImage: ogImage(entry.id),
       stills: stillList,
@@ -359,6 +371,18 @@ export function summary({
 }
 
 /** The Expo Router layout a user writes to use this design. */
+/** The lines that give a design PanelUI's colours (docs/designs/panelui.md). */
+export function panelUISnippet(d: Design) {
+  return `${[
+    `// npx shadcn@latest add ${absoluteUrl('/r/panelui-colors.json')}`,
+    "import { usePanelUIColors } from '@/components/tabcn/panelui-colors';",
+    '',
+    '// Inside the component that renders it:',
+    `const colors = usePanelUIColors('${d.id}');`,
+    `<${d.component} colors={colors} />`,
+  ].join('\n')}\n`;
+}
+
 export function usageSnippet(d: Design) {
   if (d.id === 'sub-tabs') return SUB_TABS_SNIPPET;
   if (d.kind === 'panel') return panelSnippet(d);

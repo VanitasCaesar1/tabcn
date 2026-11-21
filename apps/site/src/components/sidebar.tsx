@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { groups } from '@/lib/designs';
-import { npmVersion, site } from '@/lib/site';
-import { Arrow } from './arrow';
+import { npmVersion } from '@/lib/site';
 import { Logomark } from './logomark';
 import type { SidebarGroup } from './sidebar-groups';
 import { SidebarGroups } from './sidebar-groups';
@@ -45,7 +44,7 @@ const footLink =
 
 // A real column on wide screens: full height, one hairline between it and the page. The brand on
 // top lines up with the header; under it, the design groups, each opening to its designs; links
-// to the quick start and the design docs at the foot. (Layout from ui lab,
+// to the quick start and the docs at the foot. (Layout from ui lab,
 // https://lab.xevrion.dev, MIT.)
 export function Sidebar() {
   return (
@@ -60,15 +59,9 @@ export function Sidebar() {
         <Link href="/#quick-start" className={footLink}>
           Quick start
         </Link>
-        <a
-          href={`${site.repo}/tree/main/docs/designs`}
-          target="_blank"
-          rel="noreferrer"
-          className={footLink}
-        >
+        <Link href="/docs/" className={footLink}>
           Docs
-          <Arrow direction="up-right" className="size-3" />
-        </a>
+        </Link>
       </div>
     </aside>
   );

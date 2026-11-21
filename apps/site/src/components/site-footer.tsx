@@ -115,6 +115,16 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
+              <Link href="/docs/" className={linkClass}>
+                Docs
+              </Link>
+            </li>
+            <li>
+              <Link href="/docs/panelui/" className={linkClass}>
+                Using with PanelUI
+              </Link>
+            </li>
+            <li>
               <a href={asset('/r/registry.json')} className={linkClass}>
                 Registry index
               </a>
