@@ -6,9 +6,9 @@ import { SiteHeader } from '@/components/site-header';
 import { SpecimenCard } from '@/components/specimen-card';
 import { SpecimenRow } from '@/components/specimen-row';
 import { designs, getDesign, groups, ordered, usageSnippet } from '@/lib/designs';
-import { registryUrl } from '@/lib/site';
+import { HERO_DESIGN, npmVersion, registryUrl } from '@/lib/site';
 
-const example = getDesign('sliding-capsule') ?? designs[0];
+const example = getDesign(HERO_DESIGN) ?? designs[0];
 
 const HOW = [
   {
@@ -83,21 +83,21 @@ export default function Home() {
             <h2 id="quick" className="font-medium text-[15px]">
               Quick start
             </h2>
-            <p className="mt-1 max-w-xl text-pretty text-muted text-sm">
-              tabcn is in pre-release: the npm package is not published yet. These are the steps it
-              will take.
-            </p>
+            {!npmVersion && (
+              <p className="mt-1 max-w-xl text-pretty text-muted text-sm">
+                tabcn is in pre-release: the npm package is not published yet. These are the steps
+                it will take.
+              </p>
+            )}
             <div className="mt-6 flex flex-col gap-8">
               <Step n={1} title="Install the foundation">
                 <CodeBlock
                   filename="Terminal"
-                  code="npx expo install tabcn react-native-reanimated react-native-worklets"
+                  code="npx expo install react-native-tabcn react-native-reanimated react-native-worklets"
                 />
               </Step>
               <Step n={2} title="Add a design">
-                {example && (
-                  <InstallCommand url={registryUrl(example.id)} title="Sliding Capsule" />
-                )}
+                {example && <InstallCommand url={registryUrl(example.id)} title={example.title} />}
               </Step>
               <Step n={3} title="Pass it to your tabs">
                 {example && (

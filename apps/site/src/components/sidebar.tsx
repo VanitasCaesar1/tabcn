@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { groups } from '@/lib/designs';
-import { site } from '@/lib/site';
+import { npmVersion, site } from '@/lib/site';
 import { Arrow } from './arrow';
 import { Logomark } from './logomark';
 import type { SidebarGroup } from './sidebar-groups';
@@ -24,7 +24,7 @@ export const sidebarGroups: SidebarGroup[] = groups.map((g) => ({
   })),
 }));
 
-/** The mark, the name and the pre-release chip: the sidebar's and the phone menu's top row. */
+/** The mark, the name and the version chip: the sidebar's and the phone menu's top row. */
 export function Brand() {
   return (
     <Link
@@ -33,8 +33,8 @@ export function Brand() {
     >
       <Logomark />
       <span className="font-semibold text-[15px] text-foreground tracking-tight">tabcn</span>
-      <span className="flex h-5 items-center rounded-full px-1.5 font-mono text-[11px] text-muted shadow-[inset_0_0_0_1px_var(--border)]">
-        pre-release
+      <span className="flex h-5 items-center rounded-full px-1.5 font-mono text-[11px] text-muted tabular-nums shadow-[inset_0_0_0_1px_var(--border)]">
+        {npmVersion ? `v${npmVersion}` : 'pre-release'}
       </span>
     </Link>
   );

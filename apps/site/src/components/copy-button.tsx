@@ -21,12 +21,16 @@ export function CopyButton({
   // rarely lands while the first is still confirming.
   resetAfter = 1600,
   onCopy,
+  // 'solid' fills the circle with the foreground colour, for the one copy button a block leads
+  // with; 'ghost' is a plain icon that picks up a background on hover.
+  tone = 'ghost',
   className,
 }: {
   value: string;
   label?: string;
   resetAfter?: number;
   onCopy?: (value: string) => void;
+  tone?: 'ghost' | 'solid';
   className?: string;
 }) {
   const reduceMotion = useReducedMotion();
@@ -70,10 +74,15 @@ export function CopyButton({
         aria-label={label}
         onClick={copy}
         className={cn(
-          'relative flex size-8 touch-manipulation items-center justify-center rounded-full text-muted outline-hidden transition-[color,background-color] duration-150 ease-out select-none hover:bg-background hover:text-foreground focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-foreground motion-reduce:transition-none',
+          'relative flex size-8 touch-manipulation items-center justify-center rounded-full outline-hidden transition-[color,background-color,opacity] duration-150 ease-out select-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-foreground motion-reduce:transition-none',
           // Grows the hit area to 40px without growing the visible circle.
           'after:absolute after:-inset-1 after:rounded-full',
-          visible && 'text-foreground',
+          tone === 'solid'
+            ? 'bg-foreground text-background hover:opacity-90 active:opacity-80 active:duration-100'
+            : cn(
+                'text-muted hover:bg-background hover:text-foreground',
+                visible && 'text-foreground',
+              ),
         )}
       >
         {/* Both icons share one grid cell so the swap never shifts layout. */}
