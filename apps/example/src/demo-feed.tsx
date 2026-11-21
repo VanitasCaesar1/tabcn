@@ -38,6 +38,16 @@ function Media({ i, style }: { i: number; style: object }) {
   );
 }
 
+/** Two text bars standing in for a title and a caption. */
+function Lines({ line, faint, short }: { line: string; faint: string; short?: boolean }) {
+  return (
+    <View style={styles.lines}>
+      <View style={[styles.line, { backgroundColor: line, width: short ? '55%' : '80%' }]} />
+      <View style={[styles.line, styles.thin, { backgroundColor: faint, width: '40%' }]} />
+    </View>
+  );
+}
+
 export function DemoFeed({
   index,
   text,
@@ -51,12 +61,6 @@ export function DemoFeed({
   const line = alpha(text, 0.16);
   const faint = alpha(text, 0.09);
   const layout = index % 3;
-  const Lines = ({ short }: { short?: boolean }) => (
-    <View style={styles.lines}>
-      <View style={[styles.line, { backgroundColor: line, width: short ? '55%' : '80%' }]} />
-      <View style={[styles.line, styles.thin, { backgroundColor: faint, width: '40%' }]} />
-    </View>
-  );
 
   return (
     <ScrollView
@@ -70,7 +74,7 @@ export function DemoFeed({
         ? [0, 1, 2, 3, 4].map((k) => (
             <View key={k} style={[styles.card, { backgroundColor: card }]}>
               <Media i={index * 2 + k} style={styles.hero} />
-              <Lines />
+              <Lines line={line} faint={faint} />
             </View>
           ))
         : layout === 1
@@ -79,7 +83,7 @@ export function DemoFeed({
                 {[0, 1].map((col) => (
                   <View key={col} style={[styles.tile, { backgroundColor: card }]}>
                     <Media i={index + row * 2 + col} style={styles.square} />
-                    <Lines short />
+                    <Lines line={line} faint={faint} short />
                   </View>
                 ))}
               </View>
@@ -87,7 +91,7 @@ export function DemoFeed({
           : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((k) => (
               <View key={k} style={[styles.row, { backgroundColor: card }]}>
                 <Media i={index + k} style={styles.avatar} />
-                <Lines />
+                <Lines line={line} faint={faint} />
               </View>
             ))}
     </ScrollView>
