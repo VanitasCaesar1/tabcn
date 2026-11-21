@@ -68,7 +68,7 @@ import * as TopNotchIcons from '@registry/top-notch/icons';
 import { TopNotch } from '@registry/top-notch/top-notch';
 import type { Href } from 'expo-router';
 import { type ComponentType, createContext, type ReactElement, type ReactNode, use } from 'react';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 import {
   BarSheetControls,

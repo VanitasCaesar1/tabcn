@@ -14,7 +14,7 @@
  */
 import { Image, type ImageSourcePropType, View } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, G, Mask, Path, Rect } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 /** The house outline, a rounded pentagon traced over the screenshot. */
 const HOUSE =

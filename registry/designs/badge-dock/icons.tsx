@@ -12,7 +12,7 @@
  * Pass them as `tabBarIcon` in your screen options. Not the app's artwork: redrawn shapes.
  */
 import Svg, { Circle, Defs, G, Mask, Path, Rect } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 /** 1.5 pt in the 40-unit box drawn at 26 pt. */
 const STROKE = 2.31;

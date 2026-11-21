@@ -128,7 +128,7 @@ test('every panel has a smoke test', () => {
 });
 
 // Every bar renders inside gesture handler's root view, as in an app: Scrub Pill and Section
-// Sheet use 'tabcn/gestures', which needs it.
+// Sheet use 'react-native-tabcn/gestures', which needs it.
 
 /** Tab bars; Side Rail also as a rail (a navigator with `tabBarPosition: 'left'`). */
 const barCases: [string, string, Position][] = bars.flatMap((id): [string, string, Position][] =>
@@ -241,7 +241,7 @@ function BarWithAction() {
 
 function PanelApp({ bar, children }: { bar: ReactNode; children: ReactNode }) {
   const { state } = makeState(3, 0, []);
-  // Mini Player drags with 'tabcn/gestures', which needs gesture handler's root view.
+  // Mini Player drags with 'react-native-tabcn/gestures', which needs gesture handler's root view.
   return (
     <GestureHandlerRootView>
       <TabBarProvider>

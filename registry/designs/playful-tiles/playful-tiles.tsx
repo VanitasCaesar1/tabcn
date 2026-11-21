@@ -5,7 +5,14 @@
  */
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
-import { TabBarRoot, TabButton, TabIndicator, type TabItem, TabList, useTabBar } from 'tabcn';
+import {
+  TabBarRoot,
+  TabButton,
+  TabIndicator,
+  type TabItem,
+  TabList,
+  useTabBar,
+} from 'react-native-tabcn';
 
 const defaultColors = {
   background: '#ffffff',

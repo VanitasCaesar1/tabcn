@@ -8,7 +8,7 @@ icons = []
 for src in srcs: icons += json.load(open(src))
 multi = any(ic and ic['layers'] and ic['layers'][0]['fill'] for ic in icons)
 out = [f'/**\n * Icons for the {title} design, traced from reference image {ref}.\n * Pass them as `tabBarIcon` in your screen options.\n */',
-       "import Svg, { Path } from 'react-native-svg';", "import type { TabIconProps } from 'tabcn';", '']
+       "import Svg, { Path } from 'react-native-svg';", "import type { TabIconProps } from 'react-native-tabcn';", '']
 for name, ic in zip(names, icons):
     if not ic or name == '-': continue
     single = not ic['layers'][0]['fill']

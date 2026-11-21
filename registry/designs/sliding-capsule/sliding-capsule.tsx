@@ -24,7 +24,7 @@ import {
   TabList,
   tabcnTiming,
   useTabBar,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 const defaultColors = {
   /** The bar's fill where there's no Liquid Glass: measured #f0f0f0 at the top to #fefefe at the bottom. */

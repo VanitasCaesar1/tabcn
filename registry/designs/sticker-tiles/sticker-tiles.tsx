@@ -14,7 +14,7 @@ import {
   TabList,
   tabcnTiming,
   useTabBar,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 const defaultColors = {
   background: '#27799f',

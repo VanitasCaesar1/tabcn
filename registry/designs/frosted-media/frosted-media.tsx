@@ -8,7 +8,14 @@ import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, Text, View } from 'react-native';
-import { TabBarRoot, TabButton, TabIndicator, type TabItem, TabList, useTabBar } from 'tabcn';
+import {
+  TabBarRoot,
+  TabButton,
+  TabIndicator,
+  type TabItem,
+  TabList,
+  useTabBar,
+} from 'react-native-tabcn';
 
 const defaultColors = {
   tint: 'rgba(120, 84, 56, 0.18)',

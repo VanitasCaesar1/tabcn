@@ -4,7 +4,7 @@
  * haptic marks each tab it crosses, and lifting chooses the tab under the finger. The
  * chosen tab's icon and label take the accent colour.
  *
- * Scrubbing comes from `TabScrub` in 'tabcn/gestures', so this design needs
+ * Scrubbing comes from `TabScrub` in 'react-native-tabcn/gestures', so this design needs
  * `react-native-gesture-handler` and a `GestureHandlerRootView` around the app. A tap is
  * still a tap; a vertical swipe (the home indicator) is left to the system; lifting far
  * above or below the pill, or on the active tab, changes nothing. Pass `scrub={false}` for
@@ -21,12 +21,12 @@
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-// 'tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
+// 'react-native-tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
 // here names it as this design's own dependency, so `shadcn add` installs it.
 import 'react-native-gesture-handler';
 import { StyleSheet, Text } from 'react-native';
-import { TabBarRoot, TabButton, TabIndicator, type TabItem, useTabBar } from 'tabcn';
-import { TabScrub } from 'tabcn/gestures';
+import { TabBarRoot, TabButton, TabIndicator, type TabItem, useTabBar } from 'react-native-tabcn';
+import { TabScrub } from 'react-native-tabcn/gestures';
 
 const defaultColors = {
   /** The pill. */

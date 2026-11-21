@@ -57,7 +57,7 @@ function App({
   );
 }
 
-describe('tabcn/react-navigation', () => {
+describe('react-native-tabcn/react-navigation', () => {
   it('lists visible tabs with labels resolved in order: tabBarLabel, title, route name', async () => {
     await render(<App />);
     const tabs = screen.getAllByRole('tab');

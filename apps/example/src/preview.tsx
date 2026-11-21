@@ -1,5 +1,10 @@
 import { StyleSheet, View } from 'react-native';
-import { TabBarProvider, type TabBarState, TabBarStateProvider, type TabItem } from 'tabcn';
+import {
+  TabBarProvider,
+  type TabBarState,
+  TabBarStateProvider,
+  type TabItem,
+} from 'react-native-tabcn';
 
 import type { Demo } from '@/demos';
 

@@ -35,7 +35,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-// 'tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
+// 'react-native-tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
 // here names it as this design's own dependency, so `shadcn add` installs it.
 import 'react-native-gesture-handler';
 import {
@@ -45,8 +45,14 @@ import {
   Text,
   View,
 } from 'react-native';
-import { type SnapPoint, TabPanel, type TabPanelControls, useTabBar, useTabPanel } from 'tabcn';
-import { PanelDragArea, PanelScrollView } from 'tabcn/gestures';
+import {
+  type SnapPoint,
+  TabPanel,
+  type TabPanelControls,
+  useTabBar,
+  useTabPanel,
+} from 'react-native-tabcn';
+import { PanelDragArea, PanelScrollView } from 'react-native-tabcn/gestures';
 
 const defaultColors = {
   /** The sheet's fill. */

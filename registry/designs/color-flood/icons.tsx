@@ -12,7 +12,7 @@
  * weight, not Cash App's slanted logo glyph.
  */
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 /** Stroke weight of the whole set: 3.1 pt. */
 const STROKE = 4.17;

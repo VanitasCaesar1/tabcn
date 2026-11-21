@@ -13,7 +13,7 @@
  * a heavier stroke. Pass them as `tabBarIcon`.
  */
 import Svg, { Circle, Path } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 const STROKE = 2.4;
 /** The active magnifier's heavier stroke: a magnifier has no fill to switch to. */

@@ -57,9 +57,9 @@ import {
   useTabBar,
   useTabBarInset,
   useTabPanel,
-} from 'tabcn';
-import { useTabBarOverride as useExpoRouterOverride } from 'tabcn/expo-router';
-import { useTabBarOverride as useReactNavigationOverride } from 'tabcn/react-navigation';
+} from 'react-native-tabcn';
+import { useTabBarOverride as useExpoRouterOverride } from 'react-native-tabcn/expo-router';
+import { useTabBarOverride as useReactNavigationOverride } from 'react-native-tabcn/react-navigation';
 
 /** What a demo screen passes to its extra content. */
 export interface DemoExtraProps {
@@ -68,7 +68,7 @@ export interface DemoExtraProps {
   /** Text colour and button fill that suit the demo's background. */
   text: string;
   chip: string;
-  /** The navigator the demo runs under: picks the matching 'tabcn/<adapter>' entry. */
+  /** The navigator the demo runs under: picks the matching 'react-native-tabcn/<adapter>' entry. */
   adapter: 'expo-router' | 'react-navigation';
   /** The navigator's `useBottomTabBarHeight()`: what the bar covers at the bottom. */
   barHeight: number;

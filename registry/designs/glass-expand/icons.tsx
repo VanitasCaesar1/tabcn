@@ -6,7 +6,7 @@
  * All four are filled, in one colour, in both states. Pass them as `tabBarIcon`.
  */
 import Svg, { Path } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 /** Steps: one running shoe facing right, three stripes on the side. */
 export function SneakerIcon({ color, size }: TabIconProps) {

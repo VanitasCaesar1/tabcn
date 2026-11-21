@@ -53,7 +53,7 @@ import {
   tabcnTiming,
   useLiveTab,
   useTabBar,
-} from 'tabcn';
+} from 'react-native-tabcn';
 
 const defaultColors = {
   /** The bar. */

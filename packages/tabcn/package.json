@@ -1,5 +1,5 @@
 {
-  "name": "tabcn",
+  "name": "react-native-tabcn",
   "version": "0.1.0",
   "description": "Animated, copy-and-own tab bars for React Native and Expo.",
   "license": "MIT",
@@ -136,8 +136,8 @@
     "moduleNameMapper": {
       "^react-native-reanimated$": "<rootDir>/jest/reanimated.js",
       "^react-native-reanimated/mock$": "<rootDir>/jest/reanimated-impl.js",
-      "^tabcn$": "<rootDir>/src/index.ts",
-      "^tabcn/gestures$": "<rootDir>/src/gestures.tsx"
+      "^react-native-tabcn$": "<rootDir>/src/index.ts",
+      "^react-native-tabcn/gestures$": "<rootDir>/src/gestures.tsx"
     }
   }
 }

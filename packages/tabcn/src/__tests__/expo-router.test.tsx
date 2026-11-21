@@ -31,7 +31,7 @@ async function renderApp(placement: 'docked' | 'floating' = 'docked') {
   });
 }
 
-describe('tabcn/expo-router', () => {
+describe('react-native-tabcn/expo-router', () => {
   it('lists visible tabs and drops href: null routes', async () => {
     await renderApp();
     expect(screen.getAllByRole('tab')).toHaveLength(2);

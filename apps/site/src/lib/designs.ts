@@ -353,7 +353,7 @@ export function usageSnippet(d: Design) {
 const SUB_TABS_SNIPPET = `${[
   '// In your bar design (a copy of any tabcn bar): the tab that owns the drawer.',
   "import { View } from 'react-native';",
-  "import { TabButton, type TabItem } from 'tabcn';",
+  "import { TabButton, type TabItem } from 'react-native-tabcn';",
   "import { useSubTabs } from '@/components/tabcn/sub-tabs';",
   '',
   'function LibraryTab({ tab }: { tab: TabItem }) {',
@@ -369,8 +369,8 @@ const SUB_TABS_SNIPPET = `${[
   '// app/(tabs)/_layout.tsx: the drawer, declared once beside <Tabs>',
   "import { router } from 'expo-router';",
   "import { Tabs } from 'expo-router/js-tabs';",
-  "import { TabBarProvider } from 'tabcn';",
-  "import { tabBar } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'",
+  "import { TabBarProvider } from 'react-native-tabcn';",
+  "import { tabBar } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
   "import { SubTabs } from '@/components/tabcn/sub-tabs';",
   "import { MyTabBar } from '@/components/tabcn/my-tab-bar';",
   '',
@@ -393,8 +393,8 @@ const SUB_TABS_SNIPPET = `${[
 /** Section Sheet is the tab bar; each section's sheet body comes from `sections`. */
 const SECTION_SHEET_SNIPPET = `${[
   "import { Tabs } from 'expo-router/js-tabs';",
-  "import { TabBarProvider } from 'tabcn';",
-  "import { tabBar } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'",
+  "import { TabBarProvider } from 'react-native-tabcn';",
+  "import { tabBar } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
   "import { SectionSheet } from '@/components/tabcn/section-sheet';",
   '',
   'export default function TabLayout() {',
@@ -423,8 +423,8 @@ const SECTION_SHEET_SNIPPET = `${[
 const LIVE_TABS_SNIPPET = `${[
   '// app/(tabs)/_layout.tsx',
   "import { Tabs } from 'expo-router/js-tabs';",
-  "import { TabBarProvider } from 'tabcn';",
-  "import { tabBar } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'",
+  "import { TabBarProvider } from 'react-native-tabcn';",
+  "import { tabBar } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
   "import { LiveTabs } from '@/components/tabcn/live-tabs';",
   '',
   'export default function TabLayout() {',
@@ -436,7 +436,7 @@ const LIVE_TABS_SNIPPET = `${[
   '}',
   '',
   '// Anywhere under the provider, such as the Timer screen, once a second:',
-  "import { useLiveTab } from 'tabcn';",
+  "import { useLiveTab } from 'react-native-tabcn';",
   '',
   "const timer = useLiveTab('timer'); // the tab's route name",
   'timer.progress.value = elapsed / duration; // fills the ring; 0 or 1 hides it',
@@ -452,8 +452,8 @@ function panelSnippet(d: Design) {
     return `${[
       '// app/(tabs)/_layout.tsx: the provider lets screens drive the bar',
       "import { Tabs } from 'expo-router/js-tabs';",
-      "import { TabBarProvider } from 'tabcn';",
-      "import { tabBar } from 'tabcn/expo-router';",
+      "import { TabBarProvider } from 'react-native-tabcn';",
+      "import { tabBar } from 'react-native-tabcn/expo-router';",
       "import { GlassExpand } from '@/components/tabcn/glass-expand';",
       '',
       'export default function TabLayout() {',
@@ -466,7 +466,7 @@ function panelSnippet(d: Design) {
       '',
       '// app/(tabs)/plan.tsx: the tray shows in the bar’s place while this screen is focused',
       "import { router } from 'expo-router';",
-      "import { useTabBarOverride } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'",
+      "import { useTabBarOverride } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
       "import { ContextTray } from '@/components/tabcn/context-tray';",
       '',
       'export default function PlanScreen() {',
@@ -482,8 +482,8 @@ function panelSnippet(d: Design) {
   const barProps = d.id === 'quick-create' ? ' onActionPress={toggleCreate}' : '';
   const lines = [
     "import { Tabs } from 'expo-router/js-tabs';",
-    `import { ${(usage?.tabcn ?? ['TabBarProvider']).join(', ')} } from 'tabcn';`,
-    "import { tabBar } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'",
+    `import { ${(usage?.tabcn ?? ['TabBarProvider']).join(', ')} } from 'react-native-tabcn';`,
+    "import { tabBar } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
     `import { ${bar} } from '@/components/tabcn/${usage?.barId ?? 'my-tab-bar'}';`,
     ...(usage?.imports ?? []),
     '',
@@ -517,7 +517,7 @@ function railSnippet(d: Design) {
   const lines = [
     "import { Tabs } from 'expo-router/js-tabs';",
     "import { useWindowDimensions } from 'react-native';",
-    "import { tabBar } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'",
+    "import { tabBar } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
     `import { ${d.component} } from '@/components/tabcn/${d.id}';`,
     ...(first && second && d.iconsFile
       ? [`import { ${first}, ${second} } from '@/${d.iconsFile}';`]
@@ -549,7 +549,7 @@ function barSnippet(d: Design) {
   const lines = [
     "import { Tabs } from 'expo-router/js-tabs';",
     ...(d.hasAction ? ["import { router } from 'expo-router';"] : []),
-    "import { tabBar } from 'tabcn/expo-router'; // or 'tabcn/react-navigation'",
+    "import { tabBar } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
     `import { ${d.component} } from '@/components/tabcn/${d.id}';`,
     ...(first && second && d.iconsFile
       ? [`import { ${first}, ${second} } from '@/${d.iconsFile}';`]

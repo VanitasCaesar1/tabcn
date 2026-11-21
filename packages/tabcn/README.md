@@ -7,8 +7,8 @@ The foundation package for [tabcn](../../README.md): animated, copy-and-own tab 
 ## Connect a design to your navigator
 
 ```tsx
-import { tabBar } from 'tabcn/expo-router'; // Expo Router 58+ (`expo-router/js-tabs`)
-import { tabBar } from 'tabcn/react-navigation'; // @react-navigation/bottom-tabs 7
+import { tabBar } from 'react-native-tabcn/expo-router'; // Expo Router 58+ (`expo-router/js-tabs`)
+import { tabBar } from 'react-native-tabcn/react-navigation'; // @react-navigation/bottom-tabs 7
 
 <Tabs tabBar={tabBar(<SlidingCapsule />)} />;
 ```
@@ -32,14 +32,14 @@ import { tabBar } from 'tabcn/react-navigation'; // @react-navigation/bottom-tab
 
 Wrap the tabs navigator in `TabBarProvider` (in Expo Router, around `<Tabs>` in the tabs layout). Without it these APIs do nothing and the bar renders as before.
 
-| Export                                           | Purpose                                                                                                             |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `<TabPanel id anchor peekHeight initialState>`   | A panel drawn behind the bar that peeks or opens out of it. Its peek height is added to `useBottomTabBarHeight()`.  |
-| `useTabPanel(id)`                                | `{ state, peek(), open(), hide(), toggle() }` from any component under the provider.                                |
-| `usePanelAnchor(name)`                           | Spread onto a bar element (such as a + button) so a panel with `anchor={{ name }}` comes out from it.               |
-| `useTabBarOverride(element)`                     | From `tabcn/expo-router` or `tabcn/react-navigation`: replaces the tabs with `element` while the screen is focused. |
-| `useMinimizeOnScroll()` / `useTabBarMinimized()` | A scroll handler for `Animated.ScrollView`, and the 0 → 1 value designs read to draw their compact form.            |
-| `useRestoreTabBar()`                             | A function that brings a minimized bar back to full, for "tap the minimized bar to expand" (no tab change).         |
-| `PanelDragArea`                                  | From `tabcn/gestures` (needs `react-native-gesture-handler`): drag a panel between rest and open.                   |
+| Export                                           | Purpose                                                                                                                                       |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<TabPanel id anchor peekHeight initialState>`   | A panel drawn behind the bar that peeks or opens out of it. Its peek height is added to `useBottomTabBarHeight()`.                            |
+| `useTabPanel(id)`                                | `{ state, peek(), open(), hide(), toggle() }` from any component under the provider.                                                          |
+| `usePanelAnchor(name)`                           | Spread onto a bar element (such as a + button) so a panel with `anchor={{ name }}` comes out from it.                                         |
+| `useTabBarOverride(element)`                     | From `react-native-tabcn/expo-router` or `react-native-tabcn/react-navigation`: replaces the tabs with `element` while the screen is focused. |
+| `useMinimizeOnScroll()` / `useTabBarMinimized()` | A scroll handler for `Animated.ScrollView`, and the 0 → 1 value designs read to draw their compact form.                                      |
+| `useRestoreTabBar()`                             | A function that brings a minimized bar back to full, for "tap the minimized bar to expand" (no tab change).                                   |
+| `PanelDragArea`                                  | From `react-native-tabcn/gestures` (needs `react-native-gesture-handler`): drag a panel between rest and open.                                |
 
-Peer dependencies: `react`, `react-native`, `react-native-reanimated` 4, plus the navigator you use. `react-native-gesture-handler` is needed only for `tabcn/gestures`.
+Peer dependencies: `react`, `react-native`, `react-native-reanimated` 4, plus the navigator you use. `react-native-gesture-handler` is needed only for `react-native-tabcn/gestures`.

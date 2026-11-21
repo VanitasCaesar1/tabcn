@@ -6,7 +6,7 @@
  *
  * Tab bars and panels (docs/designs/panels.md) are both registry items. The catalog marks
  * each with `kind`; a panel's layout is always 'panel', and its demo names the bar it pairs
- * with and adds the panel or its controls (`panel:` or `extra:`). `tabcn/gestures` needs
+ * with and adds the panel or its controls (`panel:` or `extra:`). `react-native-tabcn/gestures` needs
  * react-native-gesture-handler, so a design that imports it must list that dependency.
  *
  * Every design's props are read from its source for the props table on its page of the site
@@ -30,7 +30,7 @@ interface Item {
 const registry = JSON.parse(read('registry/registry.json')) as { items: Item[] };
 
 // Always available to a design: React, React Native, Reanimated (a tabcn peer) and tabcn itself.
-const ALWAYS = new Set(['react', 'react-native', 'react-native-reanimated', 'tabcn']);
+const ALWAYS = new Set(['react', 'react-native', 'react-native-reanimated', 'react-native-tabcn']);
 
 const errors: string[] = [];
 const fail = (msg: string) => errors.push(msg);
@@ -113,7 +113,7 @@ for (const item of registry.items) {
     const source = read(file.path);
     for (const m of source.matchAll(/^import[^'"]*['"]([^'"]+)['"]/gm)) {
       const spec = m[1];
-      if (spec === 'tabcn/gestures' && !allowed.has('react-native-gesture-handler')) {
+      if (spec === 'react-native-tabcn/gestures' && !allowed.has('react-native-gesture-handler')) {
         fail(
           `${item.name}: ${file.path} imports tabcn/gestures, which needs react-native-gesture-handler in its registry dependencies`,
         );
@@ -137,7 +137,10 @@ for (const item of registry.items) {
       if (!existsSync(join(root, f.path))) return false;
       const source = read(f.path);
       // tabcn/gestures is how a design uses gesture handler.
-      if (dep === 'react-native-gesture-handler' && source.includes(`'tabcn/gestures'`)) {
+      if (
+        dep === 'react-native-gesture-handler' &&
+        source.includes(`'react-native-tabcn/gestures'`)
+      ) {
         return true;
       }
       return source.includes(`'${dep}`);

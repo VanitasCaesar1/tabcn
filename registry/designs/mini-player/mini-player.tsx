@@ -14,7 +14,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useEffect } from 'react';
-// 'tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
+// 'react-native-tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
 // here names it as this design's own dependency, so `shadcn add` installs it.
 import 'react-native-gesture-handler';
 import {
@@ -28,8 +28,8 @@ import {
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
-import { type PanelState, TabPanel, tabcnTiming, useTabBar, useTabPanel } from 'tabcn';
-import { PanelDragArea } from 'tabcn/gestures';
+import { type PanelState, TabPanel, tabcnTiming, useTabBar, useTabPanel } from 'react-native-tabcn';
+import { PanelDragArea } from 'react-native-tabcn/gestures';
 
 const defaultColors = {
   /** The card: a near-opaque dark tint, so it reads as glass over any screen. */

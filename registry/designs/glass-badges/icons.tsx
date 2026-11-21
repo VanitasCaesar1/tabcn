@@ -8,7 +8,7 @@
  * the cut-outs are transparent, so the glass shows through them. Pass them as `tabBarIcon`.
  */
 import Svg, { Circle, Defs, Ellipse, G, Mask, Path, Rect } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 /** Contacts: a filled circle with a person (head and shoulders) cut out of it. */
 export function ContactsIcon({ color, size }: TabIconProps) {

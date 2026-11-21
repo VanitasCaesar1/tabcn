@@ -77,7 +77,7 @@ export interface CompanionRecord {
   content: ReactNode;
 }
 
-/** Live values a drag gesture drives (see 'tabcn/gestures'). Registered by the panel layer. */
+/** Live values a drag gesture drives (see 'react-native-tabcn/gestures'). Registered by the panel layer. */
 export interface PanelHandle {
   /** Points of the panel currently showing above its window's bottom edge. */
   visible: SharedValue<number>;

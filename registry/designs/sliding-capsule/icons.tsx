@@ -6,7 +6,7 @@
  * Pass them as `tabBarIcon` in your screen options.
  */
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import type { TabIconProps } from 'tabcn';
+import type { TabIconProps } from 'react-native-tabcn';
 
 /** 2 pt at the 24 pt ICON size. */
 const STROKE = 3.3;
