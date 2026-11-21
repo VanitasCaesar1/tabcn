@@ -158,7 +158,7 @@ export function BarTile({
             onPlaying={() => setShown(true)}
             onPlay={() => setPlaying(true)}
             onPause={() => setPlaying(false)}
-            className="bar-video absolute inset-0 size-full object-cover"
+            className="loop-video absolute inset-0 size-full object-cover"
             data-shown={shown ? '' : undefined}
           />
         )}

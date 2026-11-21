@@ -6,6 +6,7 @@ const PATHS = {
   'up-right': 'M5 11 11 5M6 5h5v5',
   right: 'M3.5 8h9M9 4.5 12.5 8 9 11.5',
   left: 'M12.5 8h-9M7 4.5 3.5 8 7 11.5',
+  up: 'M8 12.5v-9M4.5 7 8 3.5 11.5 7',
 } as const;
 
 export function Arrow({

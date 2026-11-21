@@ -3,7 +3,7 @@ import { EXPO_GO_URL, RUN_EXAMPLE_URL } from '@/lib/expo';
 import { Arrow } from './arrow';
 
 const buttonClass =
-  'group/btn inline-flex h-9 items-center gap-1.5 rounded-full bg-background px-4 font-medium text-[13px] text-foreground shadow-raised outline-hidden transition-[scale] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:scale-[0.96]';
+  'group/btn inline-flex h-9 items-center gap-1.5 rounded-full bg-background px-4 font-medium text-[13px] text-foreground shadow-raised outline-hidden transition-[background-color] duration-150 ease-out hover:bg-surface focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:bg-foreground/10 active:duration-100';
 
 // "Open on your phone": a QR code that opens the example app in Expo Go at this design, made at
 // build time. Until EXPO_GO_URL is set (src/lib/expo.ts), it points to running the example app.

@@ -2,11 +2,14 @@
 
 import { motion, type Transition } from 'motion/react';
 import { useSyncExternalStore } from 'react';
+import { useReducedMotion } from '@/lib/use-reduced-motion';
+import { TIMING_EASE, TIMING_MS } from './motion';
 
 type Theme = 'light' | 'dark';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
-const ICON_TRANSITION: Transition = { type: 'spring', duration: 0.3, bounce: 0 };
+// The icons crossfade on tabcnTiming; nothing scales.
+const ICON_TRANSITION: Transition = { duration: TIMING_MS / 1000, ease: TIMING_EASE };
 
 // Runs in <head> before first paint, so a saved theme never flashes the other one.
 // Dark first: the page starts dark (see layout.tsx) unless "light" was saved.
@@ -84,7 +87,7 @@ export function ThemeToggle() {
         const rect = e.currentTarget.getBoundingClientRect();
         setTheme(next, rect.x + rect.width / 2, rect.y + rect.height / 2);
       }}
-      className="relative flex size-9 items-center justify-center rounded-full text-muted transition-[scale,color,background-color] duration-150 ease-out hover:bg-surface hover:text-foreground active:scale-[0.96] motion-reduce:transition-none"
+      className="relative flex size-9 shrink-0 items-center justify-center rounded-full text-muted outline-hidden transition-[color,background-color] duration-150 ease-out hover:bg-surface hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:bg-foreground/10 active:duration-100 motion-reduce:transition-none"
     >
       {/* The server can't know the theme, so the icons mount once it's known,
           already in place, instead of animating in on every page load. */}
@@ -104,6 +107,7 @@ export function ThemeToggle() {
 }
 
 function Icon({ visible, children }: { visible: boolean; children: React.ReactNode }) {
+  const reduced = useReducedMotion();
   return (
     <motion.svg
       viewBox="0 0 16 16"
@@ -115,12 +119,8 @@ function Icon({ visible, children }: { visible: boolean; children: React.ReactNo
       strokeLinejoin="round"
       aria-hidden
       initial={false}
-      animate={
-        visible
-          ? { scale: 1, opacity: 1, filter: 'blur(0px)' }
-          : { scale: 0.25, opacity: 0, filter: 'blur(4px)' }
-      }
-      transition={ICON_TRANSITION}
+      animate={{ opacity: visible ? 1 : 0 }}
+      transition={reduced ? { duration: 0 } : ICON_TRANSITION}
     >
       {children}
     </motion.svg>

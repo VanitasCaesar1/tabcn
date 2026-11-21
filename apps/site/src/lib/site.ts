@@ -4,7 +4,7 @@ export const site = {
   name: 'tabcn',
   tagline: 'Animated tab bars for React Native and Expo',
   description:
-    'Twenty-three animated tab bars and three panels for React Native and Expo. Install a small foundation package, copy in a design with the shadcn CLI, and make it yours.',
+    '36 animated tab bars and six panels for React Native and Expo. Install a small foundation package, copy in a design with the shadcn CLI, and make it yours.',
   repo: 'https://github.com/VanitasCaesar1/tabcn',
   /** The author's X handle, without the @. */
   x: 'phantommenace_x',
@@ -18,6 +18,14 @@ export function absoluteUrl(path = '/') {
 export function designPath(id: string) {
   return `/designs/${id}/`;
 }
+
+/** The catalogue on the home page, showing one group. */
+export function groupPath(id: string) {
+  return `/?c=${id}#designs`;
+}
+
+/** Below this many stars the header's GitHub button shows no count. */
+export const STAR_FLOOR = 10;
 
 export function sourceUrl(id: string) {
   return `${site.repo}/blob/main/registry/designs/${id}/${id}.tsx`;

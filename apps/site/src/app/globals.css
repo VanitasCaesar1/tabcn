@@ -111,6 +111,8 @@ body {
   --dock-capsule-shadow:
     0 1px 2px light-dark(oklch(0 0 0 / 0.1), oklch(0 0 0 / 0.5)),
     inset 0 0 0 1px light-dark(oklch(0 0 0 / 0.05), oklch(1 0 0 / 0.06));
+  /* The header and the stuck filter bar: the page showing faintly through a blur. */
+  --sticky-bg: color-mix(in oklab, var(--background) 82%, transparent);
 }
 
 /* A custom property takes any value, so declaring it twice would always keep the second, even
@@ -272,14 +274,15 @@ body {
   opacity: 0;
 }
 
-/* A loop shows over its poster once it is actually playing. */
-.bar-video {
+/* A loop shows over its poster once it is actually playing (the board, the catalogue). It fades
+   in over tabcnTiming and snaps back to the poster, its own first frame, when it stops. */
+.loop-video {
   opacity: 0;
-  transition: opacity var(--timing-ms, 200ms) var(--tabcn-timing);
 }
 
-.bar-video[data-shown] {
+.loop-video[data-shown] {
   opacity: 1;
+  transition: opacity var(--timing-ms, 200ms) var(--tabcn-timing);
 }
 
 /* The dock under the board: a tab bar of layout groups and the pause button. It fades in last. */
@@ -305,11 +308,13 @@ body {
   box-shadow: var(--shadow-raised);
 }
 
-/* Sits behind the group in focus: one tab wide, moved by its own width per tab. */
+/* Sits behind the group in focus: one tab wide, moved by its own width per tab. The catalogue's
+   filter dock and view switch (.filter-capsule) and the sidebar's dock (.side-capsule) use it
+   too; --pad matches the track's padding. */
 .dock-capsule {
   position: absolute;
-  inset: 4px auto 4px 4px;
-  width: calc((100% - 8px) / var(--n, 4));
+  inset: var(--pad, 4px) auto var(--pad, 4px) var(--pad, 4px);
+  width: calc((100% - 2 * var(--pad, 4px)) / var(--n, 4));
   border-radius: 9999px;
   background: var(--dock-capsule);
   box-shadow: var(--dock-capsule-shadow);
@@ -348,6 +353,134 @@ body {
   }
 }
 
+/* Site chrome and the catalogue (site-header.tsx, sidebar-groups.tsx, catalogue.tsx). */
+
+/* The header, and the filter bar once it's stuck under it: solid where blur isn't supported. */
+.site-header {
+  background-color: var(--background);
+}
+
+.sticky-filter {
+  border-bottom: 1px solid transparent;
+  transition:
+    background-color var(--timing-ms, 200ms) var(--tabcn-timing),
+    border-color var(--timing-ms, 200ms) var(--tabcn-timing);
+}
+
+.sticky-filter[data-stuck] {
+  background-color: var(--background);
+  border-bottom-color: var(--border);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .site-header,
+  .sticky-filter[data-stuck] {
+    background-color: var(--sticky-bg);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+
+/* A dock's labels change colour as the capsule moves behind them. */
+.seg {
+  transition: color var(--timing-ms, 200ms) var(--tabcn-timing);
+}
+
+.seg:hover {
+  transition-duration: 150ms;
+}
+
+/* The header's scroll-spy marker glides on tabcnSpring between links; it fades in and out. A
+   marker that is off jumps to its next place, so it never glides in from a stale spot. */
+.spy-marker {
+  transition: opacity var(--timing-ms, 200ms) var(--tabcn-timing);
+}
+
+.spy-marker[data-on] {
+  transition:
+    left var(--spring-ms, 400ms) var(--tabcn-spring),
+    width var(--spring-ms, 400ms) var(--tabcn-spring),
+    opacity var(--timing-ms, 200ms) var(--tabcn-timing);
+}
+
+/* A cut: out over CUT_OUT_MS, swap while hidden, back over CUT_IN_MS. */
+.cat-results,
+.sidebar-list {
+  transition: opacity var(--cut-in-ms, 200ms) var(--tabcn-timing);
+}
+
+.cat-results[data-cut],
+.sidebar-list[data-cut] {
+  opacity: 0;
+  transition-duration: var(--cut-out-ms, 120ms);
+}
+
+/* A group of cards renders only near the screen. The padding keeps the cards' shadows inside
+   the paint containment that comes with it. */
+.cat-block {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 640px;
+  margin: -12px -12px -16px;
+  padding: 12px 12px 16px;
+}
+
+.cat-block + .cat-block {
+  /* 40px between groups, after the padding and negative margins collapse. */
+  margin-top: 28px;
+}
+
+/* A catalogue card: nothing moves on hover or focus; the card lightens and its tile takes the
+   outline the hero gives the bar in focus. */
+.specimen,
+.specimen-row {
+  transition: background-color 150ms ease-out;
+}
+
+.specimen:hover,
+.specimen:has(:focus-visible),
+.specimen-row:hover,
+.specimen-row:has(:focus-visible) {
+  background-color: var(--surface);
+}
+
+.specimen-tile,
+.specimen-thumb {
+  background-color: var(--demo);
+  box-shadow: 0 0 0 1px var(--tile-ring);
+}
+
+.specimen-tile {
+  outline: 1.5px solid transparent;
+  outline-offset: 3px;
+  transition: outline-color var(--timing-ms, 200ms) var(--tabcn-timing);
+}
+
+.specimen:hover .specimen-tile,
+.specimen:has(:focus-visible) .specimen-tile {
+  outline-color: var(--foreground);
+}
+
+/* The demo colour holds the place; the poster fades in over it once loaded, or shows at once
+   when it was cached. */
+.loop-poster {
+  opacity: 0;
+  transition: opacity var(--timing-ms, 200ms) var(--tabcn-timing);
+}
+
+.loop-poster[data-loaded] {
+  opacity: 1;
+}
+
+.loop-poster[data-instant] {
+  transition: none;
+}
+
+@media (scripting: none) {
+  .loop-poster {
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rise,
   .bar-row,
@@ -358,9 +491,24 @@ body {
   .bar-track,
   .bar-tile,
   .bar-tile::after,
-  .bar-video,
+  .loop-video,
+  .loop-video[data-shown],
+  .loop-poster,
   .dock-capsule,
-  .dock-tab {
+  .dock-tab,
+  .filter-capsule,
+  .side-capsule,
+  .seg,
+  .spy-marker,
+  .spy-marker[data-on],
+  .sticky-filter,
+  .cat-results,
+  .cat-results[data-cut],
+  .sidebar-list,
+  .sidebar-list[data-cut],
+  .specimen,
+  .specimen-row,
+  .specimen-tile {
     transition: none;
   }
 }

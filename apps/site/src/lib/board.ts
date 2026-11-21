@@ -1,34 +1,22 @@
 // The home page board's data: which tab bars it shows, in what order, and the layout groups its
-// dock jumps between. Server only: it checks public/bars while the static export renders.
+// dock jumps between (the board leaves the panels out). Server only: it checks public/bars while
+// the static export renders.
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Layout } from '../../../example/src/catalog';
 import { asset } from './base-path';
 import type { Design } from './designs';
+import { GROUP_OF, GROUPS, type GroupId } from './groups';
 
-export type GroupId = 'floating' | 'action' | 'docked' | 'rails';
-
-/** The dock's tabs, left to right. The board walks the groups in this order too. */
-export const GROUPS: { id: GroupId; label: string }[] = [
-  { id: 'floating', label: 'Floating' },
-  { id: 'action', label: 'Action' },
-  { id: 'docked', label: 'Docked' },
-  { id: 'rails', label: 'Rails' },
-];
-
-/** Every layout needs a group here (TypeScript says so when one is added). Panels sit out. */
-export const GROUP_OF: Record<Layout, GroupId | null> = {
-  'floating-pill': 'floating',
-  'floating-buttons': 'floating',
-  'pill-with-action': 'action',
-  'center-action': 'action',
-  'docked-bar': 'docked',
-  'chip-rail': 'rails',
-  'side-rail': 'rails',
-  // A sheet resting across the bottom edge sits with the docked bars.
-  sheet: 'docked',
-  panel: null,
-};
+// The groups live in groups.ts (no file-system access), so client components can share them.
+export {
+  GROUP_NOTES,
+  GROUP_OF,
+  GROUPS,
+  type GroupId,
+  SITE_GROUPS,
+  type SiteGroupId,
+  siteGroupOf,
+} from './groups';
 
 /** The bar the board opens on: strong contrast and an orange glow in both themes. */
 export const BOARD_START = 'glow-glass';

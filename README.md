@@ -326,7 +326,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and release process.
 
 Made by Chakravarthi Chintapatla ([@phantommenace_x](https://x.com/phantommenace_x) on X).
 
-The first 20 tab bars recreate the ones collected in the "tab bar pillars" post by [@jaimintf](https://x.com/jaimintf/status/2123071132224077889). The website's design is based on [ui lab](https://lab.xevrion.dev/) by xevrion (MIT).
+The first 20 tab bars recreate the ones collected in the "tab bar pillars" post by [@jaimintf](https://x.com/jaimintf/status/2123071132224077889).
 
 ## License
 
