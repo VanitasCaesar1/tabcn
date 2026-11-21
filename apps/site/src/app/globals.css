@@ -153,6 +153,18 @@ body {
   animation: fade-in 200ms var(--tabcn-timing) var(--rise-delay, 0ms) both;
 }
 
+/* The hero's command card: continuous (squircle) corners where the browser draws them, a plain
+   radius that looks about the same everywhere else. */
+.cmd-card {
+  border-radius: 20px;
+}
+@supports (corner-shape: squircle) {
+  .cmd-card {
+    corner-shape: squircle;
+    border-radius: 28px;
+  }
+}
+
 /* Tile sizes follow the page column (the hero is the container), not the window. The lead row
    is 402 px wide once the column allows: an iPhone 17 Pro's width in points, so its bars show at
    actual size. The two rows under it are 62% of that. Tiles keep the recordings' crop, 1206 x 420. */

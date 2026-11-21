@@ -10,7 +10,6 @@ import { Arrow } from './arrow';
 import { BarRow } from './bar-row';
 import type { BarItem } from './bar-tile';
 import { BoardDock } from './board-dock';
-import { CopyButton } from './copy-button';
 import {
   BOARD_DWELL_MS,
   BOARD_FIRST_MS,
@@ -23,7 +22,6 @@ import {
   TIMING_EASE,
   TIMING_MS,
 } from './motion';
-import { RUNNERS, useRunner } from './use-runner';
 
 /** Each row's first bar (relative to the lead row), its size, and the way it slides. */
 const ROWS = [
@@ -59,31 +57,26 @@ function useWide() {
 const roundButton =
   'grid size-8 shrink-0 touch-manipulation place-items-center rounded-full bg-surface text-foreground shadow-raised outline-hidden transition-[background-color] duration-150 ease-out hover:bg-background focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2';
 
-const buttonPrimary =
-  'hidden h-10 shrink-0 items-center rounded-full bg-foreground px-5 font-medium text-background text-sm outline-hidden transition-[opacity] duration-150 ease-out hover:opacity-90 focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 sm:flex';
-
 /** 'out' fades the rows away, 'snap' moves them while hidden, 'in' fades them back. */
 type Cut = 'none' | 'out' | 'snap' | 'in';
 
 // The departure board under the home headline: an actual-size row of real tab bars over two
 // smaller rows, stepping along together on the library's own spring. The lead row's middle tile
-// is the one in focus: the caption names it, the command above installs it, and the dock below
-// shows its layout group and jumps between groups. The board waits while you're over it or using
+// is the one in focus: the caption names it and links to its page, and the dock below shows its
+// layout group and jumps between groups. The board doesn't drive the install command above it:
+// that one stays fixed, so it can't change while someone is about to copy it. The board waits while you're over it or using
 // its controls, and sleeps when it's off screen or the tab is hidden.
 export function BarBoard({
   items,
   groups,
   startIndex,
-  registryBase,
 }: {
   items: BarItem[];
   groups: BoardGroup[];
   startIndex: number;
-  registryBase: string;
 }) {
   const reduced = useReducedMotion();
   const wide = useWide();
-  const runner = useRunner();
   const root = useRef<HTMLDivElement>(null);
   const refocusTitle = useRef(false);
   const ticked = useRef(false);
@@ -219,7 +212,6 @@ export function BarBoard({
 
   if (!current) return null;
 
-  const command = `${RUNNERS[runner]} ${registryBase}${current.id}.json`;
   const swap = { duration: reduced ? 0 : TIMING_MS / 1000, ease: TIMING_EASE };
   const fade = {
     initial: { opacity: 0 },
@@ -242,43 +234,6 @@ export function BarBoard({
         } as React.CSSProperties
       }
     >
-      {/* The install command for the bar in focus. */}
-      <div className="rise mx-auto mt-5 flex max-w-[760px] items-center justify-center gap-2 px-4 [--rise-delay:180ms] sm:mt-6 sm:px-6">
-        <div className="flex h-11 w-[min(600px,100%)] min-w-0 items-center gap-2 rounded-full bg-surface pr-1.5 pl-4 shadow-raised">
-          <code className="flex min-w-0 flex-1 items-center whitespace-pre font-mono text-[13px]">
-            <span aria-hidden className="shrink-0 select-none text-muted">
-              ${' '}
-            </span>
-            {/* The runner and the start of the URL give way first on narrow screens. */}
-            <span className="min-w-0 truncate text-muted">
-              {RUNNERS[runner]} {registryBase}
-            </span>
-            <span className="relative grid shrink-0">
-              <AnimatePresence initial={false} mode="popLayout">
-                <motion.span key={current.id} className="col-start-1 row-start-1" {...fade}>
-                  <span className="text-foreground">{current.id}</span>
-                  <span className="text-muted">.json</span>
-                </motion.span>
-              </AnimatePresence>
-            </span>
-          </code>
-          <CopyButton value={command} label="Copy install command" className="shrink-0" />
-        </div>
-        <a href="#designs" className={buttonPrimary}>
-          Browse designs
-        </a>
-      </div>
-      {/* Every design installs the tabcn package from npm, which isn't published yet. */}
-      <p className="rise mx-auto mt-2.5 max-w-[600px] px-4 text-center text-[12px] text-muted [--rise-delay:180ms] sm:px-6">
-        Pre-release: the tabcn package is not on npm yet, so this command won't install until it is.{' '}
-        <a
-          href="#quick-start"
-          className="rounded-sm text-foreground underline decoration-border underline-offset-2 outline-hidden hover:decoration-current focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2"
-        >
-          Quick start
-        </a>
-      </p>
-
       {/* Which bar is in focus, with the step buttons. Arrow keys step while focus is in here. */}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: arrow keys are a shortcut for the buttons inside. */}
       <div

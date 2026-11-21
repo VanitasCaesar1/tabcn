@@ -1,3 +1,5 @@
+import repo from './repo.json';
+
 // One place for the facts the layout, metadata and links repeat.
 export const site = {
   url: 'https://vanitascaesar1.github.io/tabcn',
@@ -34,3 +36,9 @@ export function sourceUrl(id: string) {
 export function registryUrl(id: string) {
   return absoluteUrl(`/r/${id}.json`);
 }
+
+/** The design the home page's install command adds, and the Quick start's example. */
+export const HERO_DESIGN = 'sliding-capsule';
+
+/** The published tabcn version, decided at build time; null while unpublished. */
+export const npmVersion: string | null = (repo as { npm?: string | null }).npm ?? null;

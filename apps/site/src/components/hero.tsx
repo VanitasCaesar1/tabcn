@@ -1,17 +1,22 @@
 import Link from 'next/link';
 import { buildBoard } from '@/lib/board';
-import { designs } from '@/lib/designs';
-import { absoluteUrl, designPath } from '@/lib/site';
+import { designs, getDesign } from '@/lib/designs';
+import { designPath, HERO_DESIGN } from '@/lib/site';
 import { Arrow } from './arrow';
 import { BarBoard } from './bar-board';
+import { HeroInstall } from './hero-install';
+import { ReleaseStatus } from './release-status';
 import { Underline } from './underline';
 
 const board = buildBoard(designs);
 const latest = designs[designs.length - 1];
 const barCount = designs.filter((d) => d.kind === 'bar').length;
+const panelCount = designs.filter((d) => d.kind === 'panel').length;
+const install = getDesign(HERO_DESIGN);
 
-// The first screen: the headline over a patch of dots, then the departure board of tab bars and
-// the dock that drives it. The text fades in on CSS alone, so it shows before any script loads.
+// The first screen: the headline over a patch of dots, one fixed install command with the
+// release status under it, then the departure board of tab bars and the dock that drives it.
+// The text fades in on CSS alone, so it shows before any script loads.
 export function Hero() {
   return (
     <section className="hero @container/hero relative isolate overflow-x-clip">
@@ -43,17 +48,14 @@ export function Hero() {
           </span>
         </h1>
         <p className="rise mt-3.5 max-w-[480px] text-pretty text-[15px] text-muted leading-[1.6] [--rise-delay:120ms]">
-          {barCount} tab bars for React Native and Expo. Each one is a single file you copy in with
-          the shadcn CLI and change as you like.
+          {barCount} tab bars and {panelCount} panels for React Native and Expo. Each one is a
+          single file you copy in with the shadcn CLI and change as you like.
         </p>
+        {install && <HeroInstall id={install.id} title={install.title} />}
+        <ReleaseStatus />
       </div>
       {board.items.length > 0 && (
-        <BarBoard
-          items={board.items}
-          groups={board.groups}
-          startIndex={board.startIndex}
-          registryBase={absoluteUrl('/r/')}
-        />
+        <BarBoard items={board.items} groups={board.groups} startIndex={board.startIndex} />
       )}
     </section>
   );

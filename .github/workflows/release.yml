@@ -10,6 +10,8 @@ permissions:
   contents: write
   pull-requests: write
   id-token: write
+  # Lets the release job start site.yml once a new version is on npm (see the last step).
+  actions: write
 
 jobs:
   release:
@@ -30,6 +32,7 @@ jobs:
       - run: bun install --frozen-lockfile
       # Opens a "Version packages" PR from pending changesets; publishes to npm when that PR is merged.
       - uses: changesets/action@v1
+        id: changesets
         if: env.HAS_NPM_TOKEN == 'true'
         with:
           version: bun run version-packages
@@ -37,3 +40,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # site.yml also builds on this push, at the same moment as the publish, so it reads npm before
+      # the new version is there. Once npm serves it, build the site again so the hero, the sidebar
+      # and the Quick start show the version instead of "not on npm yet".
+      - name: Rebuild the site with the new version
+        if: steps.changesets.outputs.published == 'true'
+        # Waits up to two minutes for the version just published (not merely any version) to show.
+        run: |
+          want=$(jq -r '.[] | select(.name == "tabcn") | .version' <<< "$PUBLISHED")
+          for i in $(seq 1 12); do npm view "tabcn@${want:-latest}" version >/dev/null 2>&1 && break; sleep 10; done
+          gh workflow run site.yml --ref main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBLISHED: ${{ steps.changesets.outputs.publishedPackages }}
