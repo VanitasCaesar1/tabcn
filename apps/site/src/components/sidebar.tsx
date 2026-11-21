@@ -44,7 +44,7 @@ const footLink =
   'inline-flex items-center gap-0.5 rounded-sm outline-hidden transition-[color] duration-150 ease-out hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 motion-reduce:transition-none';
 
 // A real column on wide screens: full height, one hairline between it and the page. The brand on
-// top lines up with the header; under it, the group dock and the chosen group's designs; links
+// top lines up with the header; under it, the design groups, each opening to its designs; links
 // to the quick start and the design docs at the foot. (Layout from ui lab,
 // https://lab.xevrion.dev, MIT.)
 export function Sidebar() {

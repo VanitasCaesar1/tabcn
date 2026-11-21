@@ -403,6 +403,17 @@ body {
     opacity var(--timing-ms, 200ms) var(--tabcn-timing);
 }
 
+/* A sidebar group opening or closing: its height eases between none and all of its list. */
+.side-fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--timing-ms, 200ms) var(--tabcn-timing);
+}
+
+.side-fold[data-open] {
+  grid-template-rows: 1fr;
+}
+
 /* A cut: out over CUT_OUT_MS, swap while hidden, back over CUT_IN_MS. */
 .cat-results,
 .sidebar-list {
@@ -498,6 +509,7 @@ body {
   .dock-tab,
   .filter-capsule,
   .side-capsule,
+  .side-fold,
   .seg,
   .spy-marker,
   .spy-marker[data-on],
