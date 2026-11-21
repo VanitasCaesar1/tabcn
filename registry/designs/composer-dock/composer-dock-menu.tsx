@@ -32,6 +32,7 @@ import { PlusGlyph } from './composer-dock-composer';
 import {
   type ComposerDockColors,
   type ComposerDockIcon,
+  type ComposerDockLabels,
   GLASS_STYLE,
   SIDE,
 } from './composer-dock-theme';
@@ -91,6 +92,7 @@ export function Popover({
   glass,
   origin,
   label,
+  labels,
   children,
 }: {
   open: boolean;
@@ -111,6 +113,7 @@ export function Popover({
   /** Where the dock sits in the window: the overlay is drawn from there to cover the screen. */
   origin: { x: number; y: number };
   label: string;
+  labels: ComposerDockLabels;
   children: (close: (then?: () => void) => void) => ReactNode;
 }) {
   const screen = useWindowDimensions();
@@ -236,7 +239,7 @@ export function Popover({
     >
       <Animated.View style={[StyleSheet.absoluteFill, scrimStyle]}>
         <Pressable
-          accessibilityLabel="Close menu"
+          accessibilityLabel={labels.closeMenu}
           onPress={() => close()}
           style={[styles.scrim, { height: scrimBottom || screen.height, backgroundColor: scrim }]}
         />
@@ -296,6 +299,7 @@ export function MenuRow({
   create,
   large,
   colors,
+  labels,
   onPress,
 }: {
   id: string;
@@ -308,6 +312,7 @@ export function MenuRow({
   /** The hold menu's rows: taller, larger text and icons. */
   large?: boolean;
   colors: ComposerDockColors;
+  labels: ComposerDockLabels;
   onPress: () => void;
 }) {
   const { hovered, place, forget } = use(PopoverContext);
@@ -321,7 +326,7 @@ export function MenuRow({
   return (
     <Pressable
       role="button"
-      accessibilityLabel={unread ? `${label}, unread` : label}
+      accessibilityLabel={unread ? labels.unread(label) : label}
       onPress={onPress}
       onLayout={(e) =>
         place(id, { y: e.nativeEvent.layout.y, height: e.nativeEvent.layout.height })

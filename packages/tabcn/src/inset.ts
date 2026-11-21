@@ -4,10 +4,11 @@
  */
 import { useSyncExternalStore } from 'react';
 
-import { useTabBarProvider } from './provider';
+import { DEFAULT_PANEL_OVERLAP, useTabBarProvider } from './provider';
 
 const noopSubscribe = () => () => {};
 const zero = () => 0;
+const defaultOverlap = () => DEFAULT_PANEL_OVERLAP;
 
 /**
  * Points from the screen's bottom edge to the top of what tabcn draws there: the bar and
@@ -32,5 +33,27 @@ export function useTabBarInset(): number {
     store?.subscribeInset ?? noopSubscribe,
     store?.getInset ?? zero,
     store?.getInset ?? zero,
+  );
+}
+
+/**
+ * Points of a panel hidden behind the bar's top edge: 16 under a floating bar, whose rounded
+ * ends hide the join, and 0 under a docked bar, whose top edge is straight. A panel that peeks
+ * (a mini player) adds it to the height it wants to show, so the visible part is the same
+ * under either kind of bar. Spec: docs/designs/panels.md (Overlap behind the bar).
+ *
+ * Re-renders its caller only when the number changes. 16 without a provider.
+ *
+ * ```tsx
+ * const overlap = usePanelOverlap();
+ * return <TabPanel id="player" peekHeight={STRIP + overlap}>…</TabPanel>;
+ * ```
+ */
+export function usePanelOverlap(): number {
+  const store = useTabBarProvider()?.store;
+  return useSyncExternalStore(
+    store?.subscribeOverlap ?? noopSubscribe,
+    store?.getOverlap ?? defaultOverlap,
+    store?.getOverlap ?? defaultOverlap,
   );
 }

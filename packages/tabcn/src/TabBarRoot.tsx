@@ -32,6 +32,7 @@ import { tabcnTiming } from './motion';
 import { PanelLayer, type SheetGeometry } from './PanelLayer';
 import {
   anyPanelOpen,
+  DEFAULT_PANEL_OVERLAP,
   modalPanel,
   type Snapshot,
   useStoreSelector,
@@ -370,7 +371,12 @@ export function TabBarRoot({
   // empty floating bar (zero height, as under a sheet that stands in for the bar) hides
   // nothing, so panels meet its top edge exactly and the visible strip matches the height
   // the bar reports.
-  const overlap = floating && (barFrame === null || barFrame.height > 0) ? 16 : 0;
+  const overlap =
+    floating && (barFrame === null || barFrame.height > 0) ? DEFAULT_PANEL_OVERLAP : 0;
+  // Panels read it (`usePanelOverlap`) to size what they show above the bar.
+  useEffect(() => {
+    store?.setOverlap(overlap);
+  }, [store, overlap]);
   // Sheets size themselves from where the root sits on screen. The root's size is the settled
   // one, so a minimizing bar doesn't move a sheet's heights on every frame.
   const geometry: SheetGeometry | null = rootSize

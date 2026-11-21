@@ -564,13 +564,15 @@ function PillTab({
   );
 }
 
-/** The drawer, declared once beside the navigator. */
+/** The drawer, declared once beside the navigator. The last-chosen sub-tab shows as selected. */
 export function SubTabsPanel() {
+  const choice = subTabChoice.useValue();
   return (
     <SubTabs
       name={LIBRARY}
       items={['Albums', 'Artists', 'Songs'].map((label) => ({
         label,
+        selected: label === choice,
         onPress: () => subTabChoice.set(label),
       }))}
     />

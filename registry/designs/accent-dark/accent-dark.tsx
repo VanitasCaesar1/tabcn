@@ -92,9 +92,11 @@ export interface AccentDarkProps {
   actionLabel?: string;
   /**
    * The action's icon, 24 pt, in the `foreground` colour, such as
-   * `<RecordIcon color="#ffffff" size={24} />` from this design's icons.
+   * `<RecordIcon color="#ffffff" size={24} />` from this design's icons. Pass a function to
+   * get that colour and size from the design, so the icon follows `colors`:
+   * `({ color, size }) => <RecordIcon color={color} size={size} />`.
    */
-  actionIcon?: ReactNode;
+  actionIcon?: ReactNode | ((props: { color: string; size: number }) => ReactNode);
   /**
    * Length of the outline-to-solid crossfade and label fade, in ms. Default 150. Pass 0 for
    * the app's instant swap.
@@ -226,7 +228,7 @@ function Action({
   haptics,
 }: {
   label: string;
-  icon: ReactNode;
+  icon: AccentDarkProps['actionIcon'];
   onPress: () => void;
   colors: AccentDarkColors;
   font: LabelFont;
@@ -243,7 +245,9 @@ function Action({
       onPressIn={haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) : undefined}
       style={styles.tab}
     >
-      <View style={styles.icon}>{icon}</View>
+      <View style={styles.icon}>
+        {typeof icon === 'function' ? icon({ color: colors.foreground, size: ICON }) : icon}
+      </View>
       <Text
         numberOfLines={1}
         maxFontSizeMultiplier={1.3}

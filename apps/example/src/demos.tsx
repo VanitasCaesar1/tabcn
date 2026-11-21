@@ -224,43 +224,9 @@ export function isDarkScreen(demo: Demo, index: number) {
 /** Window width (pt) from which a `railWhenWide` demo shows its rail: iPads, landscape. */
 export const RAIL_MIN_WIDTH = 600;
 
-/** Strava's Record action: white on the dark bar, or the PanelUI theme's ink. */
-function AccentDarkBar({ onActionPress }: { onActionPress: () => void }) {
-  const colors = useDemoColors('accent-dark');
-  return (
-    <AccentDark
-      onActionPress={onActionPress}
-      actionIcon={
-        <AccentDarkIcons.RecordIcon
-          focused={false}
-          color={colors?.foreground ?? '#ffffff'}
-          size={24}
-        />
-      }
-    />
-  );
-}
-
-/** Reddit's Create action, in the inactive ink of the bar or of the PanelUI theme. */
-function BadgeDockBar({ onActionPress }: { onActionPress: () => void }) {
-  const colors = useDemoColors('badge-dock');
-  return (
-    <BadgeDock
-      onActionPress={onActionPress}
-      actionIcon={
-        <BadgeDockIcons.CreateIcon
-          focused={false}
-          color={colors?.inactive ?? '#b7bbbe'}
-          size={26}
-        />
-      }
-    />
-  );
-}
-
 /**
  * Glow Glass is dark glass by default. Under a PanelUI theme its surface follows the theme, so
- * the blur and the action icon follow too: light blur on a light card.
+ * the blur follows too: light blur on a light card. The action icon takes the design's ink.
  */
 function GlowGlassBar({ onActionPress }: { onActionPress: () => void }) {
   const colors = useDemoColors('glow-glass');
@@ -269,13 +235,9 @@ function GlowGlassBar({ onActionPress }: { onActionPress: () => void }) {
     <GlowGlass
       onActionPress={onActionPress}
       tint={light ? 'light' : 'dark'}
-      actionIcon={
-        <GlowGlassIcons.SpendIcon
-          focused={false}
-          color={colors?.inactiveIcon ?? '#76777c'}
-          size={21.5}
-        />
-      }
+      actionIcon={({ color, size }) => (
+        <GlowGlassIcons.SpendIcon focused={false} color={color} size={size} />
+      )}
     />
   );
 }
@@ -679,7 +641,14 @@ export const demos: Record<string, Demo> = {
   },
   'accent-dark': {
     // Strava: Record opens a full-screen recorder, so it is the bar's action slot, not a tab.
-    render: ({ onActionPress }) => <AccentDarkBar onActionPress={onActionPress} />,
+    render: ({ onActionPress }) => (
+      <AccentDark
+        onActionPress={onActionPress}
+        actionIcon={({ color, size }) => (
+          <AccentDarkIcons.RecordIcon focused={false} color={color} size={size} />
+        )}
+      />
+    ),
     // Strava's dark screens: flat #141414 above the one-step-lighter #212220 bar.
     background: '#141414',
     dark: true,
@@ -746,7 +715,14 @@ export const demos: Record<string, Demo> = {
   'badge-dock': {
     // Create is the bar's action slot (it opens a composer, not a screen), as in Reddit. The badges
     // show all three forms: a dot, a count, and a capped "99+".
-    render: ({ onActionPress }) => <BadgeDockBar onActionPress={onActionPress} />,
+    render: ({ onActionPress }) => (
+      <BadgeDock
+        onActionPress={onActionPress}
+        actionIcon={({ color, size }) => (
+          <BadgeDockIcons.CreateIcon focused={false} color={color} size={size} />
+        )}
+      />
+    ),
     // Reddit (dark): the feed is the same #171717 as the bar, so the bar doesn't stand out.
     background: '#171717',
     dark: true,

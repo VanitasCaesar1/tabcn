@@ -90,8 +90,12 @@ export interface GlassBadgesProps {
   onActionPress: () => void;
   /** Screen-reader label for that button. Default "Search". */
   actionLabel?: string;
-  /** Content of that button. Default: Telegram's magnifier, in `colors.foreground`. */
-  actionIcon?: ReactNode;
+  /**
+   * Content of that button. Default: Telegram's magnifier, in `colors.foreground`. Pass a
+   * function to get that colour and the 30 pt icon size from the design, so the icon follows
+   * `colors`: `({ color, size }) => <MyIcon color={color} size={size} />`.
+   */
+  actionIcon?: ReactNode | ((props: { color: string; size: number }) => ReactNode);
   colors?: Partial<GlassBadgesColors>;
   /** Default `auto`: glass where available, blur on older iOS and the web, tint on Android. */
   material?: GlassBadgesMaterial;
@@ -192,7 +196,9 @@ export function GlassBadges({
       >
         <Glass surface={surface} colors={colors} />
         <Animated.View style={[styles.glyph, glyph]}>
-          {actionIcon ?? <Magnifier color={colors.foreground} />}
+          {typeof actionIcon === 'function'
+            ? actionIcon({ color: colors.foreground, size: ICON })
+            : (actionIcon ?? <Magnifier color={colors.foreground} />)}
         </Animated.View>
       </PressableScale>
     </TabBarRoot>

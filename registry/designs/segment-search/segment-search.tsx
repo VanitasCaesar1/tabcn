@@ -54,8 +54,12 @@ export interface SegmentSearchProps {
   onActionPress: () => void;
   /** Screen-reader label for the round button. Default "Search". */
   actionLabel?: string;
-  /** Content of the round button. Default: a magnifying glass. */
-  actionIcon?: ReactNode;
+  /**
+   * Content of the round button. Default: a magnifying glass in `colors.text`. Pass a
+   * function to get that colour and the magnifier's 18 pt size from the design, so the icon
+   * follows `colors`: `({ color, size }) => <MyIcon color={color} size={size} />`.
+   */
+  actionIcon?: ReactNode | ((props: { color: string; size: number }) => ReactNode);
   colors?: Partial<SegmentSearchColors>;
   /** Selection haptic on tabs, a light impact on the round button. Default true. */
   haptics?: boolean;
@@ -120,7 +124,9 @@ export function SegmentSearch({
               pointerEvents="none"
               style={[styles.highlight, { backgroundColor: colors.highlight }, highlightStyle]}
             />
-            {actionIcon ?? <Magnifier color={colors.text} />}
+            {typeof actionIcon === 'function'
+              ? actionIcon({ color: colors.text, size: ACTION_ICON })
+              : (actionIcon ?? <Magnifier color={colors.text} />)}
           </LinearGradient>
         </PressableScale>
       </View>
@@ -176,6 +182,8 @@ const EDGE = 16;
 const GRADIENT_STOPS = [0, 0.45, 1] as const;
 /** Opacity of the white wash over the round button while it is pressed. */
 const PRESSED_HIGHLIGHT = 0.14;
+/** The magnifier's box, and the size a function `actionIcon` is given. */
+const ACTION_ICON = 18;
 
 /** A soft shadow on every side, a little stronger below: the shapes look set into the page. */
 function wellShadow(color: string) {
@@ -205,7 +213,7 @@ const styles = StyleSheet.create({
     left: 0,
     borderRadius: HEIGHT / 2,
   },
-  magnifier: { width: 18, height: 18 },
+  magnifier: { width: ACTION_ICON, height: ACTION_ICON },
   lens: {
     position: 'absolute',
     left: 0,

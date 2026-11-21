@@ -13,14 +13,21 @@
  * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS and on
  * the web, and a translucent white tint on Android (no blur there). Force one with `material`.
  * The system blue of the active tab is kept as the app has it (low contrast on the capsule).
- * The capsule's position assumes a left-to-right layout.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  I18nManager,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
@@ -144,7 +151,10 @@ export function SplitSearch({
   }
   // Tabs can go away (a route hidden at runtime); keep the capsule on a pill tab.
   const keptSlot = Math.min(kept, count - 1);
-  const keptCenter = INSET + slot * (keptSlot + 0.5);
+  // The row runs right to left in RTL, so the first tab is the rightmost slot. The centre is
+  // measured from the pill's physical left, where the row and the capsule are pinned.
+  const physicalSlot = I18nManager.isRTL ? count - 1 - keptSlot : keptSlot;
+  const keptCenter = INSET + slot * (physicalSlot + 0.5);
 
   // While minimized, the circle is one button that expands the bar (as iOS 26 does); the
   // tabs inside it take no taps and aren't read.
@@ -180,7 +190,7 @@ export function SplitSearch({
         <Animated.View style={[styles.pill, shadow, pillStyle]}>
           <Glass surface={surface} colors={colors} />
           <View style={[StyleSheet.absoluteFill, styles.round, styles.clip]}>
-            <Animated.View style={[styles.row, { width: pillWidth }, rowStyle]}>
+            <Animated.View style={[styles.row, PHYSICAL_LEFT, { width: pillWidth }, rowStyle]}>
               <Capsule
                 kept={kept}
                 center={keptCenter}
@@ -327,7 +337,7 @@ function Capsule({
   return (
     <Animated.View
       pointerEvents="none"
-      style={[styles.capsule, { backgroundColor: color }, style]}
+      style={[styles.capsule, PHYSICAL_LEFT, { backgroundColor: color }, style]}
     />
   );
 }
@@ -477,6 +487,16 @@ function Badge({ tab, colors }: { tab: TabItem; colors: SplitSearchColors }) {
   );
 }
 
+/**
+ * The row and the capsule are placed by physical offsets from the pill's left edge, but in a
+ * right-to-left layout React Native reads `left` as the start edge, the right, unless the app
+ * turned that swap off. Pin them to the physical left either way.
+ */
+const PHYSICAL_LEFT =
+  I18nManager.isRTL && (I18nManager.getConstants?.().doLeftAndRightSwapInRTL ?? true)
+    ? { right: 0 }
+    : { left: 0 };
+
 const styles = StyleSheet.create({
   root: {
     alignSelf: 'stretch',
@@ -500,7 +520,6 @@ const styles = StyleSheet.create({
   },
   row: {
     position: 'absolute',
-    left: 0,
     top: 0,
     height: BAR,
     flexDirection: 'row',
@@ -508,7 +527,6 @@ const styles = StyleSheet.create({
   },
   capsule: {
     position: 'absolute',
-    left: 0,
     top: INSET,
     height: BAR - INSET * 2,
     borderRadius: (BAR - INSET * 2) / 2,

@@ -100,9 +100,11 @@ export interface BadgeDockProps {
   actionLabel?: string;
   /**
    * The action's icon, 26 pt, in the `inactive` colour, such as
-   * `<CreateIcon focused={false} color="#b7bbbe" size={26} />` from this design's icons.
+   * `<CreateIcon focused={false} color="#b7bbbe" size={26} />` from this design's icons. Pass
+   * a function to get that colour and size from the design, so the icon follows `colors`:
+   * `({ color, size }) => <CreateIcon focused={false} color={color} size={size} />`.
    */
-  actionIcon?: ReactNode;
+  actionIcon?: ReactNode | ((props: { color: string; size: number }) => ReactNode);
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
@@ -233,7 +235,7 @@ function Action({
   haptics,
 }: {
   label: string;
-  icon: ReactNode;
+  icon: BadgeDockProps['actionIcon'];
   onPress: () => void;
   colors: BadgeDockColors;
   haptics: boolean;
@@ -249,7 +251,9 @@ function Action({
       onPressIn={haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) : undefined}
       style={styles.tab}
     >
-      <View style={styles.icon}>{icon}</View>
+      <View style={styles.icon}>
+        {typeof icon === 'function' ? icon({ color: colors.inactive, size: ICON }) : icon}
+      </View>
       <Text
         numberOfLines={1}
         maxFontSizeMultiplier={1.3}

@@ -14,7 +14,7 @@ export {
   type TabIndicatorValues,
   useTabIndicator,
 } from './indicator';
-export { useTabBarInset } from './inset';
+export { usePanelOverlap, useTabBarInset } from './inset';
 export { type LiveTab, useLiveTab } from './live';
 export { useMinimizeOnScroll, useRestoreTabBar, useTabBarMinimized } from './minimize';
 export { tabcnSpring, tabcnTiming } from './motion';

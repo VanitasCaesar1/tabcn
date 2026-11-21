@@ -10,6 +10,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { TabButton, type TabItem, useTabIndicator } from 'react-native-tabcn';
 import {
   type ComposerDockColors,
+  type ComposerDockLabels,
   type Frame,
   fade,
   GLASS_STYLE,
@@ -22,6 +23,7 @@ const ICON_BOX = 60;
 export function DockTab({
   tab,
   colors,
+  labels,
   lit,
   held,
   onHold,
@@ -31,6 +33,7 @@ export function DockTab({
 }: {
   tab: TabItem;
   colors: ComposerDockColors;
+  labels: ComposerDockLabels;
   lit: boolean;
   held: boolean;
   /** The held tab's capsule is Liquid Glass, as in the app. */
@@ -59,7 +62,7 @@ export function DockTab({
       // Touch holds are handled by the row's hold gesture (see ComposerDock); this long press is
       // the screen readers' way in.
       onLongPress={onHold ? open : undefined}
-      accessibilityActions={onHold ? [{ name: 'longpress', label: 'Show recent' }] : undefined}
+      accessibilityActions={onHold ? [{ name: 'longpress', label: labels.showRecent }] : undefined}
     >
       <View
         ref={(node) => {

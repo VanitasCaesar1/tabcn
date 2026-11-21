@@ -19,6 +19,9 @@ import { makeMutable, type SharedValue, useSharedValue } from 'react-native-rean
 import type { TabFrame } from './TabList';
 
 /** Where a panel rests: fully behind the bar, showing its peek height, or fully out. */
+
+/** Points of a panel behind a floating bar's top edge, and the overlap before any bar reports. */
+export const DEFAULT_PANEL_OVERLAP = 16;
 export type PanelState = 'hidden' | 'peek' | 'open';
 
 /**
@@ -197,6 +200,10 @@ export function createTabBarStore() {
   /** `useTabBarInset()`'s number, also with its own subscription. */
   let inset = 0;
   const insetListeners = new Set<() => void>();
+  // Points of a panel hidden behind the bar's top edge: 16 under a floating bar, 0 under a
+  // docked one. 16 until a bar reports, as it was before the bar said.
+  let overlap = DEFAULT_PANEL_OVERLAP;
+  const overlapListeners = new Set<() => void>();
   /** Tab navigators attached through an adapter: one per provider. */
   const navigators = new Set<string>();
   /** A screen reader is on: sheets open only to their highest snap point. */
@@ -512,6 +519,20 @@ export function createTabBarStore() {
       if (inset === next) return;
       inset = next;
       for (const listener of insetListeners) listener();
+    },
+
+    subscribeOverlap(listener: () => void) {
+      overlapListeners.add(listener);
+      return () => {
+        overlapListeners.delete(listener);
+      };
+    },
+    getOverlap: () => overlap,
+    /** Written by `TabBarRoot` when its placement changes the overlap. */
+    setOverlap(next: number) {
+      if (overlap === next) return;
+      overlap = next;
+      for (const listener of overlapListeners) listener();
     },
   };
 }

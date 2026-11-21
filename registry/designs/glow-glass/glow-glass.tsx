@@ -58,8 +58,13 @@ export interface GlowGlassProps {
   onActionPress: () => void;
   /** Label under the round button's icon. Default "Spend". */
   actionLabel?: string;
-  /** Icon inside the round button. */
-  actionIcon?: ReactNode;
+  /**
+   * Icon inside the round button, such as
+   * `<SpendIcon focused={false} color="#76777c" size={21.5} />` from this design's icons.
+   * Pass a function to get the colour (`inactiveIcon`) and size (21.5 pt) from the design, so
+   * the icon follows `colors`: `({ color, size }) => <SpendIcon focused={false} color={color} size={size} />`.
+   */
+  actionIcon?: ReactNode | ((props: { color: string; size: number }) => ReactNode);
   colors?: Partial<GlowGlassColors>;
   /**
    * The blur's material under `background`: `dark` as in the app; `light` when `background` is
@@ -112,7 +117,9 @@ export function GlowGlass({
         style={[styles.round, { backgroundColor: colors.background, borderColor: colors.border }]}
       >
         <BlurView intensity={30} tint={tint} style={[StyleSheet.absoluteFill, styles.roundBlur]} />
-        {actionIcon}
+        {typeof actionIcon === 'function'
+          ? actionIcon({ color: colors.inactiveIcon, size: ACTION_ICON })
+          : actionIcon}
         <Text
           numberOfLines={1}
           maxFontSizeMultiplier={1.3}
@@ -250,6 +257,8 @@ const BORDER = 1;
 const EDGE = 16;
 /** The traced icons' 40-unit box, in points, at the reference's scale. */
 const ICON = 20.3;
+/** The round button's icon, as measured. */
+const ACTION_ICON = 21.5;
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: GAP },

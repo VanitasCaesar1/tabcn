@@ -27,6 +27,7 @@ export const guides: Record<string, Guide> = {
     sections: [
       { id: 'set-up', title: 'Set up' },
       { id: 'control-a-panel', title: 'Control a panel' },
+      { id: 'peek-above-any-bar', title: 'Peek above any bar' },
       { id: 'replace-the-bar', title: 'Replace the bar' },
       { id: 'dragging', title: 'Dragging' },
     ],
@@ -70,6 +71,28 @@ export default function TabLayout() {
             <Code>useTabPanel(&apos;player&apos;)</Code>: <Code>peek()</Code>, <Code>open()</Code>,{' '}
             <Code>hide()</Code> and <Code>toggle()</Code>.
           </p>
+        </DocSection>
+        <DocSection section={{ id: 'peek-above-any-bar', title: 'Peek above any bar' }}>
+          <p>
+            A floating bar hides the bottom 16 pt of a panel behind its rounded ends; a docked bar
+            hides none. <Code>usePanelOverlap()</Code> says which, so a peeking panel shows the same
+            strip above either:
+          </p>
+          <CodeBlock
+            filename="components/my-player.tsx"
+            code={`const STRIP = 48;
+
+function MyPlayer() {
+  const overlap = usePanelOverlap(); // 16 floating, 0 docked
+  return (
+    <TabPanel id="player" peekHeight={STRIP + overlap}>
+      <Strip style={{ height: STRIP }} />
+      {/* tuck \`overlap\` under the strip, behind the bar */}
+    </TabPanel>
+  );
+}
+`}
+          />
         </DocSection>
         <DocSection section={{ id: 'replace-the-bar', title: 'Replace the bar' }}>
           <p>

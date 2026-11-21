@@ -62,6 +62,8 @@ const defaultColors = {
   foreground: '#151517',
   /** The highlight behind an item while it is pressed. */
   pressed: 'rgba(0, 0, 0, 0.06)',
+  /** The fill behind a `selected` item. Default: the `pressed` colour. */
+  selected: 'rgba(0, 0, 0, 0.06)',
   /** The soft shadow under the drawer. */
   shadow: 'rgba(0, 0, 0, 0.12)',
 };
@@ -75,6 +77,11 @@ export interface SubTabItem {
   onPress: () => void;
   /** Screen-reader label. Default `label`. */
   accessibilityLabel?: string;
+  /**
+   * Marks the item as the current one, such as the sub-tab last chosen: it rests on the
+   * `selected` fill and reads as selected. Default: not marked.
+   */
+  selected?: boolean;
 }
 
 export interface SubTabsProps {
@@ -104,7 +111,12 @@ export function SubTabs({
   spacing = 24,
   haptics = true,
 }: SubTabsProps) {
-  const colors = { ...defaultColors, ...custom };
+  // A passed `pressed` colour is also the selected fill unless `selected` is given too.
+  const colors = {
+    ...defaultColors,
+    selected: custom?.pressed ?? defaultColors.selected,
+    ...custom,
+  };
   return (
     <TabPanel id={panelId(name)} anchor={{ name }}>
       <Drawer name={name} items={items} colors={colors} spacing={spacing} haptics={haptics} />
@@ -263,6 +275,9 @@ function Drawer({
             key={index}
             accessibilityRole="button"
             accessibilityLabel={item.accessibilityLabel ?? item.label}
+            accessibilityState={
+              item.selected === undefined ? undefined : { selected: item.selected }
+            }
             onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
             onPress={() => {
               hide();
@@ -270,7 +285,13 @@ function Drawer({
             }}
             style={({ pressed }) => [
               styles.item,
-              { backgroundColor: pressed ? colors.pressed : 'transparent' },
+              {
+                backgroundColor: pressed
+                  ? colors.pressed
+                  : item.selected
+                    ? colors.selected
+                    : 'transparent',
+              },
             ]}
           >
             <Text

@@ -13,6 +13,7 @@ import {
   appear,
   COMPOSER_GAP,
   type ComposerDockColors,
+  type ComposerDockLabels,
   disappear,
   fade,
   GLASS_STYLE,
@@ -23,6 +24,7 @@ import {
 export function Composer({
   composerRef,
   colors,
+  labels,
   placeholder,
   model,
   onModelPress,
@@ -35,6 +37,7 @@ export function Composer({
 }: {
   composerRef: ViewRef;
   colors: ComposerDockColors;
+  labels: ComposerDockLabels;
   placeholder: string;
   model?: string;
   onModelPress?: () => void;
@@ -65,7 +68,7 @@ export function Composer({
   const plus = onAttachPress ? (
     <CircleButton
       key="plus"
-      label="Add files and more"
+      label={labels.addFiles}
       onPress={onAttachPress}
       glass={glass}
       tint={colors.glassTint}
@@ -76,7 +79,7 @@ export function Composer({
   const dictate = onDictatePress ? (
     <CircleButton
       key="dictate"
-      label="Dictate"
+      label={labels.dictate}
       onPress={onDictatePress}
       glass={glass}
       tint={colors.glassTint}
@@ -89,7 +92,7 @@ export function Composer({
     hasText || onVoicePress ? (
       <CircleButton
         key="action"
-        label={hasText ? 'Send' : 'Voice mode'}
+        label={hasText ? labels.send : labels.voiceMode}
         onPress={hasText ? send : onVoicePress}
         background={colors.foreground}
       >
@@ -162,7 +165,7 @@ export function Composer({
             {model ? (
               <Pressable
                 role="button"
-                accessibilityLabel={`Model, ${model}`}
+                accessibilityLabel={labels.model(model)}
                 onPress={onModelPress}
                 // 28 pt tall: the slop brings the touch target to 44 pt.
                 hitSlop={8}

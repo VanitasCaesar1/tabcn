@@ -50,6 +50,32 @@ export const defaultColors = {
 
 export type ComposerDockColors = typeof defaultColors;
 
+export const defaultLabels = {
+  /** The + button, which opens the attachment menu. */
+  addFiles: 'Add files and more',
+  /** The dictation button. */
+  dictate: 'Dictate',
+  /** The round button while the field has text. */
+  send: 'Send',
+  /** The same button while the field is empty. */
+  voiceMode: 'Voice mode',
+  /** The model chip, given the model's name. */
+  model: (model: string) => `Model, ${model}`,
+  /** The screen-reader action on a tab with a hold menu. */
+  showRecent: 'Show recent',
+  /** The hold menu, given the held tab's label (undefined while its card closes). */
+  recent: (tab: string | undefined) => (tab ? `${tab}, recent` : 'Recent'),
+  /** The attachment menu. */
+  addToMessage: 'Add to message',
+  /** The area round an open menu, which closes it. */
+  closeMenu: 'Close menu',
+  /** A menu row marked unread, given its label. */
+  unread: (label: string) => `${label}, unread`,
+};
+
+/** What Composer Dock's buttons and menus are called, for translation. */
+export type ComposerDockLabels = typeof defaultLabels;
+
 /** An icon in a menu row. */
 export type ComposerDockIcon = (props: { color: string; size: number }) => ReactNode;
 

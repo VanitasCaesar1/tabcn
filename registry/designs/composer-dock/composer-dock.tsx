@@ -48,9 +48,12 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
   interpolate,
+  KeyboardState,
   runOnJS,
   useAnimatedKeyboard,
+  useAnimatedReaction,
   useAnimatedStyle,
+  useSharedValue,
 } from 'react-native-reanimated';
 import { TabBarRoot, type TabItem, useTabBar } from 'react-native-tabcn';
 import { TabScrub } from 'react-native-tabcn/gestures';
@@ -62,8 +65,10 @@ import {
   COMPOSER_GAP,
   type ComposerDockAttachment,
   type ComposerDockColors,
+  type ComposerDockLabels,
   type ComposerDockMenu,
   defaultColors,
+  defaultLabels,
   type Frame,
   HOLD_CARD_WIDTH,
   KEYBOARD_GAP,
@@ -78,6 +83,7 @@ export type {
   ComposerDockAttachment,
   ComposerDockColors,
   ComposerDockIcon,
+  ComposerDockLabels,
   ComposerDockMenu,
   ComposerDockMenuItem,
 } from './composer-dock-theme';
@@ -112,6 +118,11 @@ export interface ComposerDockProps {
    */
   material?: 'auto' | 'glass' | 'solid';
   colors?: Partial<ComposerDockColors>;
+  /**
+   * What screen readers call the buttons and menus, merged over the English defaults. The
+   * placeholder has its own prop.
+   */
+  labels?: Partial<ComposerDockLabels>;
   /** Selection haptics while scrubbing, and a light tap when a hold menu opens. Default true. */
   haptics?: boolean;
 }
@@ -129,9 +140,11 @@ export function ComposerDock({
   scrub = true,
   material = 'auto',
   colors: custom,
+  labels: customLabels,
   haptics = true,
 }: ComposerDockProps) {
   const colors = { ...defaultColors, ...custom };
+  const labels = { ...defaultLabels, ...customLabels };
   const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const { tabs, insets } = useTabBar();
   const keyboard = useAnimatedKeyboard();
@@ -231,13 +244,34 @@ export function ComposerDock({
   const heldTab = shownHeld ? tabs.find((t) => t.key === shownHeld.key) : undefined;
   const menu = heldTab ? menus?.[heldTab.routeName] : undefined;
 
-  // The composer rides on top of the keyboard: a spacer under the tabs grows with it, so the
-  // dock's own frame (and the height screens pad by) follows. The tabs fade out behind it.
-  const spacerStyle = useAnimatedStyle(() => ({
-    height: Math.max(
-      0,
-      keyboard.height.value + KEYBOARD_GAP - insets.bottom - TAB_ROW - COMPOSER_GAP,
-    ),
+  // The composer rides on top of the keyboard. A spacer under the tabs makes the dock's own
+  // frame (and the height screens pad by) include the keyboard, but it changes only once the
+  // keyboard has settled: a spacer that grew every frame relaid the dock and made the
+  // navigator re-render on every frame of the keyboard's slide. While the keyboard moves, the
+  // composer and tabs follow it with a transform instead (UI thread, no layout).
+  const settled = useSharedValue(0);
+  const bottomInset = insets.bottom;
+  useAnimatedReaction(
+    () => ({ state: keyboard.state.value, height: keyboard.height.value }),
+    ({ state, height }) => {
+      const target = Math.max(0, height + KEYBOARD_GAP - bottomInset - TAB_ROW - COMPOSER_GAP);
+      // Platforms that don't report keyboard states (UNKNOWN) follow every frame, as before.
+      const atRest =
+        state === KeyboardState.OPEN ||
+        state === KeyboardState.CLOSED ||
+        state === KeyboardState.UNKNOWN;
+      if (atRest && settled.value !== target) settled.value = target;
+    },
+  );
+  const spacerStyle = useAnimatedStyle(() => ({ height: settled.value }));
+  const liftStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY:
+          settled.value -
+          Math.max(0, keyboard.height.value + KEYBOARD_GAP - bottomInset - TAB_ROW - COMPOSER_GAP),
+      },
+    ],
   }));
   const rowStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
@@ -246,32 +280,42 @@ export function ComposerDock({
       [1, 0],
       Extrapolation.CLAMP,
     ),
+    transform: [
+      {
+        translateY:
+          settled.value -
+          Math.max(0, keyboard.height.value + KEYBOARD_GAP - bottomInset - TAB_ROW - COMPOSER_GAP),
+      },
+    ],
   }));
 
   return (
     <TabBarRoot placement="docked" style={{ backgroundColor: colors.background }}>
       <View ref={dockRef} collapsable={false} style={styles.dock}>
-        <Composer
-          composerRef={composerRef}
-          colors={colors}
-          placeholder={placeholder}
-          model={model}
-          onModelPress={onModelPress}
-          onSend={onSend}
-          onVoicePress={onVoicePress}
-          onDictatePress={onDictatePress}
-          onAttachPress={
-            attachments
-              ? () =>
-                  measure(dockRef, (dock) => {
-                    setOrigin(overlayOrigin(dock));
-                    measure(composerRef, (frame) => setAttach(frame));
-                  })
-              : undefined
-          }
-          dimmed={scrubbing !== null}
-          glass={glass}
-        />
+        <Animated.View style={liftStyle}>
+          <Composer
+            composerRef={composerRef}
+            colors={colors}
+            labels={labels}
+            placeholder={placeholder}
+            model={model}
+            onModelPress={onModelPress}
+            onSend={onSend}
+            onVoicePress={onVoicePress}
+            onDictatePress={onDictatePress}
+            onAttachPress={
+              attachments
+                ? () =>
+                    measure(dockRef, (dock) => {
+                      setOrigin(overlayOrigin(dock));
+                      measure(composerRef, (frame) => setAttach(frame));
+                    })
+                : undefined
+            }
+            dimmed={scrubbing !== null}
+            glass={glass}
+          />
+        </Animated.View>
         <GestureDetector gesture={holdGesture}>
           <Animated.View
             ref={rowRef}
@@ -298,6 +342,7 @@ export function ComposerDock({
                   key={tab.key}
                   tab={tab}
                   colors={colors}
+                  labels={labels}
                   lit={scrubbing ? scrubbing.key === tab.key : tab.focused || held?.key === tab.key}
                   held={held?.key === tab.key}
                   onHold={menus?.[tab.routeName] ? openMenu : undefined}
@@ -328,7 +373,8 @@ export function ComposerDock({
         colors={colors}
         glass={glass}
         origin={origin}
-        label={heldTab ? `${heldTab.label}, recent` : 'Recent'}
+        label={labels.recent(heldTab?.label)}
+        labels={labels}
       >
         {(close) =>
           menu ? (
@@ -343,6 +389,7 @@ export function ComposerDock({
                   unread={item.unread}
                   large
                   colors={colors}
+                  labels={labels}
                   onPress={() => close(item.onPress)}
                 />
               ))}
@@ -353,6 +400,7 @@ export function ComposerDock({
                   create
                   large
                   colors={colors}
+                  labels={labels}
                   onPress={() => close(menu.create?.onPress)}
                 />
               ) : null}
@@ -374,7 +422,8 @@ export function ComposerDock({
         colors={colors}
         glass={glass}
         origin={origin}
-        label="Add to message"
+        label={labels.addToMessage}
+        labels={labels}
       >
         {(close) =>
           attachments?.map((group, g) => (
@@ -387,6 +436,7 @@ export function ComposerDock({
                   icon={a.icon}
                   iconSize={18}
                   colors={colors}
+                  labels={labels}
                   onPress={() => close(a.onPress)}
                 />
               ))}
