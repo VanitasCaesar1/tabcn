@@ -233,7 +233,7 @@ describe('companion-chip', () => {
   it.each([
     ['round', { variant: 'round' as const, accessibilityLabel: 'Locate me' }, 'Locate me'],
     ['pill', { variant: 'pill' as const, label: 'Search' }, 'Search'],
-    ['count', { variant: 'count' as const, label: 'Views', count: 32 }, 'Views 32'],
+    ['count', { variant: 'count' as const, label: 'Views', count: 32 }, '32 Views'],
   ])('draws the %s form against the bar and presses through', async (_name, props, name) => {
     const onPress = jest.fn();
     await render(
