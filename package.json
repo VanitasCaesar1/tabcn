@@ -19,7 +19,7 @@
     "format": "biome check --write .",
     "check": "bun run lint && bun run typecheck && bun run registry && bun run test && bun run build",
     "changeset": "changeset",
-    "version-packages": "changeset version",
+    "version-packages": "changeset version && biome format --write packages/tabcn/CHANGELOG.md",
     "release": "bun run build && changeset publish",
     "test": "bun run --cwd packages/tabcn test",
     "registry": "bun scripts/check-registry.ts"

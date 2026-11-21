@@ -1,6 +1,6 @@
 {
   "name": "tabcn",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Animated, copy-and-own tab bars for React Native and Expo.",
   "license": "MIT",
   "keywords": [
