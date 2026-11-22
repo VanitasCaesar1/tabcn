@@ -872,7 +872,12 @@
       "type": "registry:item",
       "title": "Filter Chips",
       "description": "A strip of filter chips that peeks out from behind the tab bar; tapping a chip grows the strip into a card of options, and Apply folds the choice back into the chip. Needs a TabBarProvider.",
-      "dependencies": ["react-native-tabcn", "expo-haptics", "react-native-svg"],
+      "dependencies": [
+        "react-native-tabcn@>=0.4.0",
+        "expo-blur",
+        "expo-haptics",
+        "react-native-svg"
+      ],
       "files": [
         {
           "path": "registry/designs/filter-chips/filter-chips.tsx",

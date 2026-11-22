@@ -5,9 +5,17 @@
  * Specs: docs/designs/panels.md, docs/designs/bottom-components.md (Sheets).
  */
 import { type ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, BackHandler, Platform, StyleSheet, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  BackHandler,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 import Animated, {
   runOnJS,
+  type SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -64,6 +72,11 @@ interface PanelLayerProps {
   overlap: number;
   /** Null until the root has laid out; sheets wait for it. */
   geometry: SheetGeometry | null;
+  /**
+   * 0 to 1 while a `coversBar` panel opens over a floating bar: the bar slides away and that
+   * panel's window moves down by the bar's height. Always 0 under other bars.
+   */
+  cover: SharedValue<number>;
 }
 
 /**
@@ -89,7 +102,14 @@ function useScreenReaderRule(store: TabBarStore) {
   }, [store]);
 }
 
-export function PanelLayer({ store, snapshot, barFrame, overlap, geometry }: PanelLayerProps) {
+export function PanelLayer({
+  store,
+  snapshot,
+  barFrame,
+  overlap,
+  geometry,
+  cover,
+}: PanelLayerProps) {
   useScreenReaderRule(store);
   if (snapshot.panels.length === 0) return null;
   // The open panel draws above the peeking ones (later siblings draw on top).
@@ -110,6 +130,7 @@ export function PanelLayer({ store, snapshot, barFrame, overlap, geometry }: Pan
           modal={modal}
           covered={isCovered(panel, snapshot)}
           barLaidOut={barFrame != null}
+          cover={cover}
         />
       ))}
     </View>
@@ -195,6 +216,7 @@ function PanelView({
   modal,
   covered,
   barLaidOut,
+  cover,
 }: {
   store: TabBarStore;
   panel: PanelRecord;
@@ -207,6 +229,7 @@ function PanelView({
   covered: boolean;
   /** The bar has laid out, so its anchors have been measured (or are about to be). */
   barLaidOut: boolean;
+  cover: SharedValue<number>;
 }) {
   const { id, state, snap, peekHeight, leaving, snapPoints } = panel;
   const [measuredHeight, setMeasuredHeight] = useState(0);
@@ -420,7 +443,45 @@ function PanelView({
         top: anchor.y + overlap - contentHeight,
       };
 
-  return (
+  // A panel that covers the bar moves down into the bar's place as the bar slides away.
+  const coversBar = panel.coversBar;
+  const barHeight = anchor.height;
+  const windowStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: coversBar ? cover.value * barHeight : 0 }],
+  }));
+  // The backdrop fades with the panel's own slide, between where it rests and open.
+  const backdropStyle = useAnimatedStyle(() => {
+    const span = openVisible.value - restVisible.value;
+    const t = span > 0 ? (visible.value - restVisible.value) / span : 0;
+    return { opacity: Math.min(1, Math.max(0, t)) };
+  });
+  const backdrop =
+    panel.backdrop != null ? (
+      <Animated.View
+        pointerEvents={open ? 'auto' : 'none'}
+        importantForAccessibility="no-hide-descendants"
+        accessibilityElementsHidden
+        style={[
+          styles.backdrop,
+          {
+            // The whole screen, past the root on every side (sheets reach above it too).
+            top: -(geometry?.roomAboveRoot ?? 0) - SCREEN_MARGIN,
+            bottom: -(geometry?.belowRoot ?? 0) - SCREEN_MARGIN,
+          },
+          backdropStyle,
+        ]}
+      >
+        <Pressable
+          accessible={false}
+          style={StyleSheet.absoluteFill}
+          onPress={() => store.setPanelState(id, rest)}
+        >
+          {panel.backdrop}
+        </Pressable>
+      </Animated.View>
+    ) : null;
+
+  const panelWindow = (
     <View
       pointerEvents={shown ? 'box-none' : 'none'}
       importantForAccessibility={exposed ? 'auto' : 'no-hide-descendants'}
@@ -446,4 +507,24 @@ function PanelView({
       </Animated.View>
     </View>
   );
+
+  return (
+    <>
+      {backdrop}
+      {coversBar ? (
+        <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFill, windowStyle]}>
+          {panelWindow}
+        </Animated.View>
+      ) : (
+        panelWindow
+      )}
+    </>
+  );
 }
+
+/** How far a backdrop reaches past the root's frame: covers the status bar and the edges. */
+const SCREEN_MARGIN = 120;
+
+const styles = StyleSheet.create({
+  backdrop: { position: 'absolute', left: -SCREEN_MARGIN, right: -SCREEN_MARGIN },
+});

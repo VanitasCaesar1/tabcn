@@ -30,6 +30,7 @@ export const guides: Record<string, Guide> = {
       { id: 'peek-above-any-bar', title: 'Peek above any bar' },
       { id: 'replace-the-bar', title: 'Replace the bar' },
       { id: 'a-bar-built-on-a-panel', title: 'A bar built on a panel' },
+      { id: 'take-the-bars-place', title: 'Take the bar’s place' },
       { id: 'dragging', title: 'Dragging' },
     ],
     render: () => (
@@ -152,6 +153,34 @@ function MyPlayer() {
 // <BarSheet id="accounts" title="Accounts"><AccountList /></BarSheet>
 `}
           />
+        </DocSection>
+        <DocSection section={{ id: 'take-the-bars-place', title: 'Take the bar’s place' }}>
+          <p>
+            For a focused task, an open panel can take the bar&rsquo;s place. With{' '}
+            <Code>coversBar</Code>, a floating bar slides away while the panel is open and the
+            panel moves down into its place. <Code>backdrop</Code> is drawn over the whole screen
+            behind the panel: a dim, or a blur from your own dependencies. It fades with the
+            panel&rsquo;s slide, and a tap returns the panel to rest.{' '}
+            <Design id="filter-chips">Filter Chips</Design> uses both.
+          </p>
+          <CodeBlock
+            filename="components/filters-panel.tsx"
+            code={`<TabPanel
+  id="filters"
+  peekHeight={60}
+  initialState="peek"
+  coversBar
+  backdrop={<View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.3)' }} />}
+>
+  <Filters />
+</TabPanel>
+`}
+          />
+          <p>
+            The bar&rsquo;s reported height doesn&rsquo;t change, so screens don&rsquo;t resize
+            under it. <Code>coversBar</Code> needs a floating bar; under a docked bar it is
+            ignored.
+          </p>
         </DocSection>
         <DocSection section={{ id: 'dragging', title: 'Dragging' }}>
           <p>Dragging a panel uses <Code>react-native-tabcn/gestures</Code>. {GESTURES}</p>

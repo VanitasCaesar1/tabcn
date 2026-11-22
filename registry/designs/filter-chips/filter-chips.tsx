@@ -18,8 +18,11 @@
  * <FilterChips groups={groups} value={filters} onChange={setFilters} />
  * ```
  *
- * The card grows up out of the strip, its bottom edge held on the strip's line while the panel
- * rises, and stops above the bar. Its content rides the card's top edge and is cut off at that
+ * Open, it takes the bar's place: the bar slides away, the card settles where the bar was, and
+ * the screen behind blurs (iOS, web) and dims; a tap there folds it back, like back. These are
+ * the panel's `coversBar` and `backdrop`, so it needs react-native-tabcn 0.4.0 or later, and a
+ * floating bar for the bar to slide away. The card grows up out of the strip, its bottom edge
+ * held on the strip's line while the panel rises. Its content rides the card's top edge and is cut off at that
  * line, so the card pushes it up out of the strip. The card is the strip's colour, drawn as two
  * stretched bands and four corner circles; everything moves by transforms and opacity on the
  * UI thread, on `tabcnSpring` in step with the panel's own slide, so nothing is laid out per
@@ -27,6 +30,7 @@
  * card's pieces overlap. Not drawn as a rail: on a tablet rail, panels aren't drawn.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import {
   type ComponentRef,
@@ -43,6 +47,7 @@ import {
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -97,6 +102,8 @@ const defaultColors = {
   onAccent: '#08131f',
   /** Behind a chosen option's accent label. */
   chosen: 'rgba(92, 178, 255, 0.16)',
+  /** Over the screen behind the open card, on top of the blur. */
+  backdrop: 'rgba(12, 12, 16, 0.22)',
 };
 
 export type FilterChipsColors = typeof defaultColors;
@@ -160,8 +167,15 @@ export interface FilterChipsProps {
   labels?: Partial<FilterChipsLabels>;
   /** Selection haptic on every chip, option and button. Default true. */
   haptics?: boolean;
+  /**
+   * Blurs the screen behind the open card (iOS and the web; Android dims it only, as
+   * blurring there is costly and uneven). Default true.
+   */
+  blur?: boolean;
 }
 
+/** Whether the backdrop blurs: iOS and the web (CSS backdrop-filter); Android dims only. */
+const BLUR = Platform.OS !== 'android';
 /** The strip's height. */
 const STRIP_H = 44;
 /** Between the strip and the bar. */
@@ -222,11 +236,31 @@ function sameValue(a: FilterValue, b: FilterValue) {
   });
 }
 
-export function FilterChips({ id = 'filters', initialState = 'peek', ...props }: FilterChipsProps) {
+export function FilterChips({
+  id = 'filters',
+  initialState = 'peek',
+  blur = true,
+  ...props
+}: FilterChipsProps) {
   // How much of the panel the bar hides: 16 pt under a floating bar, 0 under a docked one.
   const tuck = usePanelOverlap();
+  const scrim = props.colors?.backdrop ?? defaultColors.backdrop;
   return (
-    <TabPanel id={id} peekHeight={STRIP_H + GAP + tuck} initialState={initialState}>
+    <TabPanel
+      id={id}
+      peekHeight={STRIP_H + GAP + tuck}
+      initialState={initialState}
+      // Open, the bar slides away and the card settles in its place, over a blurred screen.
+      coversBar
+      backdrop={
+        <View style={StyleSheet.absoluteFill}>
+          {blur && BLUR ? (
+            <BlurView intensity={28} tint="default" style={StyleSheet.absoluteFill} />
+          ) : null}
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: scrim }]} />
+        </View>
+      }
+    >
       <Filters id={id} tuck={tuck} {...props} />
     </TabPanel>
   );
@@ -248,7 +282,7 @@ function Filters({
   colors: custom,
   labels: customLabels,
   haptics = true,
-}: Omit<FilterChipsProps, 'initialState'> & { id: string; tuck: number }) {
+}: Omit<FilterChipsProps, 'initialState' | 'blur'> & { id: string; tuck: number }) {
   const colors = { ...defaultColors, ...custom };
   const labels = { ...defaultLabels, ...customLabels };
   const panel = useTabPanel(id);

@@ -14,7 +14,7 @@ import {
   type StyleProp,
   StyleSheet,
   useWindowDimensions,
-  View,
+  type View,
   type ViewStyle,
 } from 'react-native';
 import Animated, {
@@ -23,12 +23,13 @@ import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
 import { CompanionLayer } from './companions';
 import { useRestoreOnFocusChange } from './minimize';
-import { tabcnTiming } from './motion';
+import { tabcnSpring, tabcnTiming } from './motion';
 import { PanelLayer, type SheetGeometry } from './PanelLayer';
 import {
   anyPanelOpen,
@@ -37,6 +38,7 @@ import {
   type Snapshot,
   useStoreSelector,
   useTabBarProvider,
+  warnOnce,
 } from './provider';
 import { ScreenFrameContext } from './screen-frame';
 import { useTabBar } from './state';
@@ -276,6 +278,19 @@ export function TabBarRoot({
   );
   const hidden = useSharedValue(0);
   const override = useOverride(snapshot.override);
+  // A `coversBar` panel is open: the floating bar box slides away and the panel takes its
+  // place (PanelLayer moves its window down by the bar's height on the same spring).
+  const covering =
+    floating && snapshot.panels.some((p) => p.coversBar && p.state === 'open' && !p.leaving);
+  if (!floating && !rail && snapshot.panels.some((p) => p.coversBar)) {
+    warnOnce(
+      'coversBar only works under a floating bar (TabBarRoot placement="floating"); it is ignored here.',
+    );
+  }
+  const cover = useSharedValue(0);
+  useEffect(() => {
+    cover.value = withSpring(covering ? 1 : 0, tabcnSpring);
+  }, [covering, cover]);
 
   useEffect(() => {
     hidden.value = withTiming(keyboardVisible ? 1 : 0, {
@@ -324,6 +339,11 @@ export function TabBarRoot({
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: 1 - hidden.value,
     transform: [{ translateY: hidden.value * ((height ?? 0) + bottomGap) }],
+  }));
+  const boxHeight = floatingFrame?.height ?? 0;
+  const coverStyle = useAnimatedStyle(() => ({
+    opacity: 1 - Math.min(1, cover.value * 1.6),
+    transform: [{ translateY: cover.value * (boxHeight + bottomGap) }],
   }));
 
   // While a panel is open at its highest height it is modal: the bar's root hides its
@@ -469,6 +489,7 @@ export function TabBarRoot({
         barFrame={barFrame}
         overlap={overlap}
         geometry={geometry}
+        cover={cover}
       />
     ) : null;
 
@@ -526,10 +547,17 @@ export function TabBarRoot({
         onLayout={(e) => onRootLayout(e.nativeEvent.layout)}
       >
         {panels}
-        <View
+        <Animated.View
+          pointerEvents={covering ? 'none' : undefined}
           // Centred, the box would size to its content and never learn the screen's width, so
           // a design's `maxWidth: '100%'` couldn't shrink a bar wider than a narrow phone.
-          style={[styles.floatingBox, style, boxPadding, provider ? NO_CONTENT_LAYOUT : null]}
+          style={[
+            styles.floatingBox,
+            style,
+            boxPadding,
+            provider ? NO_CONTENT_LAYOUT : null,
+            coverStyle,
+          ]}
           onLayout={
             store
               ? (e) => {
@@ -551,7 +579,7 @@ export function TabBarRoot({
           {companions}
           {tabs}
           {overlay}
-        </View>
+        </Animated.View>
       </Animated.View>
     );
   }

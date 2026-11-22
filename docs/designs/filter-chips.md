@@ -1,9 +1,10 @@
 # Filter Chips
 
 -   **Status:** Approved (2026-11-23) and implemented. The owner chose "build it" from a short read of the reference clip, without the Goldfish review, as for Account Dock.
--   **Design:** #45, `filter-chips`, a panel design in `registry/`. No foundation changes.
+-   **Design:** #45, `filter-chips`, a panel design in `registry/`. It uses `coversBar` and `backdrop`, added to `TabPanel` for it (`docs/designs/panel-cover.md`), so it needs `react-native-tabcn` 0.4.0.
 -   **Implementation notes (2026-11-23):**
     -   First version: the sheet grew from the tapped chip alone, rose from behind the bar, and faded its content in at the end. The owner judged it below the reference: a blank dark block grew and the content appeared late. Rebuilt as below: the whole capsule grows into a card that rises from the strip's line and stops above the bar, the content rides the card's top edge, and the chip's label becomes the card's title.
+    -   Second rebuild, after the owner still found it short of the reference: the clip's bar slides away and the screen behind blurs. Both needed the foundation (`docs/designs/panel-cover.md`). Open, the bar now slides away, the card settles into the bar's place, and the screen behind blurs (iOS, web) and dims (everywhere).
     -   Chip positions come from layout events, not `measureLayout`: inside a horizontal scroll view laid out right to left, React Native reported every chip 120 pt off (the scroll range). The capsule's scroll view is laid out left to right, with `row-reverse` when the app is right to left.
     -   Checked in Expo Go on an iPhone 17 Pro simulator (iOS 26.5): each group, Apply with one and several choices, the all-filters card, back, a scrolled strip, right to left (`TABCN_RTL=1`) and the largest accessibility text size. Not done: a physical device.
 
@@ -15,7 +16,8 @@ The reference is a 22 s concept clip (Arnab Debnath, "Filter chips, but the shee
 
 ## Decisions
 
--   **It is one `TabPanel`.** It peeks as the strip and opens as the card. So the strip reserves its height in `useTabBarInset` like Mini Player, and Android back, web Escape and the screen-reader escape gesture fold it with no handling of its own. In the clip the card covers the bar and the bar slides away. tabcn panels can't draw over the bar, so the card stops above it, as a floating card. The panel's own slide makes the room.
+-   **It is one `TabPanel`.** It peeks as the strip and opens as the card. So the strip reserves its height in `useTabBarInset` like Mini Player, and Android back, web Escape and the screen-reader escape gesture fold it with no handling of its own.
+-   **Open, it takes the bar's place.** With `coversBar`, the floating bar slides away and the card moves down into its place, as in the clip. With `backdrop`, the screen behind blurs (iOS and the web, `expo-blur`) and dims (`colors.backdrop`; Android dims only, as Mini Player does). A tap on it folds the card and drops the draft, like back. `blur={false}` keeps only the dim.
 -   **The capsule becomes the card.** The card starts as the capsule's exact frame. Its bottom edge stays on the strip's line on screen while it grows up and out to the bar's width. The round buttons and the other chips fade out in place.
 -   **The label becomes the title.** When the chip reads the group's name, that text travels and grows (14 to 18 pt) into the card's header. When it reads a choice, the title fades in at the header instead. The title always rides the card's top edge, so it never crosses the options.
 -   **The content rides the card.** The options and buttons follow the card's top edge and are cut off at the strip's line, so the card seems to push them up out of the strip. They fade in from a quarter of the way.
@@ -35,7 +37,6 @@ The reference is a 22 s concept clip (Arnab Debnath, "Filter chips, but the shee
 
 ## Out of scope
 
--   Dimming or blurring the screen behind the card, as the clip does. A panel draws only in its own window, the bar's width; a full-screen scrim would be a foundation change with its own doc.
 -   Range filters (a price slider), search inside a group, counts per option. Apps can put those in their own sheet.
 -   Drag to dismiss: the card is short and Apply closes it.
 -   Hiding per screen: the app declares it on the screen that filters and hides it on blur (`useTabPanel(id).hide`), as panels already document.

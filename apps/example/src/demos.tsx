@@ -895,6 +895,8 @@ export const demos: Record<string, Demo> = {
     panel: () => <FilterChipsPanel />,
     extra: FilterChipsControls,
     background: '#f1f1f3',
+    // The open card blurs the screen behind it; a stack header above the tabs would stay sharp.
+    fullScreen: true,
     pattern: { kind: 'grid', color: '#e4e4e8', gap: 24 },
     initialTab: 0,
     barHeight: 58.5,

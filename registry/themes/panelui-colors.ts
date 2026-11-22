@@ -182,6 +182,7 @@ export const panelUIColorMaps = {
     accent: 'primary',
     onAccent: 'primary-foreground',
     chosen: ['primary', 0.14],
+    backdrop: ['background', 0.3],
   },
   'glass-badges': {
     background: ['card', 0.72],
