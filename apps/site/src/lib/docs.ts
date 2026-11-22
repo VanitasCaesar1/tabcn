@@ -99,6 +99,7 @@ const GUIDE_FOR: Record<string, string> = {
   'mini-player': '/docs/panels/',
   'context-tray': '/docs/panels/',
   'quick-create': '/docs/panels/',
+  'account-dock': '/docs/panels/',
   'bar-sheet': '/docs/sheets/',
   'split-search': '/docs/minimize-on-scroll/',
   'side-rail': '/docs/minimize-on-scroll/',

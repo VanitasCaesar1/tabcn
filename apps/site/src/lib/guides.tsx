@@ -29,6 +29,7 @@ export const guides: Record<string, Guide> = {
       { id: 'control-a-panel', title: 'Control a panel' },
       { id: 'peek-above-any-bar', title: 'Peek above any bar' },
       { id: 'replace-the-bar', title: 'Replace the bar' },
+      { id: 'a-bar-built-on-a-panel', title: 'A bar built on a panel' },
       { id: 'dragging', title: 'Dragging' },
     ],
     render: () => (
@@ -100,6 +101,57 @@ function MyPlayer() {
             <Code>{'useTabBarOverride(<ContextTray … />)'}</Code> from{' '}
             <Code>react-native-tabcn/expo-router</Code>.
           </p>
+        </DocSection>
+        <DocSection section={{ id: 'a-bar-built-on-a-panel', title: 'A bar built on a panel' }}>
+          <p>
+            <Design id="account-dock">Account Dock</Design> is a whole bar built on one panel: its
+            chip folds the tabs away and opens a <Code>TabPanel</Code> anchored to the bar. The
+            panel&rsquo;s state is the dock&rsquo;s open state, so Android back, Escape on the web
+            and the screen-reader escape gesture fold it, with no handling of its own.
+          </p>
+          <p>
+            Its fold animates only position, scale, opacity and colour. Reanimated can apply those
+            without updating React Native&rsquo;s view tree on every frame, once your app turns on
+            two of its build flags. Add them to your app&rsquo;s <Code>package.json</Code> and
+            rebuild the native app; Expo Go ignores them. We haven&rsquo;t measured the gain yet.
+          </p>
+          <CodeBlock
+            filename="package.json"
+            code={`"reanimated": {
+  "staticFeatureFlags": {
+    "IOS_SYNCHRONOUSLY_UPDATE_UI_PROPS": true,
+    "ANDROID_SYNCHRONOUSLY_UPDATE_UI_PROPS": true
+  }
+}
+`}
+          />
+          <p>
+            For a switcher without changing your bar, put a chip against it with{' '}
+            <Code>TabBarCompanion</Code> and open a <Design id="bar-sheet">Bar Sheet</Design> from
+            it:
+          </p>
+          <CodeBlock
+            filename="components/account-chip.tsx"
+            code={`function AccountChip() {
+  const sheet = useTabPanel('accounts');
+  return (
+    <TabBarCompanion position="above-end">
+      <PressableScale
+        onPress={sheet.toggle}
+        accessibilityRole="button"
+        accessibilityLabel="Switch account"
+      >
+        <Avatar />
+      </PressableScale>
+    </TabBarCompanion>
+  );
+}
+
+// Beside <Tabs>, under the TabBarProvider:
+// <AccountChip />
+// <BarSheet id="accounts" title="Accounts"><AccountList /></BarSheet>
+`}
+          />
         </DocSection>
         <DocSection section={{ id: 'dragging', title: 'Dragging' }}>
           <p>Dragging a panel uses <Code>react-native-tabcn/gestures</Code>. {GESTURES}</p>

@@ -408,6 +408,16 @@ export const catalog: DesignEntry[] = [
     status: 'ready',
   },
   {
+    id: 'account-dock',
+    ref: 0,
+    title: 'Account Dock',
+    kind: 'bar',
+    layout: 'pill-with-action',
+    summary:
+      'A pill of tabs with an account chip: tapping the chip folds the tabs into an account bar, and a sheet rises to switch workspace or account and set a status.',
+    status: 'ready',
+  },
+  {
     id: 'mini-player',
     ref: 0,
     title: 'Mini Player',

@@ -6,9 +6,9 @@
 
 Animated tab bars for React Native and Expo, in the style of shadcn/ui: install a small foundation package, then copy the design you want into your app and make it yours.
 
-**[Browse all 43 designs →](https://vanitascaesar1.github.io/tabcn/)** Each one opens in Expo Go from a QR code and plays on a phone in the page.
+**[Browse all 44 designs →](https://vanitascaesar1.github.io/tabcn/)** Each one opens in Expo Go from a QR code and plays on a phone in the page.
 
-> **Status: 0.x.** All 43 designs (37 tab bars and 6 panels) and the foundation are built. The foundation is on npm as [`react-native-tabcn`](https://www.npmjs.com/package/react-native-tabcn) (npm turned down the bare name `tabcn` as too close to `table`). Before 1.0, a minor release may change its API; the changelog says so when it does.
+> **Status: 0.x.** All 44 designs (38 tab bars and 6 panels) and the foundation are built. The foundation is on npm as [`react-native-tabcn`](https://www.npmjs.com/package/react-native-tabcn) (npm turned down the bare name `tabcn` as too close to `table`). Before 1.0, a minor release may change its API; the changelog says so when it does.
 
 ## How it works
 
@@ -61,7 +61,7 @@ The docs are on the site:
 - [Using with PanelUI](https://vanitascaesar1.github.io/tabcn/docs/panelui/): designs that follow a PanelUI theme
 - Guides: [Panels](https://vanitascaesar1.github.io/tabcn/docs/panels/) · [Sheets](https://vanitascaesar1.github.io/tabcn/docs/sheets/) · [Minimize on scroll](https://vanitascaesar1.github.io/tabcn/docs/minimize-on-scroll/) · [Companions](https://vanitascaesar1.github.io/tabcn/docs/companions/) · [Toasts](https://vanitascaesar1.github.io/tabcn/docs/toasts/) · [Sub-tabs](https://vanitascaesar1.github.io/tabcn/docs/sub-tabs/) · [Sheet navigation](https://vanitascaesar1.github.io/tabcn/docs/sheet-navigation/) · [Scrubbing](https://vanitascaesar1.github.io/tabcn/docs/scrubbing/) · [Live tabs](https://vanitascaesar1.github.io/tabcn/docs/live-tabs/)
 
-## The 43 designs
+## The 44 designs
 
 Every design animates: tap to see the active tab move. Click one to open its page, with the install command and a QR code for Expo Go.
 
@@ -86,7 +86,7 @@ Every design animates: tap to see the active tab move. Click one to open its pag
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/badge-dock/"><img src="assets/readme/badge-dock.gif" width="400" alt="Badge Dock tab bar"></a><br><b>Badge Dock</b><br><sub>Docked bar</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/cart-pill/"><img src="assets/readme/cart-pill.gif" width="400" alt="Cart Pill tab bar"></a><br><b>Cart Pill</b><br><sub>Pill + action button</sub></td></tr>
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/glass-badges/"><img src="assets/readme/glass-badges.gif" width="400" alt="Glass Badges tab bar"></a><br><b>Glass Badges</b><br><sub>Pill + action button</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/section-sheet/"><img src="assets/readme/section-sheet.gif" width="200" alt="Section Sheet tab bar"></a><br><b>Section Sheet</b><br><sub>Sheet</sub></td></tr>
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/scrub-pill/"><img src="assets/readme/scrub-pill.gif" width="400" alt="Scrub Pill tab bar"></a><br><b>Scrub Pill</b><br><sub>Floating pill</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/live-tabs/"><img src="assets/readme/live-tabs.gif" width="400" alt="Live Tabs tab bar"></a><br><b>Live Tabs</b><br><sub>Docked bar</sub></td></tr>
-<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/composer-dock/"><img src="assets/readme/composer-dock.gif" width="200" alt="Composer Dock tab bar"></a><br><b>Composer Dock</b><br><sub>Docked bar</sub></td><td width="50%"></td></tr>
+<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/composer-dock/"><img src="assets/readme/composer-dock.gif" width="200" alt="Composer Dock tab bar"></a><br><b>Composer Dock</b><br><sub>Docked bar</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/account-dock/"><img src="assets/readme/account-dock.gif" width="400" alt="Account Dock tab bar"></a><br><b>Account Dock</b><br><sub>Pill + action button</sub></td></tr>
 </table>
 
 ### Panels
@@ -113,7 +113,7 @@ tools/trace/       scripts that traced the designs' icons from the references
 
 ## Try it on your phone
 
-Install [Expo Go](https://expo.dev/go), then scan the QR code on any design's page on the site. It opens the example app, published with EAS Update, straight on that design. The app's gallery lists all 43, and its React Navigation screen runs each design under `@react-navigation/bottom-tabs`.
+Install [Expo Go](https://expo.dev/go), then scan the QR code on any design's page on the site. It opens the example app, published with EAS Update, straight on that design. The app's gallery lists all 44, and its React Navigation screen runs each design under `@react-navigation/bottom-tabs`.
 
 ## Development
 

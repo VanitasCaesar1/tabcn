@@ -59,6 +59,16 @@ const badge = { badge: 'destructive', badgeText: 'destructive-solid-foreground' 
  * left out: they draw white over photos or a fixed gradient, so their colours are the design.
  */
 export const panelUIColorMaps = {
+  'account-dock': {
+    surface: ['card', 0.97],
+    sheet: 'popover',
+    border: 'border',
+    capsule: 'secondary',
+    foreground: 'card-foreground',
+    muted: 'muted-foreground',
+    accent: 'primary',
+    ...badge,
+  },
   'accent-dark': {
     background: 'background',
     hairline: 'border',

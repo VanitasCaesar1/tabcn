@@ -782,6 +782,25 @@
       ]
     },
     {
+      "name": "account-dock",
+      "type": "registry:item",
+      "title": "Account Dock",
+      "description": "A floating pill of tabs with an account chip; tapping it folds the tabs into an account bar and raises a sheet to switch workspace or account and set a status. Needs a TabBarProvider.",
+      "dependencies": ["react-native-tabcn", "expo-haptics", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/account-dock/account-dock.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/account-dock.tsx"
+        },
+        {
+          "path": "registry/designs/account-dock/account-dock-icons.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/account-dock-icons.tsx"
+        }
+      ]
+    },
+    {
       "name": "mini-player",
       "type": "registry:item",
       "title": "Mini Player",

@@ -7,7 +7,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ComponentType, ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { BackHandler, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import {
@@ -93,8 +93,27 @@ function makeState(
  * Props a design can't render without, beyond `onActionPress`. Section Sheet's bodies are
  * keyed by route name (makeState names routes `tab-0`, `tab-1`…).
  */
+const ACCOUNT_DOCK_PROPS = {
+  workspaces: [
+    { id: 'north', name: 'Northwind Studio', detail: '342 members' },
+    { id: 'field', name: 'Field Notes', detail: '1,212 members' },
+  ],
+  workspaceId: 'north',
+  onWorkspaceChange: () => {},
+  accounts: [
+    { id: 'sam', name: 'Sam Rivera' },
+    { id: 'alex', name: 'Alex Moreau' },
+  ],
+  accountId: 'sam',
+  onAccountChange: () => {},
+  status: 'online',
+  onStatusChange: () => {},
+  haptics: false,
+};
+
 const REQUIRED_PROPS: Record<string, Record<string, unknown>> = {
   'section-sheet': { sections: { 'tab-0': <Text>First section</Text> } },
+  'account-dock': ACCOUNT_DOCK_PROPS,
 };
 
 // Theme items (PanelUI Colors) colour designs rather than being one.
@@ -347,5 +366,126 @@ describe('panels', () => {
       await fireEvent.press(screen.getByRole('button', { name: 'Close' }));
     });
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+// Account Dock -----------------------------------------------------------------------------
+
+const accountDock = require('../../../../registry/designs/account-dock/account-dock') as {
+  AccountDock: ComponentType<Record<string, unknown>>;
+};
+
+/** Account Dock under a provider, with three tabs and `activeIndex` selected. */
+function Dock({ activeIndex = 0, ...props }: { activeIndex?: number } & Record<string, unknown>) {
+  const { state } = makeState(3, activeIndex, []);
+  return (
+    <GestureHandlerRootView>
+      <TabBarProvider>
+        <Controls id="account-dock" />
+        <TabBarStateProvider value={state}>
+          <accountDock.AccountDock {...ACCOUNT_DOCK_PROPS} {...props} />
+        </TabBarStateProvider>
+      </TabBarProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+describe('account-dock', () => {
+  const chip = () => screen.getByLabelText(/^Account and workspace, Northwind Studio, Sam Rivera/);
+
+  async function openDock() {
+    await act(async () => {
+      await fireEvent.press(chip());
+    });
+    expect(controls['account-dock']?.state).toBe('open');
+  }
+
+  beforeEach(() => {
+    for (const key of Object.keys(controls)) delete controls[key];
+  });
+
+  it('opens from the chip with the workspaces, and choosing one keeps it open', async () => {
+    const onWorkspaceChange = jest.fn();
+    await render(<Dock onWorkspaceChange={onWorkspaceChange} />);
+    expect(chip().props.accessibilityState).toEqual({ expanded: false });
+    expect(shows('Field Notes')).toBe(false);
+    await openDock();
+    expect(shows('Workspaces')).toBe(true);
+    await act(async () => {
+      await fireEvent.press(screen.getByLabelText('Field Notes, 1,212 members'));
+    });
+    expect(onWorkspaceChange).toHaveBeenCalledWith('field');
+    expect(controls['account-dock']?.state).toBe('open');
+  });
+
+  it('switches to the accounts and sets a status from the radio group', async () => {
+    const onAccountChange = jest.fn();
+    const onStatusChange = jest.fn();
+    await render(<Dock onAccountChange={onAccountChange} onStatusChange={onStatusChange} />);
+    await openDock();
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Accounts'));
+    });
+    await act(async () => {
+      await fireEvent.press(screen.getByLabelText('Alex Moreau'));
+    });
+    expect(onAccountChange).toHaveBeenCalledWith('alex');
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    await act(async () => {
+      await fireEvent.press(screen.getByLabelText('Status, Online'));
+    });
+    const radios = screen.getAllByRole('radio');
+    expect(radios).toHaveLength(4);
+    expect(radios.filter((r) => r.props.accessibilityState?.checked)).toHaveLength(1);
+    await act(async () => {
+      await fireEvent.press(screen.getByLabelText('Idle'));
+    });
+    expect(onStatusChange).toHaveBeenCalledWith('idle');
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+  });
+
+  it('Android back closes the status menu first, then the dock', async () => {
+    const handlers: ((event: never) => boolean | null | undefined)[] = [];
+    const add = jest.spyOn(BackHandler, 'addEventListener').mockImplementation((_e, handler) => {
+      handlers.push(handler);
+      return {
+        remove: () => {
+          handlers.splice(handlers.indexOf(handler), 1);
+        },
+      };
+    });
+    // As React Native does: the latest listener first, until one handles it.
+    const back = () =>
+      act(async () => {
+        for (const handler of [...handlers].reverse()) if (handler(undefined as never)) return;
+      });
+    await render(<Dock />);
+    await openDock();
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Accounts'));
+    });
+    await act(async () => {
+      await fireEvent.press(screen.getByLabelText('Status, Online'));
+    });
+    expect(screen.getAllByRole('radio')).toHaveLength(4);
+    await back();
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    expect(controls['account-dock']?.state).toBe('open');
+    await back();
+    expect(controls['account-dock']?.state).toBe('hidden');
+    add.mockRestore();
+  });
+
+  it('folds back on a tab change, and opens on the workspaces next time', async () => {
+    const view = await render(<Dock activeIndex={0} />);
+    await openDock();
+    await act(async () => {
+      await fireEvent.press(screen.getByText('Accounts'));
+    });
+    await view.rerender(<Dock activeIndex={1} />);
+    expect(controls['account-dock']?.state).toBe('hidden');
+    await openDock();
+    expect(shows('Workspaces')).toBe(true);
+    expect(shows('Field Notes')).toBe(true);
   });
 });
