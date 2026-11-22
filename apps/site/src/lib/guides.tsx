@@ -110,6 +110,22 @@ function MyPlayer() {
             and the screen-reader escape gesture fold it, with no handling of its own.
           </p>
           <p>
+            Its fold animates only position, scale, opacity and colour. Reanimated can apply those
+            without updating React Native&rsquo;s view tree on every frame, once your app turns on
+            two of its build flags. Add them to your app&rsquo;s <Code>package.json</Code> and
+            rebuild the native app; Expo Go ignores them. We haven&rsquo;t measured the gain yet.
+          </p>
+          <CodeBlock
+            filename="package.json"
+            code={`"reanimated": {
+  "staticFeatureFlags": {
+    "IOS_SYNCHRONOUSLY_UPDATE_UI_PROPS": true,
+    "ANDROID_SYNCHRONOUSLY_UPDATE_UI_PROPS": true
+  }
+}
+`}
+          />
+          <p>
             For a switcher without changing your bar, put a chip against it with{' '}
             <Code>TabBarCompanion</Code> and open a <Design id="bar-sheet">Bar Sheet</Design> from
             it:
