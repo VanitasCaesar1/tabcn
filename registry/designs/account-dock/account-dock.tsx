@@ -32,8 +32,13 @@
  * The fold never resizes the bar: the tabs and chip set its size at rest, and every shape that
  * changes is drawn over that box and animated on the UI thread on `tabcnSpring` (critically
  * damped, no overshoot), so nothing the foundation measures moves and no JavaScript runs per
- * frame. Contents cross-fade halfway through; the sheet's lists and the status menu fade on
- * `tabcnTiming`. With "reduce motion" on, all of it is instant. While the sheet is open, the
+ * frame. Only transforms and opacity animate, so nothing is laid out per frame either: a pill
+ * that changes width is two round caps and a stretched middle strip, shadows cross-fade between
+ * where the pills rest, and the active tab's icon travels into the round button. Apps that turn
+ * on Reanimated's `IOS_SYNCHRONOUSLY_UPDATE_UI_PROPS` and `ANDROID_SYNCHRONOUSLY_UPDATE_UI_PROPS`
+ * static flags let these updates skip React Native's commit as well. The sheet's lists and the
+ * status menu fade on `tabcnTiming`, and a change of status cross-fades the avatar's dot. Pills
+ * shrink a little while pressed. With "reduce motion" on, all of it is instant. While the sheet is open, the
  * foundation hides the bar from screen readers, so the sheet carries every control: a header
  * that switches between the lists and a Status row; the pills in the bar are shortcuts.
  * Not drawn as a rail: on a tablet rail, panels aren't drawn, so the chip does nothing there.
@@ -58,9 +63,12 @@ import {
 } from 'react-native';
 import Animated, {
   interpolate,
+  ReduceMotion,
   type SharedValue,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
+  type WithTimingConfig,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -240,6 +248,12 @@ const GAP = 8;
 /** Text starts this far into a workspace or account pill. */
 const TEXT_START = INSET + MARK + 9;
 const ICON = 19;
+/** The icon in the round button: the active tab's, a little larger. */
+const ROUND_ICON = 22;
+/** A capsule's middle strip is drawn this wide and stretched with `scaleX`. */
+const STRIP = 100;
+/** A press shrinks a pill quickly, and it comes back on tabcnTiming. */
+const PRESS_IN: WithTimingConfig = { duration: 90, reduceMotion: ReduceMotion.System };
 const MIN_TAB_WIDTH = 50;
 /** Below this row width, the workspace pill drops its second line. */
 const NARROW = 340;
@@ -290,6 +304,12 @@ export function AccountDock({
   // 0 = tabs, 1 = account bar; `grow` widens the account pill while the accounts show.
   const progress = useSharedValue(0);
   const grow = useSharedValue(0);
+  const press = {
+    chip: useSharedValue(0),
+    round: useSharedValue(0),
+    ws: useSharedValue(0),
+    acct: useSharedValue(0),
+  };
   useEffect(() => {
     progress.value = withSpring(open ? 1 : 0, tabcnSpring);
   }, [open, progress]);
@@ -340,6 +360,8 @@ export function AccountDock({
     tick();
     setList('workspaces');
     setMenu(false);
+    // Start the fold on this frame; the effect on `open` only confirms it.
+    progress.value = withSpring(1, tabcnSpring);
     panel.open();
   };
   const showWorkspaces = () => {
@@ -381,15 +403,15 @@ export function AccountDock({
               open={open}
               colors={colors}
               labels={labels}
-              tabs={tabs}
-              activeTab={activeTab}
-              activeIndex={activeIndex}
               workspace={workspace}
               account={account}
               status={status}
               narrow={narrow}
+              press={press}
+              list={list}
               onRound={() => {
                 tick();
+                progress.value = withSpring(0, tabcnSpring);
                 panel.hide();
               }}
               onWorkspace={showWorkspaces}
@@ -404,7 +426,13 @@ export function AccountDock({
               <TabList style={[styles.pill, !ready && { backgroundColor: colors.surface }]}>
                 <TabIndicator style={[styles.capsule, { backgroundColor: colors.capsule }]} />
                 {tabs.map((tab) => (
-                  <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
+                  <Tab
+                    key={tab.key}
+                    tab={tab}
+                    colors={colors}
+                    haptics={haptics}
+                    progress={progress}
+                  />
                 ))}
               </TabList>
             </View>
@@ -412,6 +440,12 @@ export function AccountDock({
               ref={chipRef}
               onLayout={measure('chip')}
               onPress={openDock}
+              onPressIn={() => {
+                press.chip.value = withTiming(1, PRESS_IN);
+              }}
+              onPressOut={() => {
+                press.chip.value = withTiming(0, tabcnTiming);
+              }}
               accessibilityRole="button"
               accessibilityLabel={chipLabel}
               accessibilityState={{ expanded: open }}
@@ -427,6 +461,18 @@ export function AccountDock({
               )}
             </Pressable>
           </RestLayer>
+          {ready ? (
+            <TravellingIcon
+              frames={frames as Frames}
+              rowWidth={rowWidth}
+              progress={progress}
+              press={press.round}
+              tabCount={tabs.length}
+              activeIndex={activeIndex}
+              activeTab={activeTab}
+              color={colors.accent}
+            />
+          ) : null}
 
           {/* Layout B, twice: never seen, only measured. */}
           <Placeholder>
@@ -479,7 +525,7 @@ export function AccountDock({
   );
 }
 
-/** Layout A's content: fades out over the first half of the fold, and stops taking touches. */
+/** Layout A's content: fades out over the first third of the fold, and stops taking touches. */
 function RestLayer({
   progress,
   open,
@@ -490,7 +536,7 @@ function RestLayer({
   children: ReactNode;
 }) {
   const fade = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.45], [1, 0], 'clamp'),
+    opacity: interpolate(progress.value, [0, 0.3], [1, 0], 'clamp'),
   }));
   return (
     <Animated.View style={[styles.rest, fade]} pointerEvents={open ? 'none' : 'box-none'}>
@@ -513,22 +559,35 @@ function Placeholder({ children }: { children: ReactNode }) {
   );
 }
 
+/** A horizontal span of the bar, in points from its left edge: where a pill is drawn. */
+interface Span {
+  x: number;
+  w: number;
+}
+
+/** Which pill a press is on, for the press feedback. */
+type PressTarget = 'chip' | 'round' | 'ws' | 'acct';
+
 /**
  * The shapes that fold: the tab pill into the round button, the chip into the workspace pill,
- * the chip's avatar into the account pill. Each is an absolute view over the bar whose frame is
- * interpolated between the measured layouts on the UI thread.
+ * the chip's avatar into the account pill. Every animated style here is a transform or an
+ * opacity, so Reanimated updates the views directly on the UI thread: nothing is laid out and
+ * nothing is committed to React Native's tree while the dock folds. A pill of changing width is
+ * two round caps that move apart and a middle strip that stretches between them (a stretched
+ * circle would turn oval); shadows don't move at all, they cross-fade between where the pills
+ * rest. The container is laid out left to right, so every position here is physical (frames are
+ * measured from the left) and RTL is handled where a position is computed.
  */
 function Shapes({
   frames,
   rowWidth,
   progress,
   grow,
+  press,
   open,
+  list,
   colors,
   labels,
-  tabs,
-  activeTab,
-  activeIndex,
   workspace,
   account,
   status,
@@ -541,12 +600,11 @@ function Shapes({
   rowWidth: number;
   progress: SharedValue<number>;
   grow: SharedValue<number>;
+  press: Record<PressTarget, SharedValue<number>>;
   open: boolean;
+  list: List;
   colors: AccountDockColors;
   labels: AccountDockLabels;
-  tabs: readonly TabItem[];
-  activeTab: TabItem | undefined;
-  activeIndex: number;
   workspace: AccountDockWorkspace | undefined;
   account: AccountDockAccount | undefined;
   status: AccountStatus;
@@ -557,109 +615,143 @@ function Shapes({
 }) {
   const { pill, chip, round, ws, acct, ws2, acct2 } = frames;
   const rtl = I18nManager.isRTL;
-  // Frames are measured from the left edge; `start` is the leading edge, so mirror in RTL.
-  const place = (x: number, width: number) => {
+  const mid = rowWidth / 2;
+  // At rest the avatar's pill is the trailing end of the chip: its right end, or its left in RTL.
+  const restAcct: Span = { x: rtl ? chip.x : chip.x + chip.width - H, w: H };
+  // A mark sits INSET in from its pill's leading end; text starts TEXT_START in.
+  const leadX = (span: Span, inset: number, width: number) => {
     'worklet';
-    return rtl ? rowWidth - x - width : x;
+    return rtl ? span.x + span.w - inset - width : span.x + inset;
   };
-  // At rest, the avatar's pill sits at the chip's end, with the avatar where the chip draws it.
-  // Frames are physical (from the left), so the chip's trailing end is its left edge in RTL.
-  const rest: Frame = {
-    x: rtl ? chip.x : chip.x + chip.width - H,
-    y: chip.y,
-    width: H,
-    height: H,
-  };
-  // The active tab's centre, from the pill's leading edge, for the icon that travels into the
-  // round button. Tabs run from the leading edge in both directions.
-  const tabCount = Math.max(1, tabs.length);
-  const tabWidth = (pill.width - PAD_X * 2) / tabCount;
-  const tabCentre = PAD_X + (Math.max(0, activeIndex) + 0.5) * tabWidth;
 
-  const roundStyle = useAnimatedStyle(() => {
+  const wsTextWidth = Math.max(0, ws.width - TEXT_START - 14);
+  const acctTextWidth = Math.max(0, acct2.width - TEXT_START - 16);
+  const wsTextLeft = leadX({ x: ws.x, w: ws.width }, TEXT_START, wsTextWidth);
+  const acctTextLeft = leadX({ x: acct2.x, w: acct2.width }, TEXT_START, acctTextWidth);
+
+  const roundSpan = useDerivedValue<Span>(() => {
     const p = progress.value;
-    const width = lerp(pill.width, round.width, p);
-    return {
-      start: place(lerp(pill.x, round.x, p), width),
-      top: lerp(pill.y, round.y, p),
-      width,
-      height: lerp(pill.height, round.height, p),
-    };
+    return { x: lerp(pill.x, round.x, p), w: lerp(pill.width, round.width, p) };
   });
-  const roundIcon = useAnimatedStyle(() => {
-    const p = progress.value;
-    return {
-      opacity: interpolate(p, [0.35, 0.8], [0, 1], 'clamp'),
-      transform: [{ translateX: lerp((rtl ? -1 : 1) * (tabCentre - H / 2), 0, p) }],
-    };
-  });
-  const wsStyle = useAnimatedStyle(() => {
+  const wsSpan = useDerivedValue<Span>(() => {
     const p = progress.value;
     const g = grow.value;
-    const x = lerp(chip.x, lerp(ws.x, ws2.x, g), p);
-    const width = lerp(chip.width, lerp(ws.width, ws2.width, g), p);
-    return { start: place(x, width), top: lerp(chip.y, ws.y, p), width, height: H };
+    return {
+      x: lerp(chip.x, lerp(ws.x, ws2.x, g), p),
+      w: lerp(chip.width, lerp(ws.width, ws2.width, g), p),
+    };
   });
-  const acctStyle = useAnimatedStyle(() => {
+  const acctSpan = useDerivedValue<Span>(() => {
     const p = progress.value;
     const g = grow.value;
-    const x = lerp(rest.x, lerp(acct.x, acct2.x, g), p);
-    const width = lerp(rest.width, lerp(acct.width, acct2.width, g), p);
-    return { start: place(x, width), top: lerp(rest.y, acct.y, p), width, height: H };
+    return {
+      x: lerp(restAcct.x, lerp(acct.x, acct2.x, g), p),
+      w: lerp(restAcct.w, lerp(acct.width, acct2.width, g), p),
+    };
   });
-  const acctFill = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0.2, 0.7], [0, 1], 'clamp'),
+
+  // Press feedback: a pill shrinks a little about its own centre (the chip, about the chip's).
+  const pressed = (span: SharedValue<Span>, target: PressTarget, chipToo: boolean) => {
+    'worklet';
+    const own = span.value.x + span.value.w / 2 - mid;
+    const chipCentre = chip.x + chip.width / 2 - mid;
+    const s = 1 - 0.04 * press[target].value;
+    const c = 1 - 0.04 * (chipToo ? press.chip.value : 0);
+    return [
+      { translateX: chipCentre },
+      { scale: c },
+      { translateX: -chipCentre + own },
+      { scale: s },
+      { translateX: -own },
+    ];
+  };
+  const roundGroup = useAnimatedStyle(() => ({ transform: pressed(roundSpan, 'round', false) }));
+  const wsGroup = useAnimatedStyle(() => ({ transform: pressed(wsSpan, 'ws', true) }));
+  const acctGroup = useAnimatedStyle(() => ({
+    transform: pressed(acctSpan, 'acct', true),
   }));
-  // The workspace's name shows while the workspaces do; it gives way to the account's.
-  const openText = useAnimatedStyle(() => ({
+
+  const logoStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: leadX(wsSpan.value, INSET, MARK) }],
+  }));
+  const avatarStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: leadX(acctSpan.value, INSET, MARK) }],
+  }));
+  // The account pill's fill appears as it leaves the chip; at rest the chip's fill is behind it.
+  const acctFill = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.15, 0.6], [0, 1], 'clamp'),
+  }));
+  // Names fade in once their pill is nearly open, and the workspace's gives way to the account's.
+  // Text is laid out where its pill rests open and travels with the pill's leading end.
+  const wsText = useAnimatedStyle(() => ({
     opacity:
-      interpolate(progress.value, [0.55, 1], [0, 1], 'clamp') *
-      interpolate(grow.value, [0, 0.5], [1, 0], 'clamp'),
+      interpolate(progress.value, [0.65, 1], [0, 1], 'clamp') *
+      interpolate(grow.value, [0, 0.3], [1, 0], 'clamp'),
+    transform: [{ translateX: leadX(wsSpan.value, TEXT_START, wsTextWidth) - wsTextLeft }],
   }));
   const acctText = useAnimatedStyle(() => ({
-    opacity: interpolate(grow.value, [0.4, 1], [0, 1], 'clamp'),
+    opacity:
+      interpolate(grow.value, [0.55, 1], [0, 1], 'clamp') *
+      interpolate(progress.value, [0.7, 1], [0, 1], 'clamp'),
+    transform: [{ translateX: leadX(acctSpan.value, TEXT_START, acctTextWidth) - acctTextLeft }],
   }));
+  // Shadows stay put and cross-fade: at rest under the pill and chip, open under layout B.
+  const restShadow = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
+  const wsShadow = useAnimatedStyle(() => ({ opacity: progress.value * (1 - grow.value) }));
+  const acctShadow = useAnimatedStyle(() => ({ opacity: progress.value * grow.value }));
 
-  const surface = { backgroundColor: colors.surface, boxShadow: shadow };
-  const hidden = !open;
-  const a11y = {
-    importantForAccessibility: hidden ? ('no-hide-descendants' as const) : ('auto' as const),
-    accessibilityElementsHidden: hidden,
+  const fill = colors.surface;
+  const align = { textAlign: rtl ? ('right' as const) : ('left' as const) };
+  const wsFrame = list === 'accounts' ? ws2 : ws;
+  const acctFrame = list === 'accounts' ? acct2 : acct;
+  const hidden = {
+    importantForAccessibility: 'no-hide-descendants' as const,
+    accessibilityElementsHidden: true,
+  };
+  // The pressables are hidden from screen readers too: while the dock is open the foundation
+  // hides the bar, and the sheet carries the same controls.
+  const target = (frame: Frame) => ({ left: frame.x, width: frame.width });
+  const onPressIn = (t: PressTarget) => () => {
+    press[t].value = withTiming(1, PRESS_IN);
+  };
+  const onPressOut = (t: PressTarget) => () => {
+    press[t].value = withTiming(0, tabcnTiming);
   };
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents={open ? 'box-none' : 'none'}>
-      <AnimatedPressable
-        onPress={onRound}
-        accessibilityRole="button"
-        accessibilityLabel={[labels.backToTabs, activeTab?.label].filter(Boolean).join(', ')}
-        style={[styles.shape, surface, roundStyle]}
-        {...a11y}
-      >
-        <Animated.View style={[styles.roundIcon, roundIcon]}>
-          {activeTab?.renderIcon?.({ focused: true, color: colors.accent, size: ICON + 3 })}
-        </Animated.View>
-      </AnimatedPressable>
+    <View style={[StyleSheet.absoluteFill, styles.ltr]} pointerEvents="box-none" {...hidden}>
+      {/* Shadows: static, cross-faded. */}
+      <Animated.View style={[StyleSheet.absoluteFill, restShadow]} pointerEvents="none">
+        <View style={[styles.shadow, { left: pill.x, width: pill.width }]} />
+        <View style={[styles.shadow, { left: chip.x, width: chip.width }]} />
+      </Animated.View>
+      <Animated.View style={[StyleSheet.absoluteFill, wsShadow]} pointerEvents="none">
+        <View style={[styles.shadow, { left: round.x, width: round.width }]} />
+        <View style={[styles.shadow, { left: ws.x, width: ws.width }]} />
+        <View style={[styles.shadow, { left: acct.x, width: acct.width }]} />
+      </Animated.View>
+      <Animated.View style={[StyleSheet.absoluteFill, acctShadow]} pointerEvents="none">
+        <View style={[styles.shadow, { left: round.x, width: round.width }]} />
+        <View style={[styles.shadow, { left: ws2.x, width: ws2.width }]} />
+        <View style={[styles.shadow, { left: acct2.x, width: acct2.width }]} />
+      </Animated.View>
 
-      <AnimatedPressable
-        onPress={onWorkspace}
-        accessibilityRole="button"
-        accessibilityLabel={
-          workspace ? `${labels.workspaces}, ${workspace.name}` : labels.workspaces
-        }
-        style={[styles.shape, surface, wsStyle]}
-        {...a11y}
-      >
-        <View style={styles.markSlot}>
+      {/* The tab pill folding into the round button (its icon is drawn by TravellingIcon). */}
+      <Animated.View style={[styles.group, roundGroup]} pointerEvents="none">
+        <Capsule span={roundSpan} color={fill} />
+      </Animated.View>
+
+      {/* The chip stretching into the workspace pill. */}
+      <Animated.View style={[styles.group, wsGroup]} pointerEvents="none">
+        <Capsule span={wsSpan} color={fill} />
+        <Animated.View style={[styles.mark, logoStyle]}>
           {workspace ? <Mark item={workspace} size={MARK} square /> : null}
-        </View>
-        <Animated.View
-          style={[styles.wsText, { width: Math.max(0, ws.width - TEXT_START - 14) }, openText]}
-        >
+        </Animated.View>
+        <Animated.View style={[styles.text, { left: wsTextLeft }, { width: wsTextWidth }, wsText]}>
           <Text
             numberOfLines={1}
             maxFontSizeMultiplier={1.3}
-            style={[styles.name, { color: colors.foreground }]}
+            style={[styles.name, align, { color: colors.foreground }]}
           >
             {workspace?.name}
           </Text>
@@ -667,60 +759,167 @@ function Shapes({
             <Text
               numberOfLines={1}
               maxFontSizeMultiplier={1.3}
-              style={[styles.detail, { color: colors.muted }]}
+              style={[styles.detail, align, { color: colors.muted }]}
             >
               {workspace.detail}
             </Text>
           ) : null}
         </Animated.View>
-      </AnimatedPressable>
+      </Animated.View>
 
-      <AnimatedPressable
-        onPress={onAccount}
-        accessibilityRole="button"
-        accessibilityLabel={[labels.accounts, account?.name, labels[status]]
-          .filter(Boolean)
-          .join(', ')}
-        style={[styles.shape, acctStyle]}
-        {...a11y}
-      >
-        <Animated.View style={[StyleSheet.absoluteFill, styles.fill, surface, acctFill]} />
-        <View style={styles.markSlot}>
-          {account ? <Avatar account={account} status={status} colors={colors} /> : null}
-        </View>
-        <Animated.View style={[styles.acctText, acctText]}>
-          <AccountText account={account} statusLabel={labels[status]} colors={colors} />
+      {/* The avatar leaving the chip and growing into the account pill. */}
+      <Animated.View style={[styles.group, acctGroup]} pointerEvents="none">
+        <Animated.View style={[StyleSheet.absoluteFill, acctFill]}>
+          <Capsule span={acctSpan} color={fill} />
         </Animated.View>
-      </AnimatedPressable>
+        <Animated.View style={[styles.mark, avatarStyle]}>
+          {account ? <Avatar account={account} status={status} colors={colors} /> : null}
+        </Animated.View>
+        <Animated.View
+          style={[styles.text, { left: acctTextLeft }, { width: acctTextWidth }, acctText]}
+        >
+          <AccountText account={account} statusLabel={labels[status]} colors={colors} rtl={rtl} />
+        </Animated.View>
+      </Animated.View>
+
+      {/* Touch targets where the pills rest while open: static, so nothing is laid out per frame. */}
+      {open ? (
+        <>
+          <Pressable
+            style={[styles.target, target(round)]}
+            onPress={onRound}
+            onPressIn={onPressIn('round')}
+            onPressOut={onPressOut('round')}
+          />
+          <Pressable
+            style={[styles.target, target(wsFrame)]}
+            onPress={onWorkspace}
+            onPressIn={onPressIn('ws')}
+            onPressOut={onPressOut('ws')}
+          />
+          <Pressable
+            style={[styles.target, target(acctFrame)]}
+            onPress={onAccount}
+            onPressIn={onPressIn('acct')}
+            onPressOut={onPressOut('acct')}
+          />
+        </>
+      ) : null}
     </View>
   );
 }
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+/**
+ * The active tab's icon travelling into the round button, growing a little. It is drawn above
+ * the tabs (the shapes are below them, under the active tab's highlight), and the tab's own icon
+ * hides as soon as the fold starts, so it reads as one icon moving, not two cross-fading.
+ */
+function TravellingIcon({
+  frames,
+  rowWidth,
+  progress,
+  press,
+  tabCount,
+  activeIndex,
+  activeTab,
+  color,
+}: {
+  frames: Frames;
+  rowWidth: number;
+  progress: SharedValue<number>;
+  press: SharedValue<number>;
+  tabCount: number;
+  activeIndex: number;
+  activeTab: TabItem | undefined;
+  color: string;
+}) {
+  const { pill, round } = frames;
+  const rtl = I18nManager.isRTL;
+  const tabWidth = (pill.width - PAD_X * 2) / Math.max(1, tabCount);
+  const lead = PAD_X + (Math.max(0, activeIndex) + 0.5) * tabWidth;
+  const tabCentre = rtl ? pill.x + pill.width - lead : pill.x + lead;
+  const roundCentre = round.x + H / 2;
+  const style = useAnimatedStyle(() => {
+    const p = progress.value;
+    const centre = lerp(tabCentre, roundCentre, p);
+    // Pressing the round button shrinks it about its centre; the icon goes with it.
+    const pressed = 1 - 0.04 * press.value;
+    return {
+      opacity: p > 0.002 ? 1 : 0,
+      transform: [
+        { translateX: roundCentre - rowWidth / 2 },
+        { scale: pressed },
+        { translateX: centre - roundCentre },
+        { scale: lerp(ICON / ROUND_ICON, 1, p) },
+      ],
+    };
+  });
+  return (
+    <Animated.View
+      style={[StyleSheet.absoluteFill, styles.ltr, styles.iconLayer, style]}
+      pointerEvents="none"
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
+    >
+      {activeTab?.renderIcon?.({ focused: true, color, size: ROUND_ICON })}
+    </Animated.View>
+  );
+}
+
+/**
+ * A capsule over the span: two round caps moved by `translateX` and a middle strip stretched by
+ * `scaleX` between their centres, overlapping them by half a point so no seam shows.
+ */
+function Capsule({ span, color }: { span: SharedValue<Span>; color: string }) {
+  const start = useAnimatedStyle(() => ({ transform: [{ translateX: span.value.x }] }));
+  const end = useAnimatedStyle(() => ({
+    transform: [{ translateX: span.value.x + Math.max(span.value.w, H) - H }],
+  }));
+  const middle = useAnimatedStyle(() => {
+    const length = Math.max(0, span.value.w - H) + 1;
+    return {
+      transform: [
+        { translateX: span.value.x + Math.max(span.value.w, H) / 2 - STRIP / 2 },
+        { scaleX: length / STRIP },
+      ],
+    };
+  });
+  const fill = { backgroundColor: color };
+  return (
+    <>
+      <Animated.View style={[styles.strip, fill, middle]} />
+      <Animated.View style={[styles.cap, fill, start]} />
+      <Animated.View style={[styles.cap, fill, end]} />
+    </>
+  );
+}
 
 /** The account pill's two lines: the name and the current status. */
 function AccountText({
   account,
   statusLabel,
   colors,
+  rtl = false,
 }: {
   account: AccountDockAccount | undefined;
   statusLabel: string;
   colors: AccountDockColors;
+  rtl?: boolean;
 }) {
+  const align = { textAlign: rtl ? ('right' as const) : ('left' as const) };
   return (
     <View style={styles.acctLines}>
       <Text
         numberOfLines={1}
         maxFontSizeMultiplier={1.3}
-        style={[styles.name, { color: colors.foreground }]}
+        style={[styles.name, align, { color: colors.foreground }]}
       >
         {account?.name}
       </Text>
       <Text
         numberOfLines={1}
         maxFontSizeMultiplier={1.3}
-        style={[styles.detail, { color: colors.muted }]}
+        style={[styles.detail, align, { color: colors.muted }]}
       >
         {statusLabel}
       </Text>
@@ -754,22 +953,30 @@ function Tab({
   tab,
   colors,
   haptics,
+  progress,
 }: {
   tab: TabItem;
   colors: AccountDockColors;
   haptics: boolean;
+  progress: SharedValue<number>;
 }) {
   const color = tab.focused ? colors.accent : colors.foreground;
+  const focused = tab.focused;
+  // The active tab's icon leaves as the fold starts: the round button's icon takes its place
+  // and travels, so it reads as one icon moving.
+  const handOff = useAnimatedStyle(() => ({
+    opacity: focused && progress.value > 0.002 ? 0 : 1,
+  }));
   return (
     <TabButton
       tab={tab}
       style={styles.tab}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      <View style={styles.iconBox}>
+      <Animated.View style={[styles.iconBox, handOff]}>
         {tab.renderIcon?.({ focused: tab.focused, color, size: ICON })}
         <Badge badge={tab.badge} colors={colors} />
-      </View>
+      </Animated.View>
       <Text
         numberOfLines={1}
         maxFontSizeMultiplier={1.3}
@@ -897,16 +1104,15 @@ function StatusDot({
   ring: string;
 }) {
   const fill = colors[status];
+  // A ring for invisible, a solid dot otherwise; a change of status cross-fades the colour.
+  const centre = status === 'invisible' ? ring : fill;
+  const dot = useAnimatedStyle(() => ({
+    borderColor: withTiming(fill, tabcnTiming),
+    backgroundColor: withTiming(centre, tabcnTiming),
+  }));
   return (
     <View style={[styles.statusDot, { backgroundColor: ring }]}>
-      <View
-        style={[
-          styles.statusInner,
-          status === 'invisible'
-            ? { borderWidth: 2.5, borderColor: fill, backgroundColor: ring }
-            : { backgroundColor: fill },
-        ]}
-      />
+      <Animated.View style={[styles.statusInner, dot]} />
     </View>
   );
 }
@@ -1320,30 +1526,16 @@ const styles = StyleSheet.create({
   roundSlot: { width: H, height: H },
   wsSlot: { flex: 1, height: H },
   acctSlot: { flex: 1, height: H },
-  shape: {
-    position: 'absolute',
-    borderRadius: H / 2,
-    overflow: 'hidden',
-    justifyContent: 'center',
-  },
-  fill: { borderRadius: H / 2, boxShadow: shadow },
-  roundIcon: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    start: (H - ICON - 3) / 2,
-    justifyContent: 'center',
-  },
-  markSlot: { position: 'absolute', top: INSET, start: INSET },
-  wsText: { position: 'absolute', start: TEXT_START, top: 0, bottom: 0, justifyContent: 'center' },
-  acctText: {
-    position: 'absolute',
-    start: TEXT_START,
-    end: 16,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-  },
+  ltr: { direction: 'ltr' },
+  group: { position: 'absolute', left: 0, top: 0, right: 0, height: H },
+  cap: { position: 'absolute', left: 0, top: 0, width: H, height: H, borderRadius: H / 2 },
+  strip: { position: 'absolute', left: 0, top: 0, width: STRIP, height: H },
+  shadow: { position: 'absolute', top: 0, height: H, borderRadius: H / 2, boxShadow: shadow },
+  // A full-row layer whose centre is the row's: the icon sits there, and transforms move it.
+  iconLayer: { alignItems: 'center', justifyContent: 'center' },
+  mark: { position: 'absolute', left: 0, top: INSET },
+  text: { position: 'absolute', top: 0, bottom: 0, justifyContent: 'center' },
+  target: { position: 'absolute', top: 0, height: H, borderRadius: H / 2 },
   acctLines: { justifyContent: 'center' },
   name: { fontSize: 15, lineHeight: 19, fontWeight: '600' },
   detail: { fontSize: 12.5, lineHeight: 16 },
@@ -1359,7 +1551,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statusInner: { width: 12, height: 12, borderRadius: 6 },
+  statusInner: { width: 12, height: 12, borderRadius: 6, borderWidth: 2.5 },
   sheet: {
     borderRadius: 30,
     borderWidth: StyleSheet.hairlineWidth,
