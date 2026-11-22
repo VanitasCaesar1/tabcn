@@ -173,6 +173,16 @@ export const panelUIColorMaps = {
     inactive: 'muted-foreground',
     badge: 'destructive',
   },
+  'filter-chips': {
+    surface: 'popover',
+    control: 'secondary',
+    divider: 'border',
+    foreground: 'popover-foreground',
+    muted: 'muted-foreground',
+    accent: 'primary',
+    onAccent: 'primary-foreground',
+    chosen: ['primary', 0.14],
+  },
   'glass-badges': {
     background: ['card', 0.72],
     solid: ['card', 0.92],

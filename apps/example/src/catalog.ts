@@ -458,6 +458,16 @@ export const catalog: DesignEntry[] = [
     status: 'ready',
   },
   {
+    id: 'filter-chips',
+    ref: 0,
+    title: 'Filter Chips',
+    kind: 'panel',
+    layout: 'panel',
+    summary:
+      'A dark strip of filter chips that peeks out from behind the bar; tapping a chip grows the strip into a card of options, and Apply folds the choice back into the chip.',
+    status: 'ready',
+  },
+  {
     id: 'companion-chip',
     ref: 0,
     title: 'Companion Chip',

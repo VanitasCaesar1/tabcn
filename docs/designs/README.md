@@ -11,5 +11,6 @@ Write the design here before building anything that changes the public API of `t
 | [`composer-dock-split.md`](composer-dock-split.md): Composer Dock split into files of one registry item; same-item imports                                                                 | Approved 2026-11-21 |
 | [`panelui.md`](panelui.md): PanelUI Colors, every design's colours from a running PanelUI theme                                                                                            | Approved 2026-11-22 |
 | [`account-dock.md`](account-dock.md): Account Dock, a floating bar that folds into an account bar with a workspace and account sheet and a status menu                                     | Approved 2026-11-22 |
+| [`filter-chips.md`](filter-chips.md): Filter Chips, a strip of filter chips above the bar that grows into a card of options and folds the choice back into its chip                        | Approved 2026-11-23 |
 
 The npm package is published as `react-native-tabcn`: npm turned down `tabcn` as too close to `table`. Docs written before that (2026-11-21) say `tabcn` for the package and `tabcn/<entry>` for its entry points; read those as `react-native-tabcn` and `react-native-tabcn/<entry>`.
