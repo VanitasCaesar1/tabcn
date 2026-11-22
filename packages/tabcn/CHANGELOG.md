@@ -1,5 +1,20 @@
 # react-native-tabcn
 
+## 0.3.0
+
+### Minor Changes
+
+- b4b7498: `usePanelOverlap()` returns how much of a panel the bar's top edge hides: 16 pt under a floating bar, 0 under a docked one. A peeking panel adds it to the strip it wants to show, so the strip is the same height above either kind of bar.
+
+### Patch Changes
+
+- b4b7498: A floating bar whose root style is a row (a pill beside a round button, with a `gap`) is centred again under `TabBarProvider`. The box around the design kept the row while the provider's wrapper grew to fill it, so the row stretched to the screen's width and sat against the leading edge (the left, or the right in right-to-left layouts).
+- b4b7498: - `TabIndicator` and `useTabIndicator` sit on the active tab in right-to-left layouts: tab frames are physical, so the indicator is pinned to the physical left instead of the start edge.
+  - On the web, Escape returns an open panel to rest, as Android back does.
+  - A floating bar's box is capped at the screen's width, so a design's `maxWidth: '100%'` can shrink a bar that is wider than a narrow phone.
+  - A docked or rail bar keeps the design's `paddingHorizontal`/`padding`: it is added to the safe-area insets instead of being dropped by them.
+  - A panel that something else hides or moves while a finger drags it (Android back, a tab switch, `hide()`) stays where that put it when the finger lifts, instead of the drag reopening it.
+
 ## 0.2.0
 
 ### Minor Changes
