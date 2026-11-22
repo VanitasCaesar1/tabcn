@@ -59,7 +59,9 @@ const defaultColors = {
   placeholder: '#767676',
   /** Shadow under the tiles. The app has none; set a colour to lift them off a white page. */
   shadow: undefined as string | undefined,
+  /** Badge fill: Pinterest red. */
   badge: '#e60023',
+  /** Badge count text. */
   badgeText: '#ffffff',
 };
 
@@ -344,7 +346,11 @@ function FieldText({
   return (
     <View style={[styles.textBox, { marginRight }]}>
       <Fade key={`now-${change}`} from={change === 0 ? 1 : 0} to={1}>
-        <Text numberOfLines={1} style={[styles.text, font, { color: now.color }]}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[styles.text, font, { color: now.color }]}
+        >
           {now.text}
         </Text>
       </Fade>
@@ -352,6 +358,7 @@ function FieldText({
         <Fade key={`before-${change}`} from={1} to={0} onDone={onFaded} style={styles.textBefore}>
           <Text
             numberOfLines={1}
+            maxFontSizeMultiplier={1.3}
             accessibilityElementsHidden
             importantForAccessibility="no"
             style={[styles.text, font, { color: before.color }]}
@@ -460,7 +467,9 @@ function Badge({ tab, colors }: { tab: TabItem; colors: SearchDockColors }) {
       {typeof tab.badge === 'number' ? (
         <BadgeCount value={tab.badge} textStyle={[styles.badgeText, text]} />
       ) : (
-        <Text style={[styles.badgeText, text]}>{tab.badge}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={[styles.badgeText, text]}>
+          {tab.badge}
+        </Text>
       )}
     </View>
   );
@@ -475,8 +484,11 @@ const styles = StyleSheet.create({
   list: {
     gap: GAP,
   },
+  // Square tiles where they fit; with many tabs they narrow so the field keeps its room.
   tile: {
     width: TILE,
+    flexShrink: 1,
+    minWidth: 40,
     height: TILE,
     borderRadius: RADIUS,
     alignItems: 'center',
@@ -484,6 +496,7 @@ const styles = StyleSheet.create({
   },
   field: {
     flex: 1,
+    minWidth: 120,
     height: TILE,
     borderRadius: RADIUS,
   },

@@ -27,6 +27,7 @@
  * at 37.5 pt with the baseline at 45.5 pt. Labels: 11 pt medium (7.75 pt caps), about 6%
  * narrower than the system font, so tracked in a little. Bar #212220, hairline #0e0f0d,
  * screen behind it #141414, orange #fc5300 sampled (Strava's brand orange, #fc5200).
+ * The orange is kept as Strava has it, though on the light bar it is only 3.3:1 for labels.
  */
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useMemo } from 'react';
@@ -91,14 +92,21 @@ export interface AccentDarkProps {
   actionLabel?: string;
   /**
    * The action's icon, 24 pt, in the `foreground` colour, such as
-   * `<RecordIcon color="#ffffff" size={24} />` from this design's icons.
+   * `<RecordIcon color="#ffffff" size={24} />` from this design's icons. Pass a function to
+   * get that colour and size from the design, so the icon follows `colors`:
+   * `({ color, size }) => <RecordIcon color={color} size={size} />`.
    */
-  actionIcon?: ReactNode;
+  actionIcon?: ReactNode | ((props: { color: string; size: number }) => ReactNode);
   /**
    * Length of the outline-to-solid crossfade and label fade, in ms. Default 150. Pass 0 for
    * the app's instant swap.
    */
   duration?: number;
+  /**
+   * Label font, such as a condensed sans close to Strava's (Boathouse). Default: the system
+   * font at weight 500, tracked in a little.
+   */
+  fontFamily?: string;
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
@@ -119,6 +127,7 @@ export function AccentDark({
   actionLabel = 'Record',
   actionIcon,
   duration = 150,
+  fontFamily,
   haptics = true,
 }: AccentDarkProps) {
   const colors = { ...defaultColors, ...custom };
@@ -126,8 +135,10 @@ export function AccentDark({
   const timing = useMemo<WithTimingConfig>(() => ({ ...tabcnTiming, duration }), [duration]);
   // With an action, it takes the middle slot: two tabs on each side of four.
   const half = onActionPress ? Math.ceil(tabs.length / 2) : tabs.length;
+  // A passed font replaces the system font's weight 500: the font file carries its own.
+  const font = fontFamily ? { fontFamily, fontWeight: 'normal' as const } : null;
   const tab = (item: TabItem) => (
-    <Tab key={item.key} tab={item} colors={colors} timing={timing} haptics={haptics} />
+    <Tab key={item.key} tab={item} colors={colors} timing={timing} font={font} haptics={haptics} />
   );
 
   return (
@@ -142,6 +153,7 @@ export function AccentDark({
             icon={actionIcon}
             onPress={onActionPress}
             colors={colors}
+            font={font}
             haptics={haptics}
           />
         ) : null}
@@ -151,15 +163,19 @@ export function AccentDark({
   );
 }
 
+type LabelFont = { fontFamily: string; fontWeight: 'normal' } | null;
+
 function Tab({
   tab,
   colors,
   timing,
+  font,
   haptics,
 }: {
   tab: TabItem;
   colors: AccentDarkColors;
   timing: WithTimingConfig;
+  font: LabelFont;
   haptics: boolean;
 }) {
   const progress = useFocusProgress(tab, timing);
@@ -188,7 +204,11 @@ function Tab({
         </Animated.View>
         <Badge badge={tab.badge} colors={colors} />
       </View>
-      <Animated.Text numberOfLines={1} style={[styles.label, label]}>
+      <Animated.Text
+        numberOfLines={1}
+        maxFontSizeMultiplier={1.3}
+        style={[styles.label, font, label]}
+      >
         {tab.label}
       </Animated.Text>
     </TabButton>
@@ -204,12 +224,14 @@ function Action({
   icon,
   onPress,
   colors,
+  font,
   haptics,
 }: {
   label: string;
-  icon: ReactNode;
+  icon: AccentDarkProps['actionIcon'];
   onPress: () => void;
   colors: AccentDarkColors;
+  font: LabelFont;
   haptics: boolean;
 }) {
   const anchor = usePanelAnchor('action');
@@ -223,12 +245,15 @@ function Action({
       onPressIn={haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) : undefined}
       style={styles.tab}
     >
-      <View style={styles.icon}>{icon}</View>
+      <View style={styles.icon}>
+        {typeof icon === 'function' ? icon({ color: colors.foreground, size: ICON }) : icon}
+      </View>
       <Text
         numberOfLines={1}
+        maxFontSizeMultiplier={1.3}
         importantForAccessibility="no"
         accessibilityElementsHidden
-        style={[styles.label, { color: colors.foreground }]}
+        style={[styles.label, font, { color: colors.foreground }]}
       >
         {label}
       </Text>

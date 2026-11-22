@@ -14,7 +14,8 @@
  * `usePanelAnchor('action')`, so a `TabPanel` can open from it.
  *
  * The bar is opaque, as in the app: no glass or blur. `tilePlusDarkColors` is a dark scheme
- * guessed from the Threads dark theme; it is not measured.
+ * guessed from the Threads dark theme; it is not measured. The grey of the inactive icons
+ * is kept as the app has it (low contrast).
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  *
  * Measured on the app's App Store screenshots (393 pt wide screen, 2.4 px per pt). Five
@@ -65,6 +66,7 @@ const defaultColors = {
   action: '#a2a2a2',
   /** Not in the screenshots: badges follow the app's usual red. */
   badge: '#ff3040',
+  /** The count on a badge. */
   badgeText: '#ffffff',
 };
 
@@ -248,7 +250,7 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: TilePlusCol
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} style={textStyle}>
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
           {text}
         </Text>
       )}

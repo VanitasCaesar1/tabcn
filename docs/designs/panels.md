@@ -144,6 +144,10 @@ Rejected for this: an imperative global (`TabPanels.open(...)`); see Alternative
 -   **`anchor="bar"`** (default): the bar's own frame, measured by `TabBarRoot`'s inner container.
 -   **`anchor={{ name }}`**: a named element in a bar design, such as the + button. A design marks it with `usePanelAnchor(name)`, which returns `onLayout`/`ref` props that measure the element relative to `TabBarRoot` and store the frame in the provider. Bar designs with an action button (Labeled + Plus, Pill + Plus, Glow Glass, Segment + Search, Center CTA) get one `usePanelAnchor('action')` line each.
 
+### Overlap behind the bar
+
+(Amended 2026-11-22.) `overlap` was internal, so a panel that peeks had to assume the floating value: Mini Player sized its strip as 64 pt with 16 pt tucked behind the bar, and above a docked bar, where nothing is tucked, an empty 16 pt band showed under the strip. `usePanelOverlap()` now returns it: 16 pt under a floating bar, 0 under a docked one, and 16 before any bar reports (the old assumption). `TabBarRoot` publishes it through the provider's store, the same way it publishes `useTabBarInset()`, so it works where a panel is declared (outside the panel's own content). A peeking panel passes `peekHeight={strip + overlap}` and tucks `overlap` under its strip.
+
 ### Height reporting
 
 `TabBarRoot` already reports its height to the navigator. It will report `bar height + total visible peek height` whenever a panel is peeking or open. Open panels overlay content (like a sheet) and don't add their full height; only the peek is reserved, so content isn't hidden by a resting strip and doesn't jump when a panel opens.

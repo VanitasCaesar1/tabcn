@@ -4,7 +4,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { type ReactNode, useEffect } from 'react';
-import { AccessibilityInfo, BackHandler, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, BackHandler, Platform, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   createGestureController,
@@ -365,6 +365,37 @@ describe('panel accessibility', () => {
     expect(controls.create?.state).toBe('hidden');
     expect(handlers).toHaveLength(0);
     add.mockRestore();
+  });
+
+  it('on the web, Escape closes an open panel; other keys do nothing', async () => {
+    const listeners: ((event: { key: string }) => void)[] = [];
+    const doc = {
+      addEventListener: (_type: string, listener: (event: { key: string }) => void) => {
+        listeners.push(listener);
+      },
+      removeEventListener: (_type: string, listener: (event: { key: string }) => void) => {
+        listeners.splice(listeners.indexOf(listener), 1);
+      },
+    };
+    const os = jest.replaceProperty(Platform, 'OS', 'web');
+    const hadDocument = 'document' in globalThis;
+    const previous = (globalThis as { document?: unknown }).document;
+    (globalThis as { document?: unknown }).document = doc;
+    try {
+      await render(<App state={makeTabState()} panels={[{ id: 'create' }]} />);
+      expect(listeners).toHaveLength(0);
+      await act(async () => controls.create?.open());
+      expect(listeners).toHaveLength(1);
+      await act(async () => listeners[0]?.({ key: 'Enter' }));
+      expect(controls.create?.state).toBe('open');
+      await act(async () => listeners[0]?.({ key: 'Escape' }));
+      expect(controls.create?.state).toBe('hidden');
+      expect(listeners).toHaveLength(0);
+    } finally {
+      os.restore();
+      if (hadDocument) (globalThis as { document?: unknown }).document = previous;
+      else delete (globalThis as { document?: unknown }).document;
+    }
   });
 });
 
@@ -786,5 +817,42 @@ describe('react-native-tabcn/gestures', () => {
       pan.end({ translationY: 220, velocityY: 0 });
     });
     expect(controls.player?.state).toBe('peek');
+  });
+
+  it('a panel hidden while a finger drags it stays hidden when the finger lifts', async () => {
+    await render(
+      <GestureHandlerRootView>
+        <App state={makeTabState()}>
+          <Player />
+          <Controls id="player" />
+        </App>
+      </GestureHandlerRootView>,
+    );
+    await layoutBar();
+    await layoutPanel('player', 300);
+    await act(async () => controls.player?.peek());
+    const pan = createGestureController(getByGestureTestId('tabcn-drag-player'));
+    await act(async () => {
+      pan.begin();
+      pan.activate();
+      pan.update({ translationY: -40 });
+    });
+    // Something else hides it mid-drag (Android back, a tab switch, a hide() call).
+    await act(async () => controls.player?.hide());
+    expect(controls.player?.state).toBe('hidden');
+    await act(async () => {
+      // An upward flick that would open it on its own.
+      pan.end({ translationY: -40, velocityY: -1200 });
+    });
+    expect(controls.player?.state).toBe('hidden');
+    // The next drag starts fresh and works as before.
+    await act(async () => controls.player?.peek());
+    await act(async () => {
+      pan.begin();
+      pan.activate();
+      pan.update({ translationY: -40 });
+      pan.end({ translationY: -40, velocityY: -1200 });
+    });
+    expect(controls.player?.state).toBe('open');
   });
 });

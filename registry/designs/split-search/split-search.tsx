@@ -10,15 +10,24 @@
  * active tab's icon, while the search circle stays; scrolling up, or tapping the minimized
  * circle (`useRestoreTabBar`, no tab change), brings the full pill back.
  *
- * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS, and a
- * translucent white tint on Android (no blur there). Force one with `material`.
+ * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS and on
+ * the web, and a translucent white tint on Android (no blur there). Force one with `material`.
+ * The system blue of the active tab is kept as the app has it (low contrast on the capsule).
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  I18nManager,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
@@ -54,6 +63,7 @@ const defaultColors = {
   glassTint: undefined as string | undefined,
   /** The 0.4 pt white rim of the blur and tint surfaces (Liquid Glass draws its own). */
   rim: '#ffffff',
+  /** The soft drop shadow under the pill and the search circle. */
   shadow: 'rgba(0, 0, 0, 0.08)',
   /** The flat selection capsule: #e9e9ed over the pill, as iOS's tertiary fill. */
   capsule: 'rgba(118, 118, 128, 0.13)',
@@ -61,7 +71,9 @@ const defaultColors = {
   foreground: '#191919',
   /** Active icon and label: iOS 26 system blue. */
   active: '#0088ff',
+  /** The count badge at an icon's top right. */
   badge: '#ff3b30',
+  /** The count on a badge. */
   badgeText: '#ffffff',
 };
 
@@ -73,7 +85,7 @@ type Surface = Exclude<SplitSearchMaterial, 'auto'>;
 
 export interface SplitSearchProps {
   colors?: Partial<SplitSearchColors>;
-  /** Default `auto`: glass where available, blur on older iOS, tint on Android. */
+  /** Default `auto`: glass where available, blur on older iOS and the web, tint on Android. */
   material?: SplitSearchMaterial;
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
@@ -105,7 +117,7 @@ const ICON_DROP = BAR / 2 - ICON_CENTER;
 function resolveMaterial(material: SplitSearchMaterial): Surface {
   if (material !== 'auto') return material;
   if (isLiquidGlassAvailable()) return 'glass';
-  return Platform.OS === 'ios' ? 'blur' : 'tint';
+  return Platform.OS === 'android' ? 'tint' : 'blur';
 }
 
 export function SplitSearch({
@@ -123,8 +135,9 @@ export function SplitSearch({
   const labelWidths = useSharedValue<Record<number, number>>({});
 
   // The last route is Search, drawn as its own circle; the rest share the pill.
-  const pillTabs = tabs.slice(0, -1);
   const search = tabs.length > 1 ? tabs[tabs.length - 1] : undefined;
+  // With a single visible tab there is no Search circle, and that tab sits in the pill.
+  const pillTabs = search ? tabs.slice(0, -1) : tabs;
   const count = Math.max(1, pillTabs.length);
   const pillWidth = Math.max(BAR, window.width - insets.left - insets.right - SIDE * 2 - GAP - BAR);
   const slot = (pillWidth - INSET * 2) / count;
@@ -136,7 +149,12 @@ export function SplitSearch({
   if (activeIndex >= 0 && activeIndex < pillTabs.length && activeIndex !== kept) {
     setKept(activeIndex);
   }
-  const keptCenter = INSET + slot * (kept + 0.5);
+  // Tabs can go away (a route hidden at runtime); keep the capsule on a pill tab.
+  const keptSlot = Math.min(kept, count - 1);
+  // The row runs right to left in RTL, so the first tab is the rightmost slot. The centre is
+  // measured from the pill's physical left, where the row and the capsule are pinned.
+  const physicalSlot = I18nManager.isRTL ? count - 1 - keptSlot : keptSlot;
+  const keptCenter = INSET + slot * (physicalSlot + 0.5);
 
   // While minimized, the circle is one button that expands the bar (as iOS 26 does); the
   // tabs inside it take no taps and aren't read.
@@ -172,12 +190,14 @@ export function SplitSearch({
         <Animated.View style={[styles.pill, shadow, pillStyle]}>
           <Glass surface={surface} colors={colors} />
           <View style={[StyleSheet.absoluteFill, styles.round, styles.clip]}>
-            <Animated.View style={[styles.row, { width: pillWidth }, rowStyle]}>
+            <Animated.View style={[styles.row, PHYSICAL_LEFT, { width: pillWidth }, rowStyle]}>
               <Capsule
                 kept={kept}
                 center={keptCenter}
                 pillWidth={pillWidth}
-                searchActive={search?.focused ?? false}
+                slot={slot}
+                // No pill tab is active while Search is, or while a hidden route is focused.
+                searchActive={(search?.focused ?? false) || activeIndex < 0}
                 minimized={minimized}
                 color={colors.capsule}
                 labelWidths={labelWidths}
@@ -258,6 +278,7 @@ function Capsule({
   kept,
   center,
   pillWidth,
+  slot,
   searchActive,
   minimized,
   color,
@@ -266,6 +287,7 @@ function Capsule({
   kept: number;
   center: number;
   pillWidth: number;
+  slot: number;
   searchActive: boolean;
   minimized: SharedValue<number>;
   color: string;
@@ -284,7 +306,10 @@ function Capsule({
     () => {
       const label = labelWidths.value[kept];
       if (label === undefined) return null;
-      const w = Math.min(pillWidth - INSET * 2, Math.max(CAPSULE_MIN, label + CAPSULE_PAD * 2));
+      // The least width never reaches past the slot's own 4 pt margins: on a narrow screen
+      // a short label's capsule would otherwise cover its neighbours.
+      const least = Math.min(CAPSULE_MIN, slot + INSET * 2);
+      const w = Math.min(pillWidth - INSET * 2, Math.max(least, label + CAPSULE_PAD * 2));
       const left = Math.min(Math.max(center - w / 2, INSET), pillWidth - INSET - w);
       return { left, w };
     },
@@ -312,7 +337,7 @@ function Capsule({
   return (
     <Animated.View
       pointerEvents="none"
-      style={[styles.capsule, { backgroundColor: color }, style]}
+      style={[styles.capsule, PHYSICAL_LEFT, { backgroundColor: color }, style]}
     />
   );
 }
@@ -376,6 +401,7 @@ function PillTab({
       <View pointerEvents="none" style={styles.labelBox}>
         <Animated.Text
           numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
           style={[styles.label, label]}
           onLayout={(e) => {
             const w = e.nativeEvent.layout.width;
@@ -453,11 +479,23 @@ function Badge({ tab, colors }: { tab: TabItem; colors: SplitSearchColors }) {
       {typeof tab.badge === 'number' ? (
         <BadgeCount value={tab.badge} textStyle={[styles.badgeText, text]} />
       ) : (
-        <Text style={[styles.badgeText, text]}>{tab.badge}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={[styles.badgeText, text]}>
+          {tab.badge}
+        </Text>
       )}
     </View>
   );
 }
+
+/**
+ * The row and the capsule are placed by physical offsets from the pill's left edge, but in a
+ * right-to-left layout React Native reads `left` as the start edge, the right, unless the app
+ * turned that swap off. Pin them to the physical left either way.
+ */
+const PHYSICAL_LEFT =
+  I18nManager.isRTL && (I18nManager.getConstants?.().doLeftAndRightSwapInRTL ?? true)
+    ? { right: 0 }
+    : { left: 0 };
 
 const styles = StyleSheet.create({
   root: {
@@ -482,7 +520,6 @@ const styles = StyleSheet.create({
   },
   row: {
     position: 'absolute',
-    left: 0,
     top: 0,
     height: BAR,
     flexDirection: 'row',
@@ -490,7 +527,6 @@ const styles = StyleSheet.create({
   },
   capsule: {
     position: 'absolute',
-    left: 0,
     top: INSET,
     height: BAR - INSET * 2,
     borderRadius: (BAR - INSET * 2) / 2,

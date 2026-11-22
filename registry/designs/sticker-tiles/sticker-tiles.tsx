@@ -17,10 +17,16 @@ import {
 } from 'react-native-tabcn';
 
 const defaultColors = {
+  /** The bar, which also fills the home-indicator area. */
   background: '#27799f',
+  /** The tile that slides behind the active tab. */
   tile: 'rgba(255, 255, 255, 0.33)',
+  /** Every tab's label (the stickers keep their own colours). */
   label: '#ffffff',
+  /** The badge dot. */
   badge: '#ff4d57',
+  /** The ring round the badge dot. */
+  badgeRing: '#ffffff',
 };
 
 export type StickerTilesColors = typeof defaultColors;
@@ -29,6 +35,7 @@ export interface StickerTilesProps {
   colors?: Partial<StickerTilesColors>;
   /** Label font, e.g. a rounded bold sans. Default: system font, weight 700. */
   fontFamily?: string;
+  /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
 
@@ -73,12 +80,13 @@ function Tab({
           <Animated.View
             entering={badgeIn}
             exiting={badgeOut}
-            style={[styles.badge, { backgroundColor: colors.badge }]}
+            style={[styles.badge, { backgroundColor: colors.badge, borderColor: colors.badgeRing }]}
           />
         ) : null}
       </View>
       <Text
         numberOfLines={1}
+        maxFontSizeMultiplier={1.3}
         style={[
           styles.label,
           { color: colors.label },
@@ -115,7 +123,8 @@ const styles = StyleSheet.create({
   bar: { height: 68.4, paddingHorizontal: 3.5 },
   tile: { borderRadius: 16, borderCurve: 'continuous' },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1, paddingTop: 1 },
-  label: { fontSize: 10.6 },
+  // A fixed line box, so the label sits the same in Nunito (the demo) and the system font.
+  label: { fontSize: 10.6, lineHeight: 14 },
   systemWeight: { fontWeight: '700' },
   badge: {
     position: 'absolute',
@@ -125,6 +134,5 @@ const styles = StyleSheet.create({
     height: 15,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#ffffff',
   },
 });

@@ -5,7 +5,7 @@
  * Specs: docs/designs/panels.md, docs/designs/bottom-components.md (Sheets).
  */
 import { type ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, BackHandler, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, BackHandler, Platform, StyleSheet, View } from 'react-native';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -29,6 +29,15 @@ import {
   warnOnce,
 } from './provider';
 import type { TabFrame } from './TabList';
+
+/** Where a panel rests, to tell whether something moved it during a drag. */
+const dragStamp = (panel: { state: string; snap: number }) => `${panel.state}:${panel.snap}`;
+
+/** The bit of the DOM's `document` the web Escape handler uses (the package has no DOM types). */
+interface KeyTarget {
+  addEventListener(type: 'keydown', listener: (event: { key: string }) => void): void;
+  removeEventListener(type: 'keydown', listener: (event: { key: string }) => void): void;
+}
 
 /** Where the root sits on screen, so sheets can size themselves without measuring the window. */
 export interface SheetGeometry {
@@ -227,6 +236,9 @@ function PanelView({
   const lastKey = useRef<string | null>(null);
   // Where the store's state puts the panel, for a drag the store doesn't accept (see `settle`).
   const glideTarget = useRef(target);
+  // The panel's state and snap when a drag took it. If something else moves the panel during
+  // the drag (Android back, a tab switch, \`hide()\`), the drag must not undo that on release.
+  const dragStart = useRef<string | null>(null);
   const lastModal = useRef(false);
   const contentRef = useRef<ComponentRef<typeof View>>(null);
 
@@ -318,8 +330,14 @@ function PanelView({
       restVisible,
       minVisible,
       stops,
+      begin: () => {
+        const current = store.getSnapshot().panels.find((p) => p.id === id);
+        dragStart.current = current ? dragStamp(current) : null;
+      },
       settle: (stop: number) => {
         const current = store.getSnapshot().panels.find((p) => p.id === id);
+        const started = dragStart.current;
+        dragStart.current = null;
         if (!current) return;
         if (current.leaving) {
           // Released mid-drag: the drag cancelled the slide out, so slide out again and
@@ -329,6 +347,12 @@ function PanelView({
             'worklet';
             if (finished) runOnJS(remove)();
           });
+          return;
+        }
+        if (started !== null && started !== dragStamp(current)) {
+          // Moved by something else while the finger was down: that wins. Glide to where the
+          // store has the panel now instead of the stop the drag was let go at.
+          visible.value = withSpring(glideTarget.current, tabcnSpring);
           return;
         }
         if (stop <= 0) store.setPanelState(id, restingState(current));
@@ -361,6 +385,17 @@ function PanelView({
       return true;
     });
     return () => sub.remove();
+  }, [open, store, id, rest]);
+
+  // On the web, Escape does what Android back does: an open panel returns to rest.
+  useEffect(() => {
+    const doc = (globalThis as { document?: KeyTarget }).document;
+    if (!open || Platform.OS !== 'web' || !doc) return;
+    const onKey = (event: { key: string }) => {
+      if (event.key === 'Escape' && store.isNavigatorFocused()) store.setPanelState(id, rest);
+    };
+    doc.addEventListener('keydown', onKey);
+    return () => doc.removeEventListener('keydown', onKey);
   }, [open, store, id, rest]);
 
   const contentStyle = useAnimatedStyle(() => ({

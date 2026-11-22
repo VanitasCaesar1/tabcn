@@ -13,6 +13,7 @@ import {
   appear,
   COMPOSER_GAP,
   type ComposerDockColors,
+  type ComposerDockLabels,
   disappear,
   fade,
   GLASS_STYLE,
@@ -23,6 +24,7 @@ import {
 export function Composer({
   composerRef,
   colors,
+  labels,
   placeholder,
   model,
   onModelPress,
@@ -35,6 +37,7 @@ export function Composer({
 }: {
   composerRef: ViewRef;
   colors: ComposerDockColors;
+  labels: ComposerDockLabels;
   placeholder: string;
   model?: string;
   onModelPress?: () => void;
@@ -65,7 +68,7 @@ export function Composer({
   const plus = onAttachPress ? (
     <CircleButton
       key="plus"
-      label="Add files and more"
+      label={labels.addFiles}
       onPress={onAttachPress}
       glass={glass}
       tint={colors.glassTint}
@@ -76,7 +79,7 @@ export function Composer({
   const dictate = onDictatePress ? (
     <CircleButton
       key="dictate"
-      label="Dictate"
+      label={labels.dictate}
       onPress={onDictatePress}
       glass={glass}
       tint={colors.glassTint}
@@ -84,24 +87,26 @@ export function Composer({
       <MicGlyph color={colors.dictate} />
     </CircleButton>
   ) : null;
-  const action = (
-    <CircleButton
-      key="action"
-      label={hasText ? 'Send' : 'Voice mode'}
-      onPress={hasText ? send : onVoicePress}
-      background={colors.foreground}
-    >
-      {hasText ? (
-        <Animated.View key="send" entering={appear} exiting={disappear}>
-          <ArrowUpGlyph color={colors.onForeground} />
-        </Animated.View>
-      ) : (
-        <Animated.View key="voice" entering={appear} exiting={disappear}>
-          <WaveGlyph color={colors.onForeground} />
-        </Animated.View>
-      )}
-    </CircleButton>
-  );
+  // Send while there is text; otherwise the voice button, only when it has something to do.
+  const action =
+    hasText || onVoicePress ? (
+      <CircleButton
+        key="action"
+        label={hasText ? labels.send : labels.voiceMode}
+        onPress={hasText ? send : onVoicePress}
+        background={colors.foreground}
+      >
+        {hasText ? (
+          <Animated.View key="send" entering={appear} exiting={disappear}>
+            <ArrowUpGlyph color={colors.onForeground} />
+          </Animated.View>
+        ) : (
+          <Animated.View key="voice" entering={appear} exiting={disappear}>
+            <WaveGlyph color={colors.onForeground} />
+          </Animated.View>
+        )}
+      </CircleButton>
+    ) : null;
 
   return (
     <Animated.View
@@ -160,9 +165,10 @@ export function Composer({
             {model ? (
               <Pressable
                 role="button"
-                accessibilityLabel={`Model, ${model}`}
+                accessibilityLabel={labels.model(model)}
                 onPress={onModelPress}
-                hitSlop={6}
+                // 28 pt tall: the slop brings the touch target to 44 pt.
+                hitSlop={8}
                 style={[styles.chip, glass ? null : { backgroundColor: colors.control }]}
               >
                 {glass ? (
@@ -209,7 +215,8 @@ function CircleButton({
       role="button"
       accessibilityLabel={label}
       onPress={onPress}
-      hitSlop={4}
+      // 34 pt wide: the slop brings the touch target to 44 pt.
+      hitSlop={5}
       style={({ pressed }) => [
         styles.circle,
         background ? { backgroundColor: background } : null,

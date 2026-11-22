@@ -14,18 +14,23 @@
  * leaves them out there, so on tablets their `peek()` and `open()` change state but show
  * nothing. Give those screens another way to reach the player or the create actions.
  *
- * Motion: the pill glides to the new tab on tabcn's critically damped spring (vertically on
- * the rail, sideways in the bottom bar) while the icons crossfade from outlined to filled and
- * the colours change. Nothing scales or bounces. Drive itself grows the new pill out of its
- * centre; the glide is tabcn's variant. With "reduce motion" on, every change is instant.
+ * Motion: as in Drive and Material 3, the new tab's pill grows out of its centre (from half
+ * its width to full, fading in, on tabcnTiming) while the old one shrinks back and fades out,
+ * and the icons crossfade from outlined to filled and the colours change. Nothing bounces.
+ * With "reduce motion" on, every change is instant.
+ * Changed for clarity: earlier copies glided one pill between tabs (a departure from Drive);
+ * it now grows out of the tab's centre the way Drive's does.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { ScrollView, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import Animated, {
+  Easing,
   FadeIn,
   FadeOut,
+  interpolate,
   interpolateColor,
+  ReduceMotion,
   useAnimatedStyle,
 } from 'react-native-reanimated';
 import {
@@ -35,9 +40,9 @@ import {
   TabButton,
   type TabItem,
   TabList,
+  tabcnTiming,
   useFocusProgress,
   useTabBar,
-  useTabIndicator,
 } from 'react-native-tabcn';
 
 /** Google's Material 3 light tokens, as measured on the screenshots. */
@@ -116,6 +121,14 @@ const BARE_FAB_TOP = MENU_TOP + 4;
 const BAR = 80;
 const BAR_PILL = 64;
 const BAR_PAD = 12;
+/** The new pill starts at this fraction of its width and grows out of its centre to full. */
+const PILL_FROM = 0.5;
+
+/** Badges fade in and out on tabcn's timing (200 ms ease-out); instant with reduce motion. */
+const FADE_MS = tabcnTiming.duration ?? 200;
+const FADE_EASING = tabcnTiming.easing ?? Easing.bezier(0.25, 0.1, 0.25, 1);
+const badgeIn = FadeIn.duration(FADE_MS).easing(FADE_EASING).reduceMotion(ReduceMotion.System);
+const badgeOut = FadeOut.duration(FADE_MS).easing(FADE_EASING).reduceMotion(ReduceMotion.System);
 
 export function SideRail({
   onMenuPress,
@@ -236,19 +249,21 @@ function Rail({
           )}
         </PressableScale>
       ) : null}
-      <TabList style={[styles.railList, { marginTop: listMargin }]}>
-        <Pill width={PILL} top={TAB_PAD} color={colors.indicator} />
-        {tabs.map((tab) => (
-          <Tab
-            key={tab.key}
-            tab={tab}
-            colors={colors}
-            haptics={haptics}
-            pillWidth={PILL}
-            style={styles.railTab}
-          />
-        ))}
-      </TabList>
+      {/* A short rail (a phone in landscape) scrolls instead of pushing tabs off the bottom. */}
+      <ScrollView style={styles.railScroll} showsVerticalScrollIndicator={false} bounces={false}>
+        <TabList style={[styles.railList, { marginTop: listMargin }]}>
+          {tabs.map((tab) => (
+            <Tab
+              key={tab.key}
+              tab={tab}
+              colors={colors}
+              haptics={haptics}
+              pillWidth={PILL}
+              style={styles.railTab}
+            />
+          ))}
+        </TabList>
+      </ScrollView>
     </TabBarRoot>
   );
 }
@@ -258,7 +273,6 @@ function Bar({ colors, haptics }: { colors: SideRailColors; haptics: boolean }) 
   return (
     <TabBarRoot placement="docked" style={{ backgroundColor: colors.background }}>
       <TabList style={styles.barList}>
-        <Pill width={BAR_PILL} top={BAR_PAD} color={colors.indicator} />
         {tabs.map((tab) => (
           <Tab
             key={tab.key}
@@ -271,28 +285,6 @@ function Bar({ colors, haptics }: { colors: SideRailColors; haptics: boolean }) 
         ))}
       </TabList>
     </TabBarRoot>
-  );
-}
-
-/**
- * The active pill: a fixed size, centred across the active tab at `top` inside it. It follows
- * the tab's measured frame on tabcnSpring, so it only ever slides.
- */
-function Pill({ width, top, color }: { width: number; top: number; color: string }) {
-  const { activeIndex } = useTabBar();
-  const frame = useTabIndicator();
-  const style = useAnimatedStyle(() => ({
-    opacity: frame.ready.value && activeIndex >= 0 ? 1 : 0,
-    transform: [
-      { translateX: frame.x.value + (frame.width.value - width) / 2 },
-      { translateY: frame.y.value + top },
-    ],
-  }));
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[styles.pill, { width, backgroundColor: color }, style]}
-    />
   );
 }
 
@@ -309,8 +301,15 @@ function Tab({
   pillWidth: number;
   style: StyleProp<ViewStyle>;
 }) {
-  // Outlined to filled, grey to blue; nothing moves or changes size.
+  // Outlined to filled, grey to blue; the icon and label don't move or change size.
   const progress = useFocusProgress(tab);
+  // The pill grows out of its centre: scaleX from PILL_FROM to 1 as it fades in (and back as
+  // it fades out). A transform only, so the layout never changes; it is drawn inside the tab's
+  // own slot, so it lines up in right-to-left layouts too.
+  const pill = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ scaleX: interpolate(progress.value, [0, 1], [PILL_FROM, 1]) }],
+  }));
   const outlined = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
   const filled = useAnimatedStyle(() => ({ opacity: progress.value }));
   const label = useAnimatedStyle(() => ({
@@ -326,6 +325,15 @@ function Tab({
       {({ pressed }) => (
         <>
           <View style={[styles.slot, { width: pillWidth }]}>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFill,
+                styles.round,
+                { backgroundColor: colors.indicator },
+                pill,
+              ]}
+            />
             {pressed ? (
               <View
                 style={[StyleSheet.absoluteFill, styles.round, { backgroundColor: colors.pressed }]}
@@ -341,7 +349,11 @@ function Tab({
               <Badge badge={tab.badge} colors={colors} />
             </View>
           </View>
-          <Animated.Text numberOfLines={1} style={[styles.label, label]}>
+          <Animated.Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.3}
+            style={[styles.label, label]}
+          >
             {tab.label}
           </Animated.Text>
         </>
@@ -360,8 +372,8 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SideRailCol
   if (!text) {
     return (
       <Animated.View
-        entering={FadeIn.duration(160)}
-        exiting={FadeOut.duration(120)}
+        entering={badgeIn}
+        exiting={badgeOut}
         style={[styles.dot, { backgroundColor: colors.badge }]}
       />
     );
@@ -369,14 +381,14 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SideRailCol
   const textStyle = [styles.badgeText, { color: colors.badgeText }];
   return (
     <Animated.View
-      entering={FadeIn.duration(160)}
-      exiting={FadeOut.duration(120)}
+      entering={badgeIn}
+      exiting={badgeOut}
       style={[styles.count, { backgroundColor: colors.badge }]}
     >
       {/^\d+$/.test(text) ? (
         <BadgeCount value={Number(text)} max={999} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} style={textStyle}>
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
           {text}
         </Text>
       )}
@@ -385,6 +397,7 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SideRailCol
 }
 
 const styles = StyleSheet.create({
+  railScroll: { flexShrink: 1 },
   rail: {
     alignItems: 'center',
   },
@@ -452,13 +465,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingTop: BAR_PAD,
-  },
-  pill: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    height: PILL_HEIGHT,
-    borderRadius: PILL_HEIGHT / 2,
   },
   slot: {
     height: PILL_HEIGHT,

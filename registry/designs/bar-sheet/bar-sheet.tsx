@@ -2,7 +2,8 @@
  * Bar Sheet: a sheet that grows out of the tab bar, for a profile, a comments thread or a
  * filters list. It rises from the bottom edge, passing behind the bar, to its lowest snap
  * point; dragging the header moves it between snap points, and dragging below the lowest
- * one slides it away. At its highest snap point the body scrolls; at the body's top a
+ * one slides it away. Tapping the grabber moves it to the next snap point up, and from the
+ * highest back to the lowest. At its highest snap point the body scrolls; at the body's top a
  * downward drag moves the sheet again. The bar stays visible over the sheet's lower edge.
  *
  * It is a `TabPanel` with snap points, so it needs a `TabBarProvider` around the tabs
@@ -41,6 +42,7 @@ import 'react-native-gesture-handler';
 import {
   type AccessibilityActionEvent,
   AccessibilityInfo,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -64,7 +66,9 @@ const defaultColors = {
   /** The title. */
   foreground: '#141416',
   /** The subtitle. */
-  muted: 'rgba(20, 20, 22, 0.55)',
+  muted: 'rgba(20, 20, 22, 0.62)',
+  /** The soft shadow the sheet casts upward. */
+  shadow: 'rgba(0, 0, 0, 0.08)',
 };
 
 export type BarSheetColors = typeof defaultColors;
@@ -183,14 +187,25 @@ function SheetBody({
   const screenReader = useScreenReader();
 
   // The sheet belongs to what's on screen, so switching tabs slides it away. (The content
-  // renders inside the tab bar, so it can read the bar's state.)
-  const { activeIndex } = useTabBar();
-  const lastActive = useRef(activeIndex);
+  // renders inside the tab bar, so it can read the bar's state.) Tabs are told apart by route
+  // key, not position, so tabs added or removed around the focused one don't close it. The
+  // sheet belongs to the tab focused when it opened: to open it on another tab, open it from
+  // that tab's screen once it's showing, not in the same handler that navigates there.
+  const { tabs, activeIndex } = useTabBar();
+  const focusedKey = tabs[activeIndex]?.key ?? null;
+  const open = snap >= 0;
+  const openedOn = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    if (lastActive.current === activeIndex) return;
-    lastActive.current = activeIndex;
-    hide();
-  }, [activeIndex, hide]);
+    if (!open) {
+      openedOn.current = undefined;
+      return;
+    }
+    if (openedOn.current === undefined) {
+      openedOn.current = focusedKey;
+      return;
+    }
+    if (openedOn.current !== focusedKey) hide();
+  }, [open, focusedKey, hide]);
 
   // One selection haptic each time the sheet settles at another height.
   const previous = useRef(snap);
@@ -208,6 +223,13 @@ function SheetBody({
     }
   };
 
+  // A tap on the grabber steps up a snap point, and from the highest back to the lowest.
+  // Screen-reader users adjust it instead, since the sheet stays at its highest for them.
+  const onGrabberPress = () => {
+    if (screenReader || snap < 0) return;
+    snapTo(snap >= last ? 0 : snap + 1);
+  };
+
   return (
     <View
       style={[
@@ -215,6 +237,7 @@ function SheetBody({
         {
           backgroundColor: colors.surface,
           borderColor: colors.border,
+          boxShadow: `0 -6px 24px ${colors.shadow}`,
           borderTopLeftRadius: radius,
           borderTopRightRadius: radius,
         },
@@ -222,15 +245,8 @@ function SheetBody({
     >
       <PanelDragArea>
         <View style={styles.header}>
-          <View
-            accessible
-            accessibilityRole="adjustable"
-            accessibilityLabel={`${title} sheet`}
-            accessibilityValue={{ text: heightName(snapPoints[snap], snap === last) }}
-            accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-            onAccessibilityAction={onAction}
-            style={styles.grabberArea}
-          >
+          {/* Holds the grabber's place; the control itself is drawn over it, below. */}
+          <View style={styles.grabberArea}>
             <View style={[styles.grabber, { backgroundColor: colors.grabber }]} />
           </View>
           <View style={styles.titleRow}>
@@ -250,6 +266,17 @@ function SheetBody({
             </View>
             {accessory}
           </View>
+          {/* The grabber's control: a 44 pt target over the small bar, drawn last so it is on
+              top. It overlaps the title's top edge, which takes no taps. */}
+          <Pressable
+            accessibilityRole="adjustable"
+            accessibilityLabel={`${title} sheet`}
+            accessibilityValue={{ text: heightName(snapPoints[snap], snap === last) }}
+            accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+            onAccessibilityAction={onAction}
+            onPress={onGrabberPress}
+            style={styles.grabberTarget}
+          />
         </View>
       </PanelDragArea>
       <PanelScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
@@ -265,7 +292,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderCurve: 'continuous',
     overflow: 'hidden',
-    boxShadow: '0 -6px 24px rgba(0, 0, 0, 0.08)',
   },
   header: {
     paddingHorizontal: 20,
@@ -273,9 +299,17 @@ const styles = StyleSheet.create({
   },
   grabberArea: {
     alignSelf: 'center',
-    // A comfortable touch target around a small grabber.
     paddingVertical: 10,
     paddingHorizontal: 24,
+  },
+  // The grabber's touch target: 44 pt tall and 88 pt wide, centred on the grabber.
+  grabberTarget: {
+    position: 'absolute',
+    top: 0,
+    left: '50%',
+    width: 88,
+    height: 44,
+    marginLeft: -44,
   },
   grabber: {
     width: 36,

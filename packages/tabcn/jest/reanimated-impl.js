@@ -99,6 +99,7 @@ module.exports = {
   useReducedMotion: () => false,
   // No keyboard under Jest: height 0, closed.
   useAnimatedKeyboard: () => ({ height: { value: 0 }, state: { value: 0 } }),
+  KeyboardState: { UNKNOWN: 0, OPENING: 1, OPEN: 2, CLOSING: 3, CLOSED: 4 },
   FadeIn: builder(),
   FadeOut: builder(),
   ZoomIn: builder(),

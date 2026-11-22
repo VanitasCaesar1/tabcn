@@ -31,26 +31,31 @@
  * should be heard.
  *
  * The ring fades in and out on tabcnTiming and fills as the progress is written; the live
- * line crossfades with the label; nothing scales, bounces or turns. With "reduce motion" on
- * the fades are instant.
+ * line crossfades with the label; a tab's icon and label colours crossfade as it gains or
+ * loses focus; nothing scales, bounces or turns. With "reduce motion" on the fades are instant.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
+  interpolate,
+  interpolateColor,
   useAnimatedProps,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import {
+  BadgeCount,
   TabBarRoot,
   TabButton,
   type TabItem,
   TabList,
   tabcnTiming,
+  useFocusProgress,
   useLiveTab,
   useTabBar,
 } from 'react-native-tabcn';
@@ -62,23 +67,29 @@ const defaultColors = {
   border: 'rgba(0, 0, 0, 0.08)',
   /** The active tab's icon and label. */
   foreground: '#151517',
-  /** The other tabs' icons and labels. */
-  muted: 'rgba(21, 21, 23, 0.5)',
-  /** Live text, its dot and the filled part of the ring. */
-  accent: '#e8590c',
+  /** The other tabs' icons and labels (5:1 on the default bar). */
+  muted: 'rgba(21, 21, 23, 0.62)',
+  /** Live text, its dot and the filled part of the ring (5.2:1 on the default bar). */
+  accent: '#c2410c',
   /** The ring's unfilled track. */
   track: 'rgba(0, 0, 0, 0.08)',
+  /** Badge fill (iOS system red), ringed in `background`. */
+  badge: '#ff3b30',
+  /** The count on a badge. */
+  badgeText: '#ffffff',
 };
 
 export type LiveTabsColors = typeof defaultColors;
 
 export interface LiveTabsProps {
   colors?: Partial<LiveTabsColors>;
-  /** A selection haptic on tab press. Default true. */
+  /** Label and live-text font. Default: the system font at weight 600. */
+  fontFamily?: string;
+  /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
 
-export function LiveTabs({ colors: custom, haptics = true }: LiveTabsProps) {
+export function LiveTabs({ colors: custom, fontFamily, haptics = true }: LiveTabsProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
   return (
@@ -88,7 +99,13 @@ export function LiveTabs({ colors: custom, haptics = true }: LiveTabsProps) {
     >
       <TabList style={styles.row}>
         {tabs.map((tab) => (
-          <LiveTab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
+          <LiveTab
+            key={tab.key}
+            tab={tab}
+            colors={colors}
+            fontFamily={fontFamily}
+            haptics={haptics}
+          />
         ))}
       </TabList>
     </TabBarRoot>
@@ -107,22 +124,42 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 function LiveTab({
   tab,
   colors,
+  fontFamily,
   haptics,
 }: {
   tab: TabItem;
   colors: LiveTabsColors;
+  fontFamily: string | undefined;
   haptics: boolean;
 }) {
   const live = useLiveTab(tab.routeName);
   const { progress } = live;
   const text = live.text?.trim() ? live.text : undefined;
-  const color = tab.focused ? colors.foreground : colors.muted;
+  const font = fontFamily ? { fontFamily } : styles.semibold;
 
-  // The ring shows only while something is in progress (between 0 and 1, exclusive).
-  const ringStyle = useAnimatedStyle(() => {
-    const p = progress.value;
-    return { opacity: withTiming(p > 0 && p < 1 ? 1 : 0, tabcnTiming) };
-  });
+  // Icon and label colours crossfade with focus. The focused icon fades in over the muted
+  // one, which stays opaque until the last stretch, so the glyph never dims half-way.
+  const focus = useFocusProgress(tab);
+  const mutedIcon = useAnimatedStyle(() => ({
+    opacity: interpolate(focus.value, [0.8, 1], [1, 0], 'clamp'),
+  }));
+  const focusedIcon = useAnimatedStyle(() => ({ opacity: focus.value }));
+  const labelColor = useAnimatedStyle(() => ({
+    color: interpolateColor(focus.value, [0, 1], [colors.muted, colors.foreground]),
+  }));
+
+  // The ring shows only while something is in progress (between 0 and 1, exclusive). The fade
+  // starts only when that changes, not on every write of the progress.
+  // On the first run (no previous value) it is set at once, so a tab mounts as it stands.
+  const ring = useSharedValue(0);
+  useAnimatedReaction(
+    () => progress.value > 0 && progress.value < 1,
+    (active, previous) => {
+      if (previous === null) ring.value = active ? 1 : 0;
+      else if (active !== previous) ring.value = withTiming(active ? 1 : 0, tabcnTiming);
+    },
+  );
+  const ringStyle = useAnimatedStyle(() => ({ opacity: ring.value }));
   const ringProps = useAnimatedProps(() => {
     const p = Math.min(1, Math.max(0, progress.value));
     return { strokeDashoffset: CIRCUMFERENCE * (1 - p) };
@@ -168,13 +205,23 @@ function LiveTab({
             />
           </Svg>
         </Animated.View>
-        {tab.renderIcon?.({ focused: tab.focused, color, size: ICON })}
+        <Animated.View style={[StyleSheet.absoluteFill, styles.center, mutedIcon]}>
+          {tab.renderIcon?.({ focused: false, color: colors.muted, size: ICON })}
+        </Animated.View>
+        <Animated.View style={[StyleSheet.absoluteFill, styles.center, focusedIcon]}>
+          {tab.renderIcon?.({ focused: true, color: colors.foreground, size: ICON })}
+        </Animated.View>
+        <Badge badge={tab.badge} colors={colors} />
       </View>
       <View style={styles.lines}>
         <Animated.View style={[styles.line, labelStyle]}>
-          <Text numberOfLines={1} style={[styles.label, { color }]}>
+          <Animated.Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.3}
+            style={[styles.label, font, labelColor]}
+          >
             {tab.label}
-          </Text>
+          </Animated.Text>
         </Animated.View>
         <Animated.View
           style={[styles.line, StyleSheet.absoluteFill, liveStyle]}
@@ -182,12 +229,44 @@ function LiveTab({
           accessibilityElementsHidden
         >
           <View style={[styles.dot, { backgroundColor: colors.accent }]} />
-          <Text numberOfLines={1} style={[styles.label, styles.live, { color: colors.accent }]}>
+          <Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.3}
+            style={[styles.label, font, styles.live, { color: colors.accent }]}
+          >
             {text ?? ''}
           </Text>
         </Animated.View>
       </View>
     </TabButton>
+  );
+}
+
+/**
+ * A badge on the icon's top right, over the ring: a dot for an empty badge, a count otherwise.
+ * The tab's accessibility label already reads it.
+ */
+function Badge({ badge, colors }: { badge: TabItem['badge']; colors: LiveTabsColors }) {
+  if (badge == null) return null;
+  const text = String(badge).trim();
+  const fill = { backgroundColor: colors.badge, borderColor: colors.background };
+  if (text === '') return <View pointerEvents="none" style={[styles.badgeDot, fill]} />;
+  const textStyle = [styles.badgeText, { color: colors.badgeText }];
+  return (
+    <View
+      pointerEvents="none"
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
+      style={[styles.badge, fill]}
+    >
+      {typeof badge === 'number' ? (
+        <BadgeCount value={badge} textStyle={textStyle} />
+      ) : (
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+          {text}
+        </Text>
+      )}
+    </View>
   );
 }
 
@@ -212,6 +291,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   quarterTurn: {
     transform: [{ rotate: '-90deg' }],
   },
@@ -233,8 +316,33 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 10,
+  },
+  semibold: {
     fontWeight: '600',
   },
+  // The icon's top right inside the ring's box: the icon runs from 6 to 28 pt.
+  badgeDot: {
+    position: 'absolute',
+    top: 4,
+    left: (RING + ICON) / 2 - 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+  },
+  badge: {
+    position: 'absolute',
+    top: 0,
+    left: RING / 2 + 3,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { fontSize: 10, lineHeight: 13, fontWeight: '700', includeFontPadding: false },
   live: {
     fontVariant: ['tabular-nums'],
   },

@@ -4,15 +4,18 @@
  * active one, whose icon and label turn near-black while the others stay grey. Beside it
  * sits a round glass button with a thin grey plus that runs an action instead of switching
  * tabs. The pair spans the screen with 20 pt side margins and sits 21 pt above the bottom
- * edge of the screen, inside the home-indicator area, as the system bar does.
+ * edge of the screen, inside the home-indicator area, as the system bar does. Where there is
+ * no home indicator (Android navigation bars), it keeps 8 pt clear of the system area.
+ * The light greys of the inactive tabs and the plus are kept as the app has them (low
+ * contrast).
  *
  * Motion: the capsule glides on tabcnSpring with no overshoot or stretch, and icons and labels
  * crossfade grey to near-black; nothing scales or lifts. The plus dims at once on touch and
  * fades back on release. Reduce motion makes all of it instant. The plus is marked with
  * `usePanelAnchor('action')`, so a `TabPanel` can open from it.
  *
- * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS, and a
- * translucent light tint on Android (no blur there). Force one with `material`.
+ * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS and on
+ * the web, and a translucent light tint on Android (no blur there). Force one with `material`.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
@@ -49,7 +52,11 @@ const defaultColors = {
   glassTint: 'rgba(255, 255, 255, 0.78)',
   /** Hairline edge of the blur and tint surfaces (Liquid Glass draws its own). */
   border: 'rgba(0, 0, 0, 0.07)',
+  /** The 1 pt bright line along the top inside edge of the blur and tint surfaces. */
+  sheen: 'rgba(255, 255, 255, 0.9)',
+  /** The soft drop shadow under the pill and the plus button. */
   shadow: 'rgba(0, 0, 0, 0.08)',
+  /** The capsule behind the active tab. */
   capsule: 'rgba(0, 0, 0, 0.065)',
   /** Active icon and label. */
   foreground: '#1a1a1a',
@@ -57,6 +64,7 @@ const defaultColors = {
   inactive: '#aaaaaa',
   /** The plus glyph. */
   action: '#b9b9b9',
+  /** The dot drawn for a tab's badge. */
   badge: '#ff3b30',
 };
 
@@ -72,7 +80,7 @@ export interface LabeledPlusProps {
   /** Screen-reader label for the plus button. Default "Create". */
   actionLabel?: string;
   colors?: Partial<LabeledPlusColors>;
-  /** Default `auto`: glass where available, blur on older iOS, tint on Android. */
+  /** Default `auto`: glass where available, blur on older iOS and the web, tint on Android. */
   material?: LabeledPlusMaterial;
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
@@ -100,7 +108,7 @@ const BADGE_EASING = Easing.bezier(0.25, 0.1, 0.25, 1);
 function resolveMaterial(material: LabeledPlusMaterial): Surface {
   if (material !== 'auto') return material;
   if (isLiquidGlassAvailable()) return 'glass';
-  return Platform.OS === 'ios' ? 'blur' : 'tint';
+  return Platform.OS === 'android' ? 'tint' : 'blur';
 }
 
 export function LabeledPlus({
@@ -119,9 +127,13 @@ export function LabeledPlus({
   const glyphOpacity = useSharedValue(1);
   const glyph = useAnimatedStyle(() => ({ opacity: glyphOpacity.value }));
 
+  // The app's bar sits 21 pt above the screen edge, inside the home indicator's inset.
+  // Elsewhere (no inset, Android navigation bars) it keeps clear of the system area.
+  const bottom = Math.max(BOTTOM, Platform.OS === 'ios' ? insets.bottom - 13 : insets.bottom + 8);
+
   return (
     // The offset is from the safe area, so subtract the inset to measure from the screen edge.
-    <TabBarRoot placement="floating" offset={BOTTOM - insets.bottom} style={styles.row}>
+    <TabBarRoot placement="floating" offset={bottom - insets.bottom} style={styles.row}>
       <View style={[styles.pill, shadow]}>
         <Glass surface={surface} colors={colors} />
         <TabList style={styles.list}>
@@ -182,7 +194,12 @@ function Glass({ surface, colors }: { surface: Surface; colors: LabeledPlusColor
         <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} />
       </View>
       <View
-        style={[StyleSheet.absoluteFill, styles.round, styles.rim, { borderColor: colors.border }]}
+        style={[
+          StyleSheet.absoluteFill,
+          styles.round,
+          styles.rim,
+          { borderColor: colors.border, boxShadow: `inset 0 1px 0 ${colors.sheen}` },
+        ]}
       />
     </View>
   );
@@ -230,7 +247,7 @@ function Tab({
           />
         ) : null}
       </View>
-      <Animated.Text numberOfLines={1} style={[styles.label, label]}>
+      <Animated.Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.label, label]}>
         {tab.label}
       </Animated.Text>
     </TabButton>
@@ -261,7 +278,6 @@ const styles = StyleSheet.create({
   },
   rim: {
     borderWidth: StyleSheet.hairlineWidth,
-    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.9)',
   },
   capsule: {
     borderRadius: 999,

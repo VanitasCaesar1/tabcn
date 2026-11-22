@@ -32,6 +32,7 @@ import { tabcnTiming } from './motion';
 import { PanelLayer, type SheetGeometry } from './PanelLayer';
 import {
   anyPanelOpen,
+  DEFAULT_PANEL_OVERLAP,
   modalPanel,
   type Snapshot,
   useStoreSelector,
@@ -113,6 +114,23 @@ const PADDING_KEYS = [
   'paddingInlineEnd',
 ] as const;
 const NO_PADDING = Object.fromEntries(PADDING_KEYS.map((key) => [key, 0])) as ViewStyle;
+
+/**
+ * A floating box under a provider leaves its content layout to the children's wrapper. Kept as
+ * a row, the box would grow the wrapper (`flexGrow: 1`) along it to the screen's width, so a
+ * design whose root is a row (a pill and a round button) sat against the leading edge instead
+ * of centred.
+ */
+const NO_CONTENT_LAYOUT: ViewStyle = {
+  flexDirection: 'column',
+  flexWrap: 'nowrap',
+  alignItems: 'stretch',
+  alignContent: 'flex-start',
+  justifyContent: 'flex-start',
+  gap: 0,
+  rowGap: 0,
+  columnGap: 0,
+};
 
 const selectSnapshot = (s: Snapshot) => s;
 
@@ -339,20 +357,43 @@ export function TabBarRoot({
 
   // The padding of the box the design's children sit in: the root's, or for a floating bar
   // the design's own `style`.
+  const flatStyle = (StyleSheet.flatten(style) ?? {}) as ViewStyle;
+  // An edge's inset plus the design's own padding on it. The root sets each edge explicitly,
+  // and an explicit edge wins over `paddingHorizontal`/`padding` whatever their order, so a
+  // design's shorthand padding would be dropped; add it here instead. A design that sets the
+  // edge itself (`paddingLeft`) keeps full control, as before.
+  const edge = (side: 'Top' | 'Bottom' | 'Left' | 'Right', inset: number) => {
+    if (flatStyle[`padding${side}`] !== undefined) return inset;
+    const axis =
+      side === 'Left' || side === 'Right' ? flatStyle.paddingHorizontal : flatStyle.paddingVertical;
+    const own = axis ?? flatStyle.padding;
+    return inset + (typeof own === 'number' ? own : 0);
+  };
   const basePadding: ViewStyle =
     placement === 'docked'
-      ? { paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }
+      ? {
+          paddingBottom: edge('Bottom', insets.bottom),
+          paddingLeft: edge('Left', insets.left),
+          paddingRight: edge('Right', insets.right),
+        }
       : rail
-        ? { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left }
+        ? {
+            paddingTop: edge('Top', insets.top),
+            paddingBottom: edge('Bottom', insets.bottom),
+            paddingLeft: edge('Left', insets.left),
+          }
         : {};
-
-  const flatStyle = (StyleSheet.flatten(style) ?? {}) as ViewStyle;
 
   // A floating bar's rounded ends hide the join; a docked bar's top edge is straight. An
   // empty floating bar (zero height, as under a sheet that stands in for the bar) hides
   // nothing, so panels meet its top edge exactly and the visible strip matches the height
   // the bar reports.
-  const overlap = floating && (barFrame === null || barFrame.height > 0) ? 16 : 0;
+  const overlap =
+    floating && (barFrame === null || barFrame.height > 0) ? DEFAULT_PANEL_OVERLAP : 0;
+  // Panels read it (`usePanelOverlap`) to size what they show above the bar.
+  useEffect(() => {
+    store?.setOverlap(overlap);
+  }, [store, overlap]);
   // Sheets size themselves from where the root sits on screen. The root's size is the settled
   // one, so a minimizing bar doesn't move a sheet's heights on every frame.
   const geometry: SheetGeometry | null = rootSize
@@ -486,7 +527,9 @@ export function TabBarRoot({
       >
         {panels}
         <View
-          style={[style, boxPadding]}
+          // Centred, the box would size to its content and never learn the screen's width, so
+          // a design's `maxWidth: '100%'` couldn't shrink a bar wider than a narrow phone.
+          style={[styles.floatingBox, style, boxPadding, provider ? NO_CONTENT_LAYOUT : null]}
           onLayout={
             store
               ? (e) => {
@@ -535,3 +578,7 @@ export function TabBarRoot({
     </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  floatingBox: { maxWidth: '100%' },
+});

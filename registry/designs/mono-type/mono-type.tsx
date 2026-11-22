@@ -35,11 +35,15 @@ import {
 } from 'react-native-tabcn';
 
 const defaultColors = {
+  /** The bar, which also fills the home-indicator area, and the rule's paper flecks. */
   background: '#ffffff',
   /** The inked rule along the top edge. */
   rule: '#000000',
+  /** The active tab's icon and label. */
   accent: '#b615a3',
+  /** The other tabs' icons and labels. */
   foreground: '#2a2a2c',
+  /** The badge dot. */
   badge: '#b615a3',
 };
 
@@ -52,6 +56,7 @@ export interface MonoTypeProps {
    * load `IBMPlexMono_400Regular` and pass it here). Default: Menlo on iOS, monospace elsewhere.
    */
   fontFamily?: string;
+  /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
 
@@ -162,7 +167,15 @@ function Tab({
           style={[styles.badge, { backgroundColor: colors.badge }, badge]}
         />
       </View>
-      <Animated.Text numberOfLines={1} style={[styles.label, { fontFamily }, label]}>
+      {/* A long label (TRANSITS on a 320 pt screen) shrinks a little to fit its slot rather
+          than being cut short; at the app's widths it never needs to. */}
+      <Animated.Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+        maxFontSizeMultiplier={1.3}
+        style={[styles.label, { fontFamily }, label]}
+      >
         {tab.label.toUpperCase()}
       </Animated.Text>
     </TabButton>

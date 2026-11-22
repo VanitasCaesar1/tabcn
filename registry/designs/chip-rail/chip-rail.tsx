@@ -7,8 +7,8 @@
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { type ComponentRef, type ReactNode, useEffect, useRef } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { type ComponentRef, type ReactNode, useCallback, useEffect, useRef } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -17,6 +17,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import {
+  BadgeCount,
   TabBarRoot,
   TabButton,
   TabIndicator,
@@ -27,12 +28,22 @@ import {
 } from 'react-native-tabcn';
 
 const defaultColors = {
+  /** The docked bar, running under the home indicator. */
   background: '#070707',
+  /** Fill of the inactive chips. */
   chip: '#151515',
+  /** 1 pt edge of the inactive chips. */
   chipBorder: '#232323',
+  /** The lavender chip that slides to the active tab. */
   active: '#b4a7f9',
+  /** The active chip's label. */
   activeText: '#121212',
+  /** The inactive chips' labels. */
   text: '#c4c4c4',
+  /** Badge fill, drawn only when a tab sets `tabBarBadge`. */
+  badge: '#ff4d4d',
+  /** Badge count text. */
+  badgeText: '#ffffff',
 };
 
 export type ChipRailColors = typeof defaultColors;
@@ -41,6 +52,7 @@ export interface ChipRailProps {
   /** Content before the chips, e.g. the user's avatar (37 pt circle). */
   leading?: ReactNode;
   colors?: Partial<ChipRailColors>;
+  /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
 
@@ -54,15 +66,21 @@ export function ChipRail({ leading, colors: custom, haptics = true }: ChipRailPr
 
   // Keep the active chip in view. Skip when it is already fully visible, and clamp to the
   // last valid offset so the rail never overscrolls and rubber-bands back.
+  const reveal = useCallback(
+    (index: number, animated: boolean) => {
+      const chip = chips.current[index];
+      const { offset, viewport, content } = rail.current;
+      if (!chip || viewport <= 0) return;
+      if (chip.x >= offset && chip.x + chip.width <= offset + viewport) return;
+      const max = Math.max(0, content - viewport);
+      const x = Math.min(Math.max(0, chip.x - 60), max);
+      scroll.current?.scrollTo({ x, animated: animated && !reduceMotion });
+    },
+    [reduceMotion],
+  );
   useEffect(() => {
-    const chip = chips.current[activeIndex];
-    const { offset, viewport, content } = rail.current;
-    if (!chip || viewport <= 0) return;
-    if (chip.x >= offset && chip.x + chip.width <= offset + viewport) return;
-    const max = Math.max(0, content - viewport);
-    const x = Math.min(Math.max(0, chip.x - 60), max);
-    scroll.current?.scrollTo({ x, animated: !reduceMotion });
-  }, [activeIndex, reduceMotion]);
+    reveal(activeIndex, true);
+  }, [activeIndex, reveal]);
 
   return (
     <TabBarRoot placement="docked" style={{ backgroundColor: colors.background }}>
@@ -77,11 +95,16 @@ export function ChipRail({ leading, colors: custom, haptics = true }: ChipRailPr
           onScroll={(e) => {
             rail.current.offset = e.nativeEvent.contentOffset.x;
           }}
+          // The first layouts (the rail's, its content's, the active chip's) come after the
+          // effect above has run, so each one reveals the active chip too: a deep link to a tab
+          // past the screen's edge opens with its chip in view, without animating.
           onLayout={(e) => {
             rail.current.viewport = e.nativeEvent.layout.width;
+            reveal(activeIndex, false);
           }}
           onContentSizeChange={(width) => {
             rail.current.content = width;
+            reveal(activeIndex, false);
           }}
         >
           <TabList style={styles.list}>
@@ -94,6 +117,7 @@ export function ChipRail({ leading, colors: custom, haptics = true }: ChipRailPr
                 haptics={haptics}
                 onFrame={(x, width) => {
                   chips.current[tab.index] = { x, width };
+                  if (tab.index === activeIndex) reveal(activeIndex, false);
                 }}
               />
             ))}
@@ -129,6 +153,8 @@ function Chip({
     <TabButton
       tab={tab}
       style={styles.chip}
+      // 38 pt chips in a 56 pt rail: reach 44 pt without overlapping the next chip.
+      hitSlop={HIT_SLOP}
       onLayout={(e) => onFrame(e.nativeEvent.layout.x, e.nativeEvent.layout.width)}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
@@ -141,12 +167,47 @@ function Chip({
           surface,
         ]}
       />
-      <Animated.Text numberOfLines={1} style={[styles.label, label]}>
+      <Animated.Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.label, label]}>
         {tab.label}
       </Animated.Text>
+      <Badge badge={tab.badge} colors={colors} />
     </TabButton>
   );
 }
+
+/**
+ * A badge at the chip's top right, drawn only when the tab sets one: an empty badge ('') is a
+ * dot, a number a count. Hidden from screen readers: `TabButton` reads it with the label.
+ */
+function Badge({ badge, colors }: { badge: TabItem['badge']; colors: ChipRailColors }) {
+  if (badge == null) return null;
+  const text = String(badge).trim();
+  if (!text) {
+    return (
+      <View
+        style={[styles.dot, { backgroundColor: colors.badge, borderColor: colors.background }]}
+      />
+    );
+  }
+  const textStyle = [styles.badgeText, { color: colors.badgeText }];
+  return (
+    <View
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
+      style={[styles.count, { backgroundColor: colors.badge, borderColor: colors.background }]}
+    >
+      {typeof badge === 'number' ? (
+        <BadgeCount value={badge} textStyle={textStyle} />
+      ) : (
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+          {text}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+const HIT_SLOP = { top: 3, bottom: 3 };
 
 const styles = StyleSheet.create({
   // Docked like Phantom's own bar: full width and flush with the bottom edge, with the dark
@@ -167,7 +228,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  scroll: { paddingRight: 8 },
+  // The vertical padding keeps the chips' hit slop and badges inside the scroll view's clip;
+  // the rail centres it, so the chips don't move.
+  scroll: { paddingRight: 8, paddingVertical: 6 },
   list: { gap: 8, alignItems: 'center' },
   chip: {
     height: 38,
@@ -178,4 +241,26 @@ const styles = StyleSheet.create({
   },
   chipSurface: { borderRadius: 19, borderWidth: 1 },
   label: { fontSize: 15.3, fontWeight: '500' },
+  dot: {
+    position: 'absolute',
+    top: -1,
+    right: -1,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+  },
+  count: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { fontSize: 10, lineHeight: 13, fontWeight: '700' },
 });

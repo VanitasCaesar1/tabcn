@@ -90,6 +90,7 @@ export function PanelDragArea({ panel: id, children }: { panel?: string; childre
       .onStart(() => {
         'worklet';
         start.value = handle.visible.value;
+        runOnJS(handle.begin)();
       })
       .onUpdate((e) => {
         'worklet';
@@ -213,6 +214,7 @@ export function PanelScrollView({
           if (mode.value === UNDECIDED) {
             // The same rule the touch was activated by, so a touch never switches halfway.
             mode.value = sheetTakesDrag(handle, offset, e.translationY) ? SHEET : CONTENT;
+            if (mode.value === SHEET) runOnJS(handle.begin)();
             // Start from where the sheet is, so it doesn't jump by the points already moved.
             start.value = handle.visible.value + e.translationY;
           }

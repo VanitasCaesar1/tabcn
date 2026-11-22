@@ -24,9 +24,13 @@ import {
 } from 'react-native-tabcn';
 
 const defaultColors = {
+  /** The bar, which also fills the home-indicator area. */
   background: '#131313',
+  /** The active tab's (filled) icon. */
   active: '#ffffff',
+  /** The other tabs' icons. */
   inactive: 'rgba(255, 255, 255, 0.55)',
+  /** The badge dot; it is ringed in `background`. */
   badge: '#ff453a',
 };
 

@@ -1,21 +1,30 @@
 /**
  * Orbs: separate glass circles instead of a bar. Each tab is a frosted orb with its art
- * inside; the centre one is a little larger. The active orb's glass brightens and its rim
- * turns solid white (a crossfade; no orb changes size). Badges are glossy red balls.
+ * inside; the centre one is a little larger. The active orb's glass brightens, a soft white
+ * glow lights its inner edge and its rim turns solid white (a crossfade; no orb changes size).
+ * Badges are glossy red balls.
+ * Changed from the reference for clarity: the active wash is twice as strong (white at 0.4, not
+ * 0.2) and the inner glow is new, so the active orb stands apart from the others.
  *
- * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS, and a
- * translucent white tint on Android (no blur there: it's reliable and looks nearly the same
+ * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS and on the
+ * web, and a translucent white tint on Android (no blur there: it's reliable and looks nearly the same
  * over the solid colours this design is meant for). Force one with `material`.
+ *
+ * Contrast: the active cue, a brighter wash, inner glow and white rim, is low in contrast over light
+ * screens. The orb art draws its own colours; with icons of your own, set
+ * `colors.activeForeground` to give the active orb's icon a colour of its own, which
+ * crossfades in with the wash and rim, so the active tab can meet 3:1.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
   FadeOut,
+  interpolate,
   ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
@@ -36,23 +45,49 @@ const defaultColors = {
   tint: 'rgba(255, 255, 255, 0.38)',
   /** Tint of the Liquid Glass (iOS 26+). */
   glassTint: 'rgba(255, 255, 255, 0.22)',
+  /** Every orb's thin rim. */
   rim: 'rgba(255, 255, 255, 0.6)',
-  /** The active orb: a brighter wash over its glass and a solid rim, crossfaded in. */
-  activeTint: 'rgba(255, 255, 255, 0.2)',
+  /**
+   * The active orb: a brighter wash over its glass and a solid rim, crossfaded in. The wash is
+   * twice the reference's 0.2, so the active orb reads clearly.
+   */
+  activeTint: 'rgba(255, 255, 255, 0.4)',
   activeRim: '#ffffff',
+  /** The soft glow inside the active orb's rim (an inset shadow), crossfaded in with it. */
+  activeGlow: 'rgba(255, 255, 255, 0.85)',
+  /** The soft blue drop shadow under each orb. */
   shadow: 'rgba(10, 60, 130, 0.28)',
+  /** The glossy badge ball. */
   badge: '#f0151c',
+  /** The highlight on the badge ball. */
+  gloss: 'rgba(255, 255, 255, 0.55)',
+  /** The darkening inside the glass while an orb is pressed (shown at 6% opacity). */
+  pressShade: '#000000',
+  /**
+   * Colour passed to `tabBarIcon`. The orb art draws its own colours and ignores it; it
+   * reaches icons of your own.
+   */
+  icon: '#3c54ec',
+  /**
+   * Colour passed to the active orb's `tabBarIcon`, crossfaded in with its wash and rim. Unset
+   * (the default), the active orb gets `icon` like the rest. The orb art ignores it too.
+   */
+  activeForeground: undefined as string | undefined,
 };
 
 export type OrbsColors = typeof defaultColors;
 
-/** `glass`: Liquid Glass (iOS 26+). `blur`: frosted blur. `tint`: translucent fill, no blur. */
+/**
+ * `glass`: Liquid Glass (iOS 26+). `blur`: frosted blur (iOS and web). `tint`: translucent
+ * fill, no blur.
+ */
 export type OrbsMaterial = 'auto' | 'glass' | 'blur' | 'tint';
 
 export interface OrbsProps {
   colors?: Partial<OrbsColors>;
-  /** Default `auto`: glass where available, blur on older iOS, tint on Android. */
+  /** Default `auto`: glass where available, blur on older iOS and web, tint on Android. */
   material?: OrbsMaterial;
+  /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
 
@@ -60,28 +95,40 @@ export interface OrbsProps {
 const SMALL = 64.5;
 const LARGE = 74;
 const SPACING = 103;
+/** Room kept on each side of the row on a screen too narrow for it. */
+const MARGIN = 12;
+/** The row never scales below this, so the orbs stay tappable. */
+const MIN_SCALE = 0.5;
 
 function resolveMaterial(material: OrbsMaterial): Exclude<OrbsMaterial, 'auto'> {
   if (material !== 'auto') return material;
   if (isLiquidGlassAvailable()) return 'glass';
-  return Platform.OS === 'ios' ? 'blur' : 'tint';
+  // expo-blur blurs on web too (CSS backdrop-filter); only Android gets the plain tint.
+  return Platform.OS === 'android' ? 'tint' : 'blur';
 }
 
 export function Orbs({ colors: custom, material = 'auto', haptics = true }: OrbsProps) {
   const colors = { ...defaultColors, ...custom };
   const surface = resolveMaterial(material);
-  const { tabs } = useTabBar();
+  const { tabs, insets } = useTabBar();
+  // At the measured sizes the row of 3 needs 280 pt. On a screen too narrow for the row (4 or
+  // more orbs on a small phone) every size and gap scales down together.
+  const window = useWindowDimensions();
+  const natural = tabs.length * LARGE + Math.max(0, tabs.length - 1) * (SPACING - LARGE);
+  const room = window.width - insets.left - insets.right - MARGIN * 2;
+  const scale = natural > room ? Math.max(MIN_SCALE, room / natural) : 1;
   // The app's centre orb is always the large one; it doesn't follow the active tab. With an
   // even count there's no centre, so every orb is small.
   const middle = tabs.length % 2 === 1 ? Math.floor(tabs.length / 2) : -1;
   return (
     <TabBarRoot placement="floating">
-      <TabList style={styles.list}>
+      <TabList style={[styles.list, { gap: (SPACING - LARGE) * scale }]}>
         {tabs.map((tab) => (
           <Orb
             key={tab.key}
             tab={tab}
-            size={tab.index === middle ? LARGE : SMALL}
+            size={(tab.index === middle ? LARGE : SMALL) * scale}
+            slot={LARGE * scale}
             colors={colors}
             surface={surface}
             haptics={haptics}
@@ -95,27 +142,36 @@ export function Orbs({ colors: custom, material = 'auto', haptics = true }: Orbs
 function Orb({
   tab,
   size,
+  slot,
   colors,
   surface,
   haptics,
 }: {
   tab: TabItem;
   size: number;
+  /** Width and height of the tab button: the large orb's size. */
+  slot: number;
   colors: OrbsColors;
   surface: Exclude<OrbsMaterial, 'auto'>;
   haptics: boolean;
 }) {
-  // Active cue: a brighter wash and a solid rim crossfade in (focus progress runs on
+  // Active cue: a brighter wash, an inner glow and a solid rim crossfade in (focus progress runs on
   // tabcnTiming, so reduce motion makes it instant). The orb itself never changes size.
   const progress = useFocusProgress(tab);
   const active = useAnimatedStyle(() => ({ opacity: progress.value }));
+  // With `activeForeground`, the idle icon stays opaque until late in the change, under the
+  // active one fading in, so the icon never looks dimmed half-way.
+  const idle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.6, 1], [1, 0], 'clamp'),
+  }));
+  const icon = (color: string) => tab.renderIcon?.({ focused: tab.focused, color, size }) ?? null;
   // Press feedback: a faint darkening inside the glass, never a scale.
   const press = useSharedValue(0);
   const shade = useAnimatedStyle(() => ({ opacity: press.value }));
   return (
     <TabButton
       tab={tab}
-      style={styles.slot}
+      style={[styles.slot, { width: slot, height: slot }]}
       onPressIn={() => {
         press.value = withTiming(PRESS_SHADE, PRESS_IN);
         if (haptics) Haptics.selectionAsync();
@@ -153,13 +209,24 @@ function Orb({
           />
           <Animated.View
             pointerEvents="none"
-            style={[StyleSheet.absoluteFill, styles.shade, shade]}
+            style={[StyleSheet.absoluteFill, { backgroundColor: colors.pressShade }, shade]}
           />
         </View>
         <View style={[StyleSheet.absoluteFill, styles.center]}>
           {/* Icons are drawn in the orb's own box, at the orb's fixed size. */}
           <View style={{ width: size, height: size }}>
-            {tab.renderIcon?.({ focused: tab.focused, color: '#3c54ec', size })}
+            {colors.activeForeground === undefined ? (
+              icon(colors.icon)
+            ) : (
+              <>
+                <Animated.View style={[StyleSheet.absoluteFill, idle]}>
+                  {icon(colors.icon)}
+                </Animated.View>
+                <Animated.View style={[StyleSheet.absoluteFill, active]}>
+                  {icon(colors.activeForeground)}
+                </Animated.View>
+              </>
+            )}
           </View>
         </View>
         <View
@@ -171,7 +238,11 @@ function Orb({
           style={[
             StyleSheet.absoluteFill,
             styles.activeRim,
-            { borderColor: colors.activeRim },
+            // The inner glow rides on the rim's view, so it crossfades with it.
+            {
+              borderColor: colors.activeRim,
+              boxShadow: `inset 0 0 ${GLOW_RADIUS * (size / LARGE)}px ${colors.activeGlow}`,
+            },
             active,
           ]}
         />
@@ -182,14 +253,17 @@ function Orb({
           exiting={badgeOut}
           style={[styles.badge, { backgroundColor: colors.badge }]}
         >
-          <Animated.View style={styles.gloss} />
+          <Animated.View style={[styles.gloss, { backgroundColor: colors.gloss }]} />
         </Animated.View>
       ) : null}
     </TabButton>
   );
 }
 
-// Motion: the orbs never change size or move. The active orb's wash and rim crossfade in and
+/** Blur radius of the active orb's inner glow on the large orb; smaller orbs scale it down. */
+const GLOW_RADIUS = 14;
+
+// Motion: the orbs never change size or move. The active orb's wash, glow and rim crossfade in and
 // out on focus progress (tabcnTiming). A press darkens the glass slightly (in on a shortened tabcnTiming, out on tabcnTiming), and the
 // badge fades in and out with no pop. With "reduce motion" on, all of it is instant.
 const PRESS_SHADE = 0.06;
@@ -204,12 +278,11 @@ const badgeOut = FadeOut.duration(BADGE_FADE_MS)
   .reduceMotion(ReduceMotion.System);
 
 const styles = StyleSheet.create({
-  list: { alignItems: 'center', gap: SPACING - LARGE, paddingVertical: 4 },
-  slot: { width: LARGE, height: LARGE, alignItems: 'center', justifyContent: 'center' },
+  list: { alignItems: 'center', paddingVertical: 4 },
+  slot: { alignItems: 'center', justifyContent: 'center' },
   orb: { alignItems: 'center', justifyContent: 'center' },
   clip: { borderRadius: 999, overflow: 'hidden' },
   center: { alignItems: 'center', justifyContent: 'center' },
-  shade: { backgroundColor: '#000000' },
   rim: { borderRadius: 999, borderWidth: 1.2 },
   activeRim: { borderRadius: 999, borderWidth: 2 },
   badge: { position: 'absolute', top: 2, right: 2, width: 13, height: 13, borderRadius: 7 },
@@ -220,6 +293,5 @@ const styles = StyleSheet.create({
     width: 5,
     height: 3,
     borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.55)',
   },
 });

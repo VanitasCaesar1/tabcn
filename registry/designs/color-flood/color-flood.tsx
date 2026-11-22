@@ -21,13 +21,18 @@
  * and every icon is centred on one line. The 3D shots put that line about 60 pt above the
  * screen's bottom edge: a 50 pt bar with its icons centred, over the home-indicator inset.
  * Colours: Cash green #00e013; inactive icons measure #00860b on green and #949494 on white,
- * both black at about 40%.
+ * both black at about 40%. These icon colours are kept as the app has them, low as their
+ * contrast is (2.6-2.9:1); pass `colors` or a surface to raise it.
  */
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { processColor, StyleSheet, Text, View } from 'react-native';
 import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut as FadeOutAnimation,
   interpolate,
+  ReduceMotion,
   runOnJS,
   type SharedValue,
   useAnimatedStyle,
@@ -74,6 +79,8 @@ export const colorFloodGreen = '#00e013';
 /**
  * The older Cash App look for the Pay tab: white icons over the green, the inactive ones at
  * about 65% (measured #a9f3c4 over the 3D renders' green). Use it as a `surfaces` entry.
+ * White on this green is low in contrast (1.8:1 active), so it suits a brand moment more than
+ * an everyday bar.
  */
 export const colorFloodWhiteOnGreen: ColorFloodSurface = {
   background: colorFloodGreen,
@@ -140,7 +147,7 @@ export function ColorFlood({
     report.current?.({ background, active, inactive });
   }, [background, active, inactive]);
 
-  const { current, previous, clear } = useForeground({ active, inactive });
+  const { current, fading, clear } = useForeground({ active, inactive });
 
   return (
     // The root holds the active surface's colour, so it covers the bottom safe area too (the
@@ -154,7 +161,7 @@ export function ColorFlood({
             key={tab.key}
             tab={tab}
             fg={current}
-            previous={previous}
+            fading={fading}
             onFaded={clear}
             colors={colors}
             haptics={haptics}
@@ -165,34 +172,54 @@ export function ColorFlood({
   );
 }
 
+/** An old set of icon colours fading out over the new one. */
+interface Fading {
+  id: number;
+  fg: Foreground;
+}
+
 /**
  * The icon colours of the active surface. When they change (a surface with its own icon
- * colours), the old set is kept as `previous` until it has faded out over the new one.
+ * colours), the old set is kept in `fading` until it has faded out over the new one. Each set
+ * fades on its own, so a quick second change doesn't cut off a set still fading out.
  */
 function useForeground(fg: Foreground) {
-  const [state, setState] = useState<{ current: Foreground; previous: Foreground | null }>({
-    current: fg,
-    previous: null,
-  });
+  const [state, setState] = useState<{
+    current: Foreground;
+    fading: readonly Fading[];
+    next: number;
+  }>({ current: fg, fading: [], next: 0 });
   if (state.current.active !== fg.active || state.current.inactive !== fg.inactive) {
-    setState({ current: fg, previous: state.current });
+    setState({
+      current: fg,
+      fading: [...state.fading, { id: state.next, fg: state.current }],
+      next: state.next + 1,
+    });
   }
-  const clear = useCallback(() => setState((s) => (s.previous ? { ...s, previous: null } : s)), []);
-  return { ...state, clear };
+  const clear = useCallback(
+    (id: number) =>
+      setState((s) =>
+        s.fading.some((f) => f.id === id)
+          ? { ...s, fading: s.fading.filter((f) => f.id !== id) }
+          : s,
+      ),
+    [],
+  );
+  return { current: state.current, fading: state.fading, clear };
 }
 
 function Tab({
   tab,
   fg,
-  previous,
+  fading,
   onFaded,
   colors,
   haptics,
 }: {
   tab: TabItem;
   fg: Foreground;
-  previous: Foreground | null;
-  onFaded: () => void;
+  fading: readonly Fading[];
+  onFaded: (id: number) => void;
   colors: ColorFloodColors;
   haptics: boolean;
 }) {
@@ -205,11 +232,12 @@ function Tab({
     >
       <View style={styles.iconBox}>
         <Icons tab={tab} fg={fg} progress={progress} />
-        {previous ? (
-          <FadeOut key={`${previous.active}|${previous.inactive}`} onDone={onFaded}>
-            <Icons tab={tab} fg={previous} progress={progress} />
+        {/* Newest first, so the oldest (the one that was on top before) stays on top. */}
+        {[...fading].reverse().map((f) => (
+          <FadeOut key={f.id} id={f.id} onDone={onFaded}>
+            <Icons tab={tab} fg={f.fg} progress={progress} />
           </FadeOut>
-        ) : null}
+        ))}
         <Badge tab={tab} colors={colors} />
       </View>
     </TabButton>
@@ -257,15 +285,23 @@ function splitAlpha(color: string): { color: string; alpha: number } {
   return { color: `rgb(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255})`, alpha };
 }
 
-/** Starts opaque when mounted and fades out on tabcnTiming, then calls `onDone`. */
-function FadeOut({ onDone, children }: { onDone: () => void; children: ReactNode }) {
+/** Starts opaque when mounted and fades out on tabcnTiming, then calls `onDone(id)`. */
+function FadeOut({
+  id,
+  onDone,
+  children,
+}: {
+  id: number;
+  onDone: (id: number) => void;
+  children: ReactNode;
+}) {
   const opacity = useSharedValue(1);
   useEffect(() => {
     opacity.value = withTiming(0, tabcnTiming, (finished) => {
       'worklet';
-      if (finished) runOnJS(onDone)();
+      if (finished) runOnJS(onDone)(id);
     });
-  }, [opacity, onDone]);
+  }, [opacity, onDone, id]);
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, style]}>
@@ -276,16 +312,28 @@ function FadeOut({ onDone, children }: { onDone: () => void; children: ReactNode
 
 /**
  * Cash App draws no badges; this one sits on the icon's top-right corner: a dot for an empty
- * badge, a count capsule otherwise. The tab's accessibility label already reads it.
+ * badge, a count capsule otherwise. It fades in and out on tabcnTiming (instant with reduce
+ * motion on). The tab's accessibility label already reads it.
  */
 function Badge({ tab, colors }: { tab: TabItem; colors: ColorFloodColors }) {
   if (tab.badge == null) return null;
   const text = String(tab.badge).trim();
   const fill = { backgroundColor: colors.badge };
-  if (text === '') return <View pointerEvents="none" style={[styles.dot, fill]} />;
+  if (text === '') {
+    return (
+      <Animated.View
+        entering={badgeIn}
+        exiting={badgeOut}
+        pointerEvents="none"
+        style={[styles.dot, fill]}
+      />
+    );
+  }
   const textStyle = [styles.badgeText, { color: colors.badgeText }];
   return (
-    <View
+    <Animated.View
+      entering={badgeIn}
+      exiting={badgeOut}
       pointerEvents="none"
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
@@ -296,9 +344,17 @@ function Badge({ tab, colors }: { tab: TabItem; colors: ColorFloodColors }) {
       ) : (
         <Text style={textStyle}>{text}</Text>
       )}
-    </View>
+    </Animated.View>
   );
 }
+
+const BADGE_EASING = tabcnTiming.easing ?? Easing.linear;
+const badgeIn = FadeIn.duration(tabcnTiming.duration ?? 200)
+  .easing(BADGE_EASING)
+  .reduceMotion(ReduceMotion.System);
+const badgeOut = FadeOutAnimation.duration(tabcnTiming.duration ?? 200)
+  .easing(BADGE_EASING)
+  .reduceMotion(ReduceMotion.System);
 
 const styles = StyleSheet.create({
   // Docked full width with square corners; the colour change is the only edge.

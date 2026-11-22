@@ -8,7 +8,15 @@ import { BlurView } from 'expo-blur';
 import { GlassView } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { createContext, type ReactNode, use, useEffect, useRef, useState } from 'react';
-import { BackHandler, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  BackHandler,
+  Pressable,
+  processColor,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import Animated, {
   Easing,
   interpolate,
@@ -24,11 +32,25 @@ import { PlusGlyph } from './composer-dock-composer';
 import {
   type ComposerDockColors,
   type ComposerDockIcon,
+  type ComposerDockLabels,
   GLASS_STYLE,
   SIDE,
 } from './composer-dock-theme';
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+
+/**
+ * The blur that clears over a growing menu takes the screen's tone: dark on a dark
+ * `background`, light otherwise.
+ */
+function blurTint(background: string): 'light' | 'dark' {
+  const value = processColor(background);
+  if (typeof value !== 'number') return 'light';
+  const r = (value >>> 16) & 255;
+  const g = (value >>> 8) & 255;
+  const b = value & 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b < 128 ? 'dark' : 'light';
+}
 
 interface RowFrame {
   y: number;
@@ -39,7 +61,8 @@ interface RowFrame {
 const PopoverContext = createContext<{
   hovered: string | null;
   place: (id: string, frame: RowFrame | null, run?: () => void) => void;
-}>({ hovered: null, place: () => {} });
+  forget: (id: string) => void;
+}>({ hovered: null, place: () => {}, forget: () => {} });
 
 /**
  * A card drawn over the whole screen from inside the dock (`origin` is where the dock sits),
@@ -69,6 +92,7 @@ export function Popover({
   glass,
   origin,
   label,
+  labels,
   children,
 }: {
   open: boolean;
@@ -89,17 +113,24 @@ export function Popover({
   /** Where the dock sits in the window: the overlay is drawn from there to cover the screen. */
   origin: { x: number; y: number };
   label: string;
+  labels: ComposerDockLabels;
   children: (close: (then?: () => void) => void) => ReactNode;
 }) {
   const screen = useWindowDimensions();
   const [mounted, setMounted] = useState(open);
   if (open && !mounted) setMounted(true);
   const shown = useSharedValue(0);
+  // Rows report where they sit, so a held finger can be matched to one.
+  const [frames, setFrames] = useState<Record<string, RowFrame>>({});
+  const runs = useRef(new Map<string, () => void>());
   // Runs once the card has gone: unmounts the overlay, then the chosen row's action (so a screen
-  // it opens doesn't appear under a closing menu).
+  // it opens doesn't appear under a closing menu). The rows go with it: the next menu (another
+  // tab's) has rows of its own, and a finger must never land on one of these.
   const after = useRef<(() => void) | undefined>(undefined);
   const finish = useRef(() => {
     setMounted(false);
+    setFrames({});
+    runs.current.clear();
     const then = after.current;
     after.current = undefined;
     then?.();
@@ -149,9 +180,6 @@ export function Popover({
   // The card grows from the tab: from its bottom edge, at the tab's centre.
   const originX = Math.min(Math.max((centerX ?? x) - x, 0), width);
 
-  // Rows report where they sit, so a held finger can be matched to one.
-  const [frames, setFrames] = useState<Record<string, RowFrame>>({});
-  const runs = useRef(new Map<string, () => void>());
   const [cardHeight, setCardHeight] = useState(0);
   const place = (id: string, frame: RowFrame | null, run?: () => void) => {
     if (run) runs.current.set(id, run);
@@ -159,6 +187,15 @@ export function Popover({
       setFrames((all) =>
         all[id]?.y === frame.y && all[id]?.height === frame.height ? all : { ...all, [id]: frame },
       );
+  };
+  // A row that leaves an open card (its item was removed) takes its frame and action with it.
+  const forget = (id: string) => {
+    runs.current.delete(id);
+    setFrames((all) => {
+      if (!(id in all)) return all;
+      const { [id]: _gone, ...rest } = all;
+      return rest;
+    });
   };
   const cardTop = cardBottom - cardHeight;
   let hovered: string | null = null;
@@ -202,7 +239,7 @@ export function Popover({
     >
       <Animated.View style={[StyleSheet.absoluteFill, scrimStyle]}>
         <Pressable
-          accessibilityLabel="Close menu"
+          accessibilityLabel={labels.closeMenu}
           onPress={() => close()}
           style={[styles.scrim, { height: scrimBottom || screen.height, backgroundColor: scrim }]}
         />
@@ -238,11 +275,11 @@ export function Popover({
             style={[StyleSheet.absoluteFill, grow ? styles.cardLargeFill : styles.cardGlassFill]}
           />
         ) : null}
-        <PopoverContext value={{ hovered, place }}>{children(close)}</PopoverContext>
+        <PopoverContext value={{ hovered, place, forget }}>{children(close)}</PopoverContext>
         {grow ? (
           <AnimatedBlurView
             pointerEvents="none"
-            tint="light"
+            tint={blurTint(colors.background)}
             animatedProps={blurProps}
             style={[StyleSheet.absoluteFill, styles.cardLargeFill]}
           />
@@ -262,6 +299,7 @@ export function MenuRow({
   create,
   large,
   colors,
+  labels,
   onPress,
 }: {
   id: string;
@@ -274,17 +312,21 @@ export function MenuRow({
   /** The hold menu's rows: taller, larger text and icons. */
   large?: boolean;
   colors: ComposerDockColors;
+  labels: ComposerDockLabels;
   onPress: () => void;
 }) {
-  const { hovered, place } = use(PopoverContext);
+  const { hovered, place, forget } = use(PopoverContext);
   const size = iconSize ?? (large ? 18 : 16);
   useEffect(() => {
     place(id, null, onPress);
   });
+  const forgetRef = useRef(forget);
+  forgetRef.current = forget;
+  useEffect(() => () => forgetRef.current(id), [id]);
   return (
     <Pressable
       role="button"
-      accessibilityLabel={unread ? `${label}, unread` : label}
+      accessibilityLabel={unread ? labels.unread(label) : label}
       onPress={onPress}
       onLayout={(e) =>
         place(id, { y: e.nativeEvent.layout.y, height: e.nativeEvent.layout.height })

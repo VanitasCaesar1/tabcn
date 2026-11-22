@@ -25,7 +25,7 @@ import { TabBarProvider } from 'react-native-tabcn';
 import { tabBar } from 'react-native-tabcn/react-navigation';
 
 import { catalog } from '@/catalog';
-import { type Demo, demos, RAIL_MIN_WIDTH, screenBackground } from '@/demos';
+import { type Demo, demos, isDarkScreen, RAIL_MIN_WIDTH, screenBackground } from '@/demos';
 import { Pattern } from '@/pattern';
 
 const Tab = createBottomTabNavigator();
@@ -99,8 +99,9 @@ function Screen({
   const navigation = useNavigation();
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const text = demo.dark ? '#ffffff' : '#111114';
-  const chip = demo.dark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.06)';
+  const dark = isDarkScreen(demo, index);
+  const text = dark ? '#ffffff' : '#111114';
+  const chip = dark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.06)';
   const built = catalog.filter((d) => demos[d.id]);
   const Extra = demo.extra;
   const background = screenBackground(demo, index);

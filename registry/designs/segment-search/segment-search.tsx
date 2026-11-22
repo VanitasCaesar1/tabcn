@@ -9,12 +9,16 @@
  * curve. With "reduce motion" on, everything is instant. The round button is the bar's
  * `usePanelAnchor('action')` element, so a `TabPanel` such as Quick Create can open from it.
  *
+ * On a narrow screen the gap between the pill and the button narrows first, then the tabs,
+ * so the row always fits; where there is room the sizes are exactly as measured.
+ * The white labels on the light blue are kept as the reference draws them (low contrast).
+ *
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import {
   PressableScale,
@@ -31,9 +35,14 @@ import {
 const defaultColors = {
   /** Top to bottom: a lighter band along the top edge, then the body colour. */
   gradient: ['#a4d2fe', '#86c1fb', '#86c1fb'] as const,
+  /** Tab labels (active and inactive alike) and the magnifier. */
   text: '#ffffff',
+  /** The glass capsule behind the active tab. */
   capsule: 'rgba(255, 255, 255, 0.2)',
+  /** The capsule's thin bright edge. */
   capsuleBorder: 'rgba(255, 255, 255, 0.55)',
+  /** The wash over the round button while it is pressed (drawn at 14% opacity). */
+  highlight: '#ffffff',
   /** The soft grey shadow the pill and button sit in. */
   shadow: 'rgba(100, 120, 150, 0.34)',
 };
@@ -45,9 +54,14 @@ export interface SegmentSearchProps {
   onActionPress: () => void;
   /** Screen-reader label for the round button. Default "Search". */
   actionLabel?: string;
-  /** Content of the round button. Default: a magnifying glass. */
-  actionIcon?: ReactNode;
+  /**
+   * Content of the round button. Default: a magnifying glass in `colors.text`. Pass a
+   * function to get that colour and the magnifier's 18 pt size from the design, so the icon
+   * follows `colors`: `({ color, size }) => <MyIcon color={color} size={size} />`.
+   */
+  actionIcon?: ReactNode | ((props: { color: string; size: number }) => ReactNode);
   colors?: Partial<SegmentSearchColors>;
+  /** Selection haptic on tabs, a light impact on the round button. Default true. */
   haptics?: boolean;
 }
 
@@ -59,12 +73,22 @@ export function SegmentSearch({
   haptics = true,
 }: SegmentSearchProps) {
   const colors = { ...defaultColors, ...custom };
-  const { tabs } = useTabBar();
+  const { tabs, insets } = useTabBar();
+  const window = useWindowDimensions();
   const anchor = usePanelAnchor('action');
   const highlight = useSharedValue(0);
   const highlightStyle = useAnimatedStyle(() => ({ opacity: highlight.value }));
+
+  // Measured sizes where they fit; on a narrow screen the gap gives way first, then the tabs.
+  const count = Math.max(1, tabs.length);
+  const room = window.width - insets.left - insets.right - EDGE * 2;
+  const fixed = LIST_PADDING * 2 + HEIGHT;
+  const gap = Math.max(MIN_GAP, Math.min(GAP, room - fixed - TAB * count));
+  // The measured minimum holds while it fits; past that (many tabs) the tabs share what's left.
+  const fit = (room - fixed - gap) / count;
+  const tabWidth = Math.min(TAB, fit >= MIN_TAB ? fit : Math.max(40, fit));
   return (
-    <TabBarRoot placement="floating" style={styles.row}>
+    <TabBarRoot placement="floating" style={[styles.row, { gap }]}>
       <View style={[styles.well, wellShadow(colors.shadow)]}>
         <LinearGradient colors={colors.gradient} locations={GRADIENT_STOPS} style={styles.pill}>
           <TabList style={styles.list}>
@@ -76,7 +100,7 @@ export function SegmentSearch({
               ]}
             />
             {tabs.map((tab) => (
-              <Tab key={tab.key} tab={tab} color={colors.text} haptics={haptics} />
+              <Tab key={tab.key} tab={tab} color={colors.text} width={tabWidth} haptics={haptics} />
             ))}
           </TabList>
         </LinearGradient>
@@ -96,8 +120,13 @@ export function SegmentSearch({
           }}
         >
           <LinearGradient colors={colors.gradient} locations={GRADIENT_STOPS} style={styles.round}>
-            <Animated.View pointerEvents="none" style={[styles.highlight, highlightStyle]} />
-            {actionIcon ?? <Magnifier color={colors.text} />}
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.highlight, { backgroundColor: colors.highlight }, highlightStyle]}
+            />
+            {typeof actionIcon === 'function'
+              ? actionIcon({ color: colors.text, size: ACTION_ICON })
+              : (actionIcon ?? <Magnifier color={colors.text} />)}
           </LinearGradient>
         </PressableScale>
       </View>
@@ -106,14 +135,24 @@ export function SegmentSearch({
 }
 
 /** Both labels stay full white: only the capsule marks the active tab. */
-function Tab({ tab, color, haptics }: { tab: TabItem; color: string; haptics: boolean }) {
+function Tab({
+  tab,
+  color,
+  width,
+  haptics,
+}: {
+  tab: TabItem;
+  color: string;
+  width: number;
+  haptics: boolean;
+}) {
   return (
     <TabButton
       tab={tab}
-      style={styles.tab}
+      style={[styles.tab, { width }]}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      <Text numberOfLines={1} style={[styles.label, { color }]}>
+      <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.label, { color }]}>
         {tab.label}
       </Text>
     </TabButton>
@@ -130,9 +169,21 @@ function Magnifier({ color }: { color: string }) {
 }
 
 const HEIGHT = 58;
+/** Each tab's measured width, and the least it narrows to on a small screen. */
+const TAB = 86;
+const MIN_TAB = 64;
+/** The measured gap between the pill and the round button, and the least it narrows to. */
+const GAP = 89;
+const MIN_GAP = 12;
+/** The pill's inner padding at each end. */
+const LIST_PADDING = 5.2;
+/** Space kept from each screen edge when the row has to shrink. */
+const EDGE = 16;
 const GRADIENT_STOPS = [0, 0.45, 1] as const;
 /** Opacity of the white wash over the round button while it is pressed. */
 const PRESSED_HIGHLIGHT = 0.14;
+/** The magnifier's box, and the size a function `actionIcon` is given. */
+const ACTION_ICON = 18;
 
 /** A soft shadow on every side, a little stronger below: the shapes look set into the page. */
 function wellShadow(color: string) {
@@ -140,12 +191,12 @@ function wellShadow(color: string) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 89 },
+  row: { flexDirection: 'row', alignItems: 'center' },
   well: { borderRadius: 999 },
   pill: { height: HEIGHT, borderRadius: 999, overflow: 'hidden' },
-  list: { flex: 1, alignItems: 'stretch', paddingHorizontal: 5.2 },
+  list: { flex: 1, alignItems: 'stretch', paddingHorizontal: LIST_PADDING },
   capsule: { borderRadius: 999, borderWidth: 0.8 },
-  tab: { justifyContent: 'center', alignItems: 'center', width: 86 },
+  tab: { justifyContent: 'center', alignItems: 'center' },
   label: { fontSize: 15, fontWeight: '500' },
   round: {
     width: HEIGHT,
@@ -161,9 +212,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     borderRadius: HEIGHT / 2,
-    backgroundColor: '#ffffff',
   },
-  magnifier: { width: 18, height: 18 },
+  // Laid out left to right in every language: React Native swaps `left` in right-to-left
+  // layouts, which would put the handle at the lower left. iOS doesn't mirror the search glyph.
+  magnifier: { width: ACTION_ICON, height: ACTION_ICON, direction: 'ltr' },
   lens: {
     position: 'absolute',
     left: 0,

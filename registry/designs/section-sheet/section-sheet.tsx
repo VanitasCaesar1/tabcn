@@ -70,6 +70,7 @@ import {
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import {
+  BadgeCount,
   type SnapPoint,
   TabBarRoot,
   TabButton,
@@ -99,9 +100,31 @@ const defaultColors = {
   foreground: '#151517',
   /** The other sections' labels. */
   muted: 'rgba(21, 21, 23, 0.6)',
+  /** Badge fill, drawn after a section's label only when its tab sets `tabBarBadge`. */
+  badge: '#ff3b30',
+  /** Badge count text. */
+  badgeText: '#ffffff',
 };
 
 export type SectionSheetColors = typeof defaultColors;
+
+const defaultLabels = {
+  /** What screen readers call the grabber, which adjusts the sheet's height. */
+  sheet: 'Sheet',
+  /** The grabber's value while the sheet rests at its strip. */
+  collapsed: 'Collapsed',
+  /** Its value at a `'50%'` snap point. */
+  halfHeight: 'Half height',
+  /** Its value at a last snap point of `'100%'`. */
+  fullHeight: 'Full height',
+  /** Its value at a snap point given in points. */
+  pointsTall: (points: number) => `${points} points tall`,
+  /** Its value at any other percentage snap point. */
+  percentOfScreen: (percent: number) => `${percent} percent of the screen`,
+};
+
+/** What screen readers hear for the sheet, for translation: pass the ones to change as `labels`. */
+export type SectionSheetLabels = typeof defaultLabels;
 
 export interface SectionSheetProps {
   /** Each section's sheet body, by route name. A route without one gets an empty body. */
@@ -113,6 +136,8 @@ export interface SectionSheetProps {
   /** Radius of the sheet's top corners. Default 24. */
   radius?: number;
   colors?: Partial<SectionSheetColors>;
+  /** The sheet's screen-reader name and heights, merged over the English defaults. */
+  labels?: Partial<SectionSheetLabels>;
   /** A selection haptic on choosing a section and on settling at another height. Default true. */
   haptics?: boolean;
 }
@@ -128,9 +153,11 @@ export function SectionSheet({
   snapPoints = DEFAULT_SNAP_POINTS,
   radius = 24,
   colors: custom,
+  labels: customLabels,
   haptics = true,
 }: SectionSheetProps) {
   const colors = { ...defaultColors, ...custom };
+  const labels = { ...defaultLabels, ...customLabels };
   const { state, peek } = useTabPanel(PANEL_ID);
 
   // Another bar-anchored panel showing pushes the sheet away (one panel per anchor). The
@@ -175,6 +202,7 @@ export function SectionSheet({
           snapPoints={snapPoints}
           radius={radius}
           colors={colors}
+          labels={labels}
           haptics={haptics}
         />
       </TabPanel>
@@ -214,13 +242,17 @@ function useScreenReader(): boolean {
 }
 
 /** How a height is read to screen readers. */
-function heightName(point: SnapPoint | undefined, last: boolean): string {
-  if (point === undefined) return 'Collapsed';
-  if (last && point === '100%') return 'Full height';
-  if (point === '50%') return 'Half height';
+function heightName(
+  point: SnapPoint | undefined,
+  last: boolean,
+  labels: SectionSheetLabels,
+): string {
+  if (point === undefined) return labels.collapsed;
+  if (last && point === '100%') return labels.fullHeight;
+  if (point === '50%') return labels.halfHeight;
   return typeof point === 'number'
-    ? `${Math.round(point)} points tall`
-    : `${Math.round(Number.parseFloat(point))} percent of the screen`;
+    ? labels.pointsTall(Math.round(point))
+    : labels.percentOfScreen(Math.round(Number.parseFloat(point)));
 }
 
 function Sheet({
@@ -228,12 +260,14 @@ function Sheet({
   snapPoints,
   radius,
   colors,
+  labels,
   haptics,
 }: {
   sections: Readonly<Record<string, ReactNode>>;
   snapPoints: readonly SnapPoint[];
   radius: number;
   colors: SectionSheetColors;
+  labels: SectionSheetLabels;
   haptics: boolean;
 }) {
   const { tabs, activeIndex } = useTabBar();
@@ -280,8 +314,8 @@ function Sheet({
           <View
             accessible
             accessibilityRole="adjustable"
-            accessibilityLabel="Sheet"
-            accessibilityValue={{ text: heightName(snapPoints[raised], raised === last) }}
+            accessibilityLabel={labels.sheet}
+            accessibilityValue={{ text: heightName(snapPoints[raised], raised === last, labels) }}
             accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
             onAccessibilityAction={onAction}
             style={styles.grabberArea}
@@ -330,15 +364,47 @@ function Section({
     <TabButton
       tab={tab}
       style={styles.section}
+      // 32 pt segments: reach 44 pt above and below.
+      hitSlop={HIT_SLOP}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <Text
         numberOfLines={1}
+        maxFontSizeMultiplier={1.3}
         style={[styles.label, { color: tab.focused ? colors.foreground : colors.muted }]}
       >
         {tab.label}
       </Text>
+      <Badge badge={tab.badge} colors={colors} />
     </TabButton>
+  );
+}
+
+const HIT_SLOP = { top: 6, bottom: 6 };
+
+/**
+ * A badge after the section's label, drawn only when the tab sets one: an empty badge ('') is
+ * a dot, a number a count. Hidden from screen readers: `TabButton` reads it with the label.
+ */
+function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SectionSheetColors }) {
+  if (badge == null) return null;
+  const text = String(badge).trim();
+  if (!text) return <View style={[styles.dot, { backgroundColor: colors.badge }]} />;
+  const textStyle = [styles.badgeText, { color: colors.badgeText }];
+  return (
+    <View
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
+      style={[styles.count, { backgroundColor: colors.badge }]}
+    >
+      {typeof badge === 'number' ? (
+        <BadgeCount value={badge} textStyle={textStyle} />
+      ) : (
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+          {text}
+        </Text>
+      )}
+    </View>
   );
 }
 
@@ -419,16 +485,29 @@ const styles = StyleSheet.create({
   },
   section: {
     flex: 1,
-    minWidth: 72,
+    minWidth: 52,
     height: 32,
+    flexDirection: 'row',
+    gap: 5,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
   label: {
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: '600',
   },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  count: {
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { fontSize: 10, lineHeight: 13, fontWeight: '700' },
   bodies: {
     flex: 1,
   },

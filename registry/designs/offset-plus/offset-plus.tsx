@@ -22,7 +22,8 @@
  * them is active. The white look is from memory of the app, not measured; by default the
  * bar stays black, as in every screenshot.
  *
- * The bar is opaque, as in the app: no glass or blur.
+ * The bar is opaque, as in the app: no glass or blur. The greys of the inactive tabs are kept
+ * as the app has them (the light scheme's are low contrast).
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  *
  * Measured on the app's App Store screenshot (v47.8, a 402 pt screen at 2.4 px per pt):
@@ -77,6 +78,7 @@ const defaultColors = {
   actionGlyph: '#161823',
   /** Not in the screenshots: the app's red count bubble on Inbox. */
   badge: '#fe2c55',
+  /** The count on a badge. */
   badgeText: '#ffffff',
 };
 
@@ -149,6 +151,8 @@ interface Palettes {
   light: OffsetPlusColors;
   /** 0 on the black bar, 1 on the light one, in between while it fades. */
   scheme: SharedValue<number>;
+  /** The bar is on (or fading to) its light colours: badges take `lightColors`. */
+  isLight: boolean;
 }
 
 export function OffsetPlus({
@@ -175,7 +179,7 @@ export function OffsetPlus({
   const fill = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(scheme.value, [0, 1], [dark.background, light.background]),
   }));
-  const palettes: Palettes = { dark, light, scheme };
+  const palettes: Palettes = { dark, light, scheme, isLight };
 
   // The plus sits in the middle slot: with four tabs, two on each side.
   const half = Math.ceil(tabs.length / 2);
@@ -285,7 +289,7 @@ function Action({
 
 function Tab({
   tab,
-  palettes: { dark, light, scheme },
+  palettes: { dark, light, scheme, isLight },
   hasLight,
   fontFamily,
   haptics,
@@ -339,9 +343,13 @@ function Tab({
             {icons(light)}
           </Animated.View>
         ) : null}
-        <Badge badge={tab.badge} colors={dark} />
+        <Badge badge={tab.badge} colors={isLight ? light : dark} />
       </View>
-      <Animated.Text numberOfLines={1} style={[styles.label, { fontFamily }, label]}>
+      <Animated.Text
+        numberOfLines={1}
+        maxFontSizeMultiplier={1.3}
+        style={[styles.label, { fontFamily }, label]}
+      >
         {tab.label}
       </Animated.Text>
     </TabButton>
@@ -381,7 +389,7 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: OffsetPlusC
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} style={textStyle}>
+        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
           {text}
         </Text>
       )}

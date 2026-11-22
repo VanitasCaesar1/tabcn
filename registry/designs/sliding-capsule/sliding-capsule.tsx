@@ -6,15 +6,26 @@
  * wider than its slot, that glides to the next tab. Nothing else changes: no colour or
  * weight change, no fill, no scale.
  *
- * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS, and
- * a near-white tint on Android (no blur there). Force one with `material`.
+ * Contrast: the grey capsule, the only active cue, is kept as the app has it (low contrast
+ * against the bar). Set `colors.activeForeground` to give the active icon and label a colour
+ * of their own, which crossfades in on tabcnTiming, so the active tab can meet 3:1.
+ *
+ * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS and on
+ * the web, and a near-white tint on Android (no blur there). Force one with `material`.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { Platform, StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  interpolate,
+  ReduceMotion,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
 import {
   BadgeCount,
   TabBarRoot,
@@ -23,6 +34,7 @@ import {
   type TabItem,
   TabList,
   tabcnTiming,
+  useFocusProgress,
   useTabBar,
 } from 'react-native-tabcn';
 
@@ -31,24 +43,40 @@ const defaultColors = {
   background: '#f7f7f7',
   /** Active-tab capsule: measured #e0e0e0 at the top to #eaeaea at the bottom. */
   capsule: '#e5e5e5',
-  /** Icons and labels, active and idle alike. */
+  /** Icons and labels, active and idle alike (the idle ones when `activeForeground` is set). */
   foreground: '#163300',
+  /**
+   * The active tab's icon and label, crossfaded in on tabcnTiming. Unset (the default), they
+   * are `foreground` like the rest, as in the app.
+   */
+  activeForeground: undefined as string | undefined,
   /** The bright 1 px edge of the bar (Liquid Glass draws its own). */
   rim: 'rgba(255, 255, 255, 0.95)',
   /** A faint, diffuse shadow around the bar. */
   shadow: 'rgba(0, 0, 0, 0.06)',
+  /** Badge fill. */
   badge: '#ff3b30',
+  /** Badge count text. */
+  badgeText: '#ffffff',
 };
 
 export type SlidingCapsuleColors = typeof defaultColors;
 
-/** `glass`: Liquid Glass (iOS 26+). `blur`: frosted blur. `tint`: near-white fill, no blur. */
+/**
+ * `glass`: Liquid Glass (iOS 26+). `blur`: frosted blur (iOS and web). `tint`: near-white fill,
+ * no blur.
+ */
 export type SlidingCapsuleMaterial = 'auto' | 'glass' | 'blur' | 'tint';
 
 export interface SlidingCapsuleProps {
   colors?: Partial<SlidingCapsuleColors>;
-  /** Default `auto`: glass where available, blur on older iOS, tint on Android. */
+  /** Default `auto`: glass where available, blur on older iOS and web, tint on Android. */
   material?: SlidingCapsuleMaterial;
+  /**
+   * Appearance of the Liquid Glass (iOS 26+). Default `light`, as in Wise. Pass `auto` or
+   * `dark` with dark `colors`, so light glyphs don't sit on light glass.
+   */
+  glassColorScheme?: 'auto' | 'light' | 'dark';
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
@@ -60,6 +88,8 @@ export interface SlidingCapsuleProps {
  * above the home-indicator safe area.
  */
 const TAB_WIDTH = 89.5;
+/** On a narrow screen the tabs shrink to fit, down to this width. */
+const MIN_TAB_WIDTH = 50;
 const BAR_HEIGHT = 62.5;
 const BAR_PADDING = 7.5;
 const CAPSULE_INSET = { x: -3.5, y: 4 };
@@ -82,12 +112,14 @@ function resolveMaterial(
 ): Exclude<SlidingCapsuleMaterial, 'auto'> {
   if (material !== 'auto') return material;
   if (isLiquidGlassAvailable()) return 'glass';
-  return Platform.OS === 'ios' ? 'blur' : 'tint';
+  // expo-blur blurs on web too (CSS backdrop-filter); only Android gets the plain tint.
+  return Platform.OS === 'android' ? 'tint' : 'blur';
 }
 
 export function SlidingCapsule({
   colors: custom,
   material = 'auto',
+  glassColorScheme = 'light',
   haptics = true,
 }: SlidingCapsuleProps) {
   const colors = { ...defaultColors, ...custom };
@@ -101,7 +133,7 @@ export function SlidingCapsule({
           {surface === 'glass' ? (
             <GlassView
               glassEffectStyle="regular"
-              colorScheme="light"
+              colorScheme={glassColorScheme}
               style={StyleSheet.absoluteFill}
             />
           ) : (
@@ -115,7 +147,8 @@ export function SlidingCapsule({
                   {
                     backgroundColor: colors.background,
                     opacity: surface === 'blur' ? 0.75 : 0.97,
-                    experimental_backgroundImage: BAR_SHEEN,
+                    // `backgroundImage` works on iOS, Android and the web alike.
+                    backgroundImage: BAR_SHEEN,
                   },
                 ]}
               />
@@ -127,7 +160,7 @@ export function SlidingCapsule({
             inset={CAPSULE_INSET}
             style={[
               styles.capsule,
-              { backgroundColor: colors.capsule, experimental_backgroundImage: CAPSULE_SHEEN },
+              { backgroundColor: colors.capsule, backgroundImage: CAPSULE_SHEEN },
             ]}
           />
           {tabs.map((tab) => (
@@ -154,6 +187,16 @@ function Tab({
   colors: SlidingCapsuleColors;
   haptics: boolean;
 }) {
+  // With `activeForeground`, the active colour fades in over the idle one, which stays opaque
+  // until late in the change, so the tab never looks dimmed half-way.
+  const active = colors.activeForeground;
+  const progress = useFocusProgress(tab);
+  const outgoing = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.6, 1], [1, 0], 'clamp'),
+  }));
+  const incoming = useAnimatedStyle(() => ({ opacity: progress.value }));
+  const icon = (color: string) =>
+    tab.renderIcon?.({ focused: tab.focused, color, size: ICON }) ?? null;
   return (
     <TabButton
       tab={tab}
@@ -161,7 +204,18 @@ function Tab({
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <View style={styles.iconBox}>
-        {tab.renderIcon?.({ focused: tab.focused, color: colors.foreground, size: ICON })}
+        {active === undefined ? (
+          icon(colors.foreground)
+        ) : (
+          <>
+            <Animated.View style={[StyleSheet.absoluteFill, outgoing]}>
+              {icon(colors.foreground)}
+            </Animated.View>
+            <Animated.View style={[StyleSheet.absoluteFill, incoming]}>
+              {icon(active)}
+            </Animated.View>
+          </>
+        )}
         {tab.badge != null ? (
           <Animated.View
             entering={badgeIn}
@@ -169,24 +223,57 @@ function Tab({
             style={[styles.badge, { backgroundColor: colors.badge }]}
           >
             {typeof tab.badge === 'number' ? (
-              <BadgeCount value={tab.badge} textStyle={styles.badgeText} />
+              <BadgeCount
+                value={tab.badge}
+                textStyle={[styles.badgeText, { color: colors.badgeText }]}
+              />
             ) : (
-              <Text numberOfLines={1} style={styles.badgeText}>
+              <Text
+                numberOfLines={1}
+                maxFontSizeMultiplier={1.3}
+                style={[styles.badgeText, { color: colors.badgeText }]}
+              >
                 {tab.badge}
               </Text>
             )}
           </Animated.View>
         ) : null}
       </View>
-      <Text numberOfLines={1} style={[styles.label, { color: colors.foreground }]}>
-        {tab.label}
-      </Text>
+      {active === undefined ? (
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[styles.label, { color: colors.foreground }]}
+        >
+          {tab.label}
+        </Text>
+      ) : (
+        // The idle label sets the width; the active one is laid over it.
+        <View>
+          <Animated.Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.3}
+            style={[styles.label, { color: colors.foreground }, outgoing]}
+          >
+            {tab.label}
+          </Animated.Text>
+          <Animated.Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.3}
+            style={[styles.label, styles.over, { color: active }, incoming]}
+          >
+            {tab.label}
+          </Animated.Text>
+        </View>
+      )}
     </TabButton>
   );
 }
 
 const styles = StyleSheet.create({
   bar: {
+    // Fits the screen when the tabs' full width doesn't: they shrink instead.
+    maxWidth: '100%',
     borderRadius: BAR_HEIGHT / 2,
   },
   clip: {
@@ -209,6 +296,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
     width: TAB_WIDTH,
+    flexShrink: 1,
+    minWidth: MIN_TAB_WIDTH,
     height: BAR_HEIGHT,
     paddingTop: 0.75,
   },
@@ -220,6 +309,12 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     lineHeight: 13,
     fontWeight: '500',
+  },
+  over: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
   },
   badge: {
     position: 'absolute',
@@ -233,7 +328,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeText: {
-    color: '#fff',
     fontSize: 11,
     fontWeight: '700',
   },

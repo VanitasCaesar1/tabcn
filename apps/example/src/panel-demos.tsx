@@ -28,15 +28,7 @@ import {
 } from '@registry/quick-create/quick-create';
 import { SubTabs as SubTabsDesign, useSubTabs } from '@registry/sub-tabs/sub-tabs';
 import { type ReactNode, useEffect, useState, useSyncExternalStore } from 'react';
-import {
-  AccessibilityInfo,
-  Alert,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -45,12 +37,14 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import {
   TabBarCompanion,
   TabBarRoot,
+  TabBarStateProvider,
   TabButton,
   type TabButtonProps,
+  type TabIconProps,
   TabIndicator,
   type TabItem,
   TabList,
@@ -158,10 +152,26 @@ function demoStore<T>(initial: T) {
 
 const PLAYER = 'player';
 
+// Abstract covers drawn for the demo by assets/covers/generate.py.
 const TRACKS = [
-  { title: 'Slow Tide', artist: 'Harbor Lights', duration: 214 },
-  { title: 'Paper Planes', artist: 'Juniper Fields', duration: 187 },
-  { title: 'Night Bus', artist: 'The Quiet Hours', duration: 242 },
+  {
+    title: 'Slow Tide',
+    artist: 'Harbor Lights',
+    duration: 214,
+    artwork: require('../assets/covers/slow-tide.jpg'),
+  },
+  {
+    title: 'Paper Planes',
+    artist: 'Juniper Fields',
+    duration: 187,
+    artwork: require('../assets/covers/paper-planes.jpg'),
+  },
+  {
+    title: 'Night Bus',
+    artist: 'The Quiet Hours',
+    duration: 242,
+    artwork: require('../assets/covers/night-bus.jpg'),
+  },
 ];
 
 /** The panel, with local playback so it moves: progress ticks while playing. */
@@ -271,6 +281,9 @@ export function QuickCreateBar() {
   return <LabeledPlus onActionPress={toggle} />;
 }
 
+/** The action last picked from the menu, shown on the demo screen (Alert does nothing on web). */
+const quickCreatePick = demoStore<string | undefined>(undefined);
+
 export function QuickCreatePanel() {
   return (
     <QuickCreate
@@ -279,17 +292,17 @@ export function QuickCreatePanel() {
         {
           label: 'Voice',
           icon: QuickCreateIcons.MicIcon,
-          onPress: () => Alert.alert('Voice', 'Start a recording.'),
+          onPress: () => quickCreatePick.set('Voice: start a recording'),
         },
         {
           label: 'Text',
           icon: QuickCreateIcons.TextIcon,
-          onPress: () => Alert.alert('Text', 'Start a script.'),
+          onPress: () => quickCreatePick.set('Text: start a script'),
         },
         {
           label: 'Upload',
           icon: QuickCreateIcons.UploadIcon,
-          onPress: () => Alert.alert('Upload', 'Pick a file.'),
+          onPress: () => quickCreatePick.set('Upload: pick a file'),
         },
       ]}
     />
@@ -299,12 +312,14 @@ export function QuickCreatePanel() {
 /** The + button is the main control; these do the same from the screen. */
 export function QuickCreateControls({ text, chip }: DemoExtraProps) {
   const menu = useTabPanel(CREATE);
+  const picked = quickCreatePick.useValue();
   return (
     <View style={styles.block}>
       <Note
         text={text}
         message="Tap + to open the create menu; tap it again or pick an action to close it."
       />
+      {picked ? <Note text={text} message={`Last picked: ${picked}.`} /> : null}
       <View style={styles.row}>
         <DemoButton label="Open menu" onPress={menu.open} text={text} chip={chip} />
         <DemoButton label="Close menu" onPress={menu.hide} text={text} chip={chip} />
@@ -351,7 +366,7 @@ export function BarSheetControls({ text, chip }: DemoExtraProps) {
     <View style={styles.block}>
       <Note
         text={text}
-        message={`Sheet: ${where}. Drag its header between 60% and full height, or below 60% to close it. Switching tabs closes it too.`}
+        message={`Sheet: ${where}. Drag its header between 60% and full height, or below 60% to close it; tap the grabber to step between them. Switching tabs closes it too.`}
       />
       <View style={styles.row}>
         <DemoButton label="Open sheet" onPress={sheet.open} text={text} chip={chip} />
@@ -517,6 +532,19 @@ const subTabChoice = demoStore<string | undefined>(undefined);
 
 const PILL = { background: '#fafafa', capsule: '#e5e6e8', foreground: '#151517' };
 
+/**
+ * Library's icon in the Sub-Tabs demo: a stack, a card over two shorter layers, drawn for the
+ * demo on a 24-unit grid to sit beside Soft Pill's glyphs.
+ */
+export function LibraryIcon({ color, size }: TabIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x={4} y={3.5} width={16} height={10} rx={2.5} stroke={color} strokeWidth={2.2} />
+      <Path d="M6.5 17 H17.5 M9 20.5 H15" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 /** Soft Pill, copied, with `useSubTabs` on its Library tab. */
 export function SubTabsBar() {
   const { tabs } = useTabBar();
@@ -556,10 +584,8 @@ function PillTab({
   return (
     <TabButton tab={tab} style={styles.pillTab} {...rest}>
       {tab.renderIcon?.({ focused: tab.focused, color: PILL.foreground, size: 18 })}
-      <Text
-        numberOfLines={1}
-        style={[styles.pillLabel, { fontWeight: tab.focused ? '700' : '500' }]}
-      >
+      {/* One weight in both states, so the label never changes width as the tab changes. */}
+      <Text numberOfLines={1} style={styles.pillLabel}>
         {tab.label}
       </Text>
       {children}
@@ -567,13 +593,15 @@ function PillTab({
   );
 }
 
-/** The drawer, declared once beside the navigator. */
+/** The drawer, declared once beside the navigator. The last-chosen sub-tab shows as selected. */
 export function SubTabsPanel() {
+  const choice = subTabChoice.useValue();
   return (
     <SubTabs
       name={LIBRARY}
       items={['Albums', 'Artists', 'Songs'].map((label) => ({
         label,
+        selected: label === choice,
         onPress: () => subTabChoice.set(label),
       }))}
     />
@@ -588,6 +616,72 @@ export function SubTabsNote({ text }: DemoExtraProps) {
         text={text}
         message={`Long-press Library: Albums, Artists and Songs slide up from behind it. With VoiceOver or TalkBack, use its "Show sub-tabs" action.${choice ? ` Last chosen: ${choice}.` : ''}`}
       />
+    </View>
+  );
+}
+
+// Glass Badges: a Chats count that changes -----------------------------------------------------
+
+/** Chats is the third tab. */
+const CHATS_TAB = 2;
+/** The Chats count, starting at the demo's 8. */
+const chatsCount = demoStore(8);
+
+/**
+ * Gives the bar inside it the Chats count from `chatsCount` in place of the screen options'
+ * badge, so a bump rolls the digits without touching the navigator.
+ */
+export function ChatsBadge({ children }: { children: ReactNode }) {
+  const state = useTabBar();
+  const count = chatsCount.useValue();
+  const tabs = state.tabs.map((tab) => (tab.index === CHATS_TAB ? { ...tab, badge: count } : tab));
+  return <TabBarStateProvider value={{ ...state, tabs }}>{children}</TabBarStateProvider>;
+}
+
+export function GlassBadgesControls({ text, chip }: DemoExtraProps) {
+  const count = chatsCount.useValue();
+  return (
+    <View style={styles.block}>
+      <Note
+        text={text}
+        message={`Chats: ${count} unread. Bump it to roll the badge's digits; switch tabs to see its ring crossfade between the glass and the capsule.`}
+      />
+      <View style={styles.row}>
+        <DemoButton
+          label="Bump Chats"
+          onPress={() => chatsCount.set(chatsCount.get() + 1)}
+          text={text}
+          chip={chip}
+        />
+      </View>
+    </View>
+  );
+}
+
+// Cart Pill: a bag that fills ----------------------------------------------------------------
+
+/** Items in the bag, starting at the store shot's 2. */
+const cartItems = demoStore(2);
+
+/** The cart count, for the bar. */
+export const useCartCount = cartItems.useValue;
+
+export function CartPillControls({ text, chip }: DemoExtraProps) {
+  const count = cartItems.useValue();
+  return (
+    <View style={styles.block}>
+      <Note
+        text={text}
+        message={`Bag: ${count} ${count === 1 ? 'item' : 'items'}. The count is cut out of the basket on the cart button.`}
+      />
+      <View style={styles.row}>
+        <DemoButton
+          label="Add to bag"
+          onPress={() => cartItems.set(cartItems.get() + 1)}
+          text={text}
+          chip={chip}
+        />
+      </View>
     </View>
   );
 }
@@ -645,7 +739,12 @@ export function LiveTabsFeed({ timer, download }: { timer: string; download: str
   }, [running]);
   useEffect(() => {
     setTimerText(remaining > 0 ? clock(remaining) : undefined);
-    timerProgress.value = 1 - remaining / TIMER_SECONDS;
+    // Glide through each second instead of jumping; a restart snaps back to empty.
+    const next = 1 - remaining / TIMER_SECONDS;
+    timerProgress.value =
+      remaining === TIMER_SECONDS
+        ? next
+        : withTiming(next, { duration: 1000, easing: Easing.linear });
   }, [remaining, setTimerText, timerProgress]);
 
   // The download loops 0 → 1 on the UI thread; pausing holds it where it is.
@@ -775,6 +874,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     backgroundColor: PILL.background,
     boxShadow: '0 10px 28px rgba(60, 40, 20, 0.14)',
+    maxWidth: '100%',
   },
   capsule: { borderRadius: 999, backgroundColor: PILL.capsule },
   pillTab: {
@@ -782,10 +882,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 5.5,
     paddingTop: 2.5,
+    // Soft Pill's 63 pt where it fits; narrower on a small phone, as Soft Pill does.
     width: 63,
+    flexShrink: 1,
+    minWidth: 50,
     height: 50.7,
   },
-  pillLabel: { fontSize: 9.5, color: PILL.foreground },
+  pillLabel: { fontSize: 9.5, fontWeight: '600', color: PILL.foreground },
   sectionRows: { gap: 4, paddingBottom: 24 },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   sectionThumb: { width: 48, height: 48, borderRadius: 10, backgroundColor: '#dfe6da' },

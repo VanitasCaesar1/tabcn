@@ -1,9 +1,14 @@
 /**
- * Mini Player: a dark glass now-playing strip that peeks out from behind a floating tab bar
+ * Mini Player: a dark, frosted now-playing strip that peeks out from behind a floating tab bar
  * (artwork, title, artist, play/pause) and opens into a player: large artwork, title,
  * progress, and previous / play / next. Drag the strip up to open it and down to return it,
  * or tap it. Panel states glide on tabcnSpring (no overshoot); the strip and the player's
  * header crossfade, as do the play and pause glyphs. Reduce motion makes every change instant.
+ *
+ * The card blurs what is behind it on iOS and the web (expo-blur), under a translucent dark
+ * fill. Android gets a near-opaque fill instead, with no blur, so it reads the same anywhere.
+ * Changed from the reference for clarity: the card was a near-opaque fill with no blur on every
+ * platform; it now blurs on iOS and the web, so the screen shows through softly behind it.
  *
  * Place it once under the `TabBarProvider` (beside `<Tabs>`, so it stays across tabs) and
  * drive it with `useTabPanel(id)`: `peek()` when a track starts, `hide()` when it stops.
@@ -12,6 +17,7 @@
  * there, so `peek()` and `open()` change its state but show nothing.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useEffect } from 'react';
 // 'react-native-tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
@@ -20,6 +26,7 @@ import 'react-native-gesture-handler';
 import {
   Image,
   type ImageSourcePropType,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -28,12 +35,30 @@ import {
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
-import { type PanelState, TabPanel, tabcnTiming, useTabBar, useTabPanel } from 'react-native-tabcn';
+import {
+  type PanelState,
+  TabPanel,
+  tabcnTiming,
+  usePanelOverlap,
+  useTabBar,
+  useTabPanel,
+} from 'react-native-tabcn';
 import { PanelDragArea } from 'react-native-tabcn/gestures';
 
+/**
+ * Whether the card draws a blur: iOS and the web (CSS backdrop-filter). Android's blur is costly
+ * and uneven, so it gets the near-opaque fill alone.
+ */
+const BLUR = Platform.OS !== 'android';
+
 const defaultColors = {
-  /** The card: a near-opaque dark tint, so it reads as glass over any screen. */
-  background: 'rgba(22, 22, 26, 0.94)',
+  /**
+   * The card's fill. Where the card blurs (iOS, web) it sits over the blur at 0.72, so the
+   * screen shows through softly while the text stays readable; on Android, with no blur, it is
+   * near-opaque (0.94) so it reads the same over any screen. A colour you pass is used as is
+   * on every platform.
+   */
+  background: BLUR ? 'rgba(22, 22, 26, 0.72)' : 'rgba(22, 22, 26, 0.94)',
   /** Hairline edge that catches the light. */
   border: 'rgba(255, 255, 255, 0.12)',
   /** Title, glyphs and the progress fill. */
@@ -44,12 +69,33 @@ const defaultColors = {
   track: 'rgba(255, 255, 255, 0.16)',
   /** Square behind missing artwork. */
   artwork: '#2e2e35',
-  /** The big play button and the glyph on it. */
+  /** The big play button. */
   control: '#ffffff',
+  /** The glyph on the big play button. */
   onControl: '#151517',
 };
 
 export type MiniPlayerColors = typeof defaultColors;
+
+const defaultLabels = {
+  /** The play button, read by screen readers while paused. */
+  play: 'Play',
+  /** The same button while playing. */
+  pause: 'Pause',
+  /** The open player's header. */
+  nowPlaying: 'Now playing',
+  /** The chevron that returns the open player to its strip. */
+  close: 'Close player',
+  /** The previous-track button. */
+  previous: 'Previous',
+  /** The next-track button. */
+  next: 'Next',
+  /** Hint on the strip, after the track's title and artist. */
+  openHint: 'Opens the player',
+};
+
+/** The player's words, for translation: pass the ones to change as `labels`. */
+export type MiniPlayerLabels = typeof defaultLabels;
 
 export interface MiniPlayerTrack {
   title: string;
@@ -97,15 +143,21 @@ export interface MiniPlayerProps {
   /** State when first mounted. Default `'hidden'`: call `peek()` when a track starts. */
   initialState?: PanelState;
   colors?: Partial<MiniPlayerColors>;
+  /** The header text and screen-reader labels, merged over the English defaults. */
+  labels?: Partial<MiniPlayerLabels>;
   /** Corner radius of the card. Default 24. */
   radius?: number;
+  /** Selection haptic on every button and on tapping the strip. Default true. */
   haptics?: boolean;
 }
 
 export function MiniPlayer({ id = 'player', initialState, ...props }: MiniPlayerProps) {
+  // How much of the card the bar hides: 16 pt under a floating bar, 0 under a docked one. The
+  // strip shows in full above either, with the rest tucked behind the bar.
+  const tuck = usePanelOverlap();
   return (
-    <TabPanel id={id} peekHeight={PEEK} initialState={initialState}>
-      <Player id={id} {...props} />
+    <TabPanel id={id} peekHeight={STRIP + tuck} initialState={initialState}>
+      <Player id={id} tuck={tuck} {...props} />
     </TabPanel>
   );
 }
@@ -120,14 +172,17 @@ function Player({
   progress = 0,
   renderOpen,
   colors: custom,
+  labels: customLabels,
   radius = 24,
   haptics = true,
-}: Omit<MiniPlayerProps, 'initialState'> & { id: string }) {
+  tuck,
+}: Omit<MiniPlayerProps, 'initialState'> & { id: string; tuck: number }) {
   const colors = { ...defaultColors, ...custom };
+  const labels = { ...defaultLabels, ...customLabels };
   const panel = useTabPanel(id);
   const open = panel.state === 'open';
   const fraction = Math.min(1, Math.max(0, progress));
-  const artSize = useOpenArtSize(!!track.duration);
+  const artSize = useOpenArtSize(!!track.duration, tuck);
 
   // The strip and the open header share the top of the card and crossfade.
   const openness = useSharedValue(open ? 1 : 0);
@@ -147,13 +202,14 @@ function Player({
 
   return (
     <PanelDragArea panel={id}>
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: colors.background, borderColor: colors.border, borderRadius: radius },
-        ]}
-      >
-        <View style={styles.top}>
+      <View style={[styles.card, { borderColor: colors.border, borderRadius: radius }]}>
+        {/* The blur (iOS, web), then the fill over it; the card's corners clip both. */}
+        {BLUR ? <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} /> : null}
+        <View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
+        />
+        <View style={{ height: STRIP + tuck }}>
           {/* Peek strip: the visible part of the card while the panel rests above the bar. */}
           <Animated.View
             pointerEvents={open ? 'none' : 'box-none'}
@@ -164,23 +220,31 @@ function Player({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`${track.title}, ${track.artist}`}
-              accessibilityHint="Opens the player"
+              accessibilityHint={labels.openHint}
               onPress={withHaptic(panel.open)}
               style={styles.stripMain}
             >
               <Artwork track={track} size={STRIP_ART} radius={9} colors={colors} />
               <View style={styles.stripText}>
-                <Text numberOfLines={1} style={[styles.stripTitle, { color: colors.foreground }]}>
+                <Text
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={1.3}
+                  style={[styles.stripTitle, { color: colors.foreground }]}
+                >
                   {track.title}
                 </Text>
-                <Text numberOfLines={1} style={[styles.stripArtist, { color: colors.muted }]}>
+                <Text
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={1.3}
+                  style={[styles.stripArtist, { color: colors.muted }]}
+                >
                   {track.artist}
                 </Text>
               </View>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={playing ? 'Pause' : 'Play'}
+              accessibilityLabel={playing ? labels.pause : labels.play}
               hitSlop={6}
               onPress={withHaptic(onPlayPause)}
               style={({ pressed }) => [styles.stripButton, pressed && styles.pressed]}
@@ -198,10 +262,15 @@ function Player({
           >
             <View style={[styles.grabber, { backgroundColor: colors.track }]} />
             <View style={styles.header}>
-              <Text style={[styles.headerLabel, { color: colors.muted }]}>Now playing</Text>
+              <Text
+                maxFontSizeMultiplier={1.3}
+                style={[styles.headerLabel, { color: colors.muted }]}
+              >
+                {labels.nowPlaying}
+              </Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Close player"
+                accessibilityLabel={labels.close}
                 hitSlop={6}
                 onPress={withHaptic(close)}
                 style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
@@ -216,7 +285,7 @@ function Player({
         <View
           importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}
           accessibilityElementsHidden={!open}
-          style={styles.body}
+          style={[styles.body, { paddingBottom: tuck + 20 }]}
         >
           {renderOpen ? (
             renderOpen({
@@ -248,7 +317,7 @@ function Player({
               <View style={styles.controls}>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Previous"
+                  accessibilityLabel={labels.previous}
                   accessibilityState={{ disabled: !onPrevious }}
                   disabled={!onPrevious}
                   onPress={withHaptic(onPrevious)}
@@ -262,7 +331,7 @@ function Player({
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={playing ? 'Pause' : 'Play'}
+                  accessibilityLabel={playing ? labels.pause : labels.play}
                   onPress={withHaptic(onPlayPause)}
                   style={({ pressed }) => [
                     styles.play,
@@ -274,7 +343,7 @@ function Player({
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Next"
+                  accessibilityLabel={labels.next}
                   onPress={withHaptic(onNext)}
                   style={({ pressed }) => [styles.skip, pressed && styles.pressed]}
                 >
@@ -295,14 +364,14 @@ function Player({
  * the top of the screen: the artwork takes what height is left, up to 300 pt, and is dropped
  * when less than MIN_ART is left (a phone in landscape, or very large text).
  */
-function useOpenArtSize(hasTimes: boolean) {
+function useOpenArtSize(hasTimes: boolean, tuck: number) {
   const { height, fontScale } = useWindowDimensions();
   const { insets } = useTabBar();
   // Room for the whole card: from just under the status bar down to the bar's top edge,
   // plus the strip that tucks behind the bar.
-  const room = height - insets.top - TOP_MARGIN - insets.bottom - BAR_ALLOWANCE + TUCK;
+  const room = height - insets.top - TOP_MARGIN - insets.bottom - BAR_ALLOWANCE + tuck;
   const text = (TITLE_TEXT + (hasTimes ? TIME_TEXT : 0)) * fontScale;
-  const rest = OPEN_FIXED + (hasTimes ? TIME_GAP : 0) + text;
+  const rest = openFixed(tuck) + (hasTimes ? TIME_GAP : 0) + text;
   const art = Math.min(MAX_ART, Math.floor(room - rest));
   return art >= MIN_ART ? art : 0;
 }
@@ -471,12 +540,11 @@ function NoteGlyph({ color, size }: { color: string; size: number }) {
   );
 }
 
-/** Points the panel shows while peeking (also reserved in the bar's reported height). */
-const PEEK = 64;
-/** The bottom of the peek that tucks behind a floating bar (tabcn's floating overlap). */
-const TUCK = 16;
-/** The strip's visible row above the bar. */
-const STRIP = PEEK - TUCK;
+/**
+ * The strip's visible row above the bar. The panel peeks this much plus `usePanelOverlap()`,
+ * the part tucked behind the bar (16 pt under a floating bar, 0 under a docked one).
+ */
+const STRIP = 48;
 const STRIP_ART = 36;
 /** Open artwork: at most this size, and dropped below MIN_ART. */
 const MAX_ART = 300;
@@ -486,11 +554,11 @@ const TOP_MARGIN = 8;
 /** Generous height of a bar above the bottom inset (the bar's own height plus its offset). */
 const BAR_ALLOWANCE = 100;
 /**
- * The open card without its artwork, at the default text size: the header (PEEK), body
- * padding (4 + TUCK + 20), the titles' margin and gap (22), the progress margin and track
+ * The open card without its artwork, at the default text size: the header (strip + tuck),
+ * body padding (4 + tuck + 20), the titles' margin and gap (22), the progress margin and track
  * (20), and the controls' margin and play button (78).
  */
-const OPEN_FIXED = PEEK + 4 + TUCK + 20 + 22 + 20 + 78;
+const openFixed = (tuck: number) => STRIP + tuck + 4 + tuck + 20 + 22 + 20 + 78;
 /** Line heights that grow with Dynamic Type: title and artist; elapsed and remaining times. */
 const TITLE_TEXT = 44;
 const TIME_TEXT = 14;
@@ -502,7 +570,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
-  top: { height: PEEK },
   strip: {
     position: 'absolute',
     top: 0,
@@ -546,7 +613,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   headerButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  body: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: TUCK + 20 },
+  body: { paddingHorizontal: 20, paddingTop: 4 },
   bigArtFrame: { maxWidth: '100%', alignSelf: 'center' },
   artFallback: { alignItems: 'center', justifyContent: 'center' },
   titles: { marginTop: 20, gap: 2 },
