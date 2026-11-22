@@ -14,6 +14,16 @@ export { legacyGroup } from './groups';
 
 const root = join(process.cwd(), '../..');
 const publicDir = join(process.cwd(), 'public');
+// The example app's web build, for live previews; see scripts/build-preview.ts.
+const hasPreview = existsSync(join(publicDir, 'preview', 'index.html'));
+// Designs the example app draws in the PanelUI theme picked: `themed('<id>', …)` in its demos.
+const themedIds = new Set(
+  ['demos.tsx', 'panel-demos.tsx'].flatMap((file) =>
+    [
+      ...readFileSync(join(root, 'apps/example/src', file), 'utf8').matchAll(/themed\('([a-z-]+)'/g),
+    ].map((m) => m[1]),
+  ),
+);
 
 export interface Design {
   id: string;
@@ -39,6 +49,13 @@ export interface Design {
   /** basePath-aware URLs, or null while the recording is missing. */
   video: string | null;
   poster: string | null;
+  /**
+   * basePath-aware URL of the live preview: the example app's web build opened on this design
+   * (scripts/build-preview.ts). Null when the site was built without it.
+   */
+  preview: string | null;
+  /** The preview's PanelUI theme switch recolours this design (see the example's `themed()`). */
+  themed: boolean;
   /** Absolute URL of the link-preview image: its own, or the site's while it's missing. */
   ogImage: string;
   /** basePath-aware URLs of the tab bar stills, one per tab state, in order. */
@@ -268,6 +285,8 @@ function load(): Design[] {
       icons,
       iconsFile: iconsEntry ? iconsEntry.target.replace(/\.tsx$/, '') : null,
       video: media(`${entry.id}.mp4`),
+      preview: hasPreview ? asset(`/preview/?embed=1&design=${entry.id}`) : null,
+      themed: themedIds.has(entry.id),
       poster: media(`${entry.id}.jpg`),
       ogImage: ogImage(entry.id),
       stills: stillList,

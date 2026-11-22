@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun scripts/fetch-repo.ts && bun scripts/build-registry.ts && bun scripts/build-props.ts && next dev",
-    "build": "bun scripts/fetch-repo.ts && bun scripts/build-registry.ts && bun scripts/build-props.ts && next build",
+    "dev": "bun scripts/fetch-repo.ts && bun scripts/build-registry.ts && bun scripts/build-props.ts && bun scripts/build-preview.ts --if-missing && next dev",
+    "build": "bun scripts/fetch-repo.ts && bun scripts/build-registry.ts && bun scripts/build-props.ts && bun scripts/build-preview.ts && next build",
     "registry": "bun scripts/build-registry.ts",
     "props": "bun scripts/build-props.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "preview": "bun scripts/build-preview.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

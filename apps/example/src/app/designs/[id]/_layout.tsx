@@ -1,11 +1,13 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
+import { useEffect } from 'react';
 import { Alert, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { TabBarProvider } from 'react-native-tabcn';
 import { tabBar } from 'react-native-tabcn/expo-router';
 
 import { findDesign, LAYOUT_LABELS } from '@/catalog';
 import { CurrentDemoProvider, demos, RAIL_MIN_WIDTH, screenBackground, TAB_ROUTES } from '@/demos';
+import { embed, notifyParent } from '@/embed';
 import { useDemoScreenColors } from '@/panel-theme';
 import { useColors } from '@/use-colors';
 
@@ -17,6 +19,7 @@ export default function DesignLayout() {
   const { width } = useWindowDimensions();
   // Under a PanelUI theme every screen takes the theme's background.
   const themedScreen = useDemoScreenColors();
+  useEffect(() => notifyParent({ type: 'tabcn:ready' }), []);
 
   if (!design || !demo) {
     return (
@@ -47,7 +50,7 @@ export default function DesignLayout() {
 
   return (
     <CurrentDemoProvider value={demo}>
-      <Stack.Screen options={{ title: design.title, headerShown: !demo.fullScreen }} />
+      <Stack.Screen options={{ title: design.title, headerShown: !demo.fullScreen && !embed }} />
       {/* Lets screens drive the bar: panels, the override slot, minimize on scroll. */}
       <TabBarProvider>
         <Tabs

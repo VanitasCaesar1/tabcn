@@ -1,8 +1,9 @@
-import { type Href, Link } from 'expo-router';
+import { type Href, Link, Redirect } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { catalog, LAYOUT_LABELS } from '@/catalog';
 import { demos, designHref } from '@/demos';
+import { embed } from '@/embed';
 import { DesignPreview } from '@/preview';
 import { useColors } from '@/use-colors';
 import { useExpoGoLinks } from '@/use-expo-go-links';
@@ -10,6 +11,8 @@ import { useExpoGoLinks } from '@/use-expo-go-links';
 export default function Gallery() {
   const colors = useColors();
   useExpoGoLinks();
+  // The site's live preview opens straight on its design.
+  if (embed?.design && demos[embed.design]) return <Redirect href={designHref(embed.design)} />;
   return (
     <FlatList
       contentInsetAdjustmentBehavior="automatic"

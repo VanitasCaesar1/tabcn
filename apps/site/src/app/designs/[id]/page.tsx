@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { Arrow } from '@/components/arrow';
 import { CodeBlock } from '@/components/code-block';
 import { InstallCommand } from '@/components/install-command';
+import { LivePhone } from '@/components/live-phone';
 import { OpenOnPhone } from '@/components/open-on-phone';
 import { DesignPhone } from '@/components/phone';
 import { PropsTable } from '@/components/props-table';
@@ -76,7 +77,16 @@ export default async function DesignPage({ params }: Props) {
         {/* The stage: a quiet dotted canvas the phone sits on, so every design is shown the
             same way. (ui lab, MIT.) */}
         <div className="flex items-center justify-center overflow-x-clip rounded-3xl border border-border bg-[radial-gradient(color-mix(in_oklab,var(--foreground)_9%,transparent)_1px,transparent_1px)] [background-size:18px_18px] px-4 py-8 sm:py-12">
-          <DesignPhone media={design} className="w-[230px] sm:w-[270px]" />
+          {design.preview ? (
+            <LivePhone
+              media={design}
+              preview={design.preview}
+              themed={design.themed}
+              className="w-[230px] sm:w-[270px]"
+            />
+          ) : (
+            <DesignPhone media={design} className="w-[230px] sm:w-[270px]" />
+          )}
         </div>
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
