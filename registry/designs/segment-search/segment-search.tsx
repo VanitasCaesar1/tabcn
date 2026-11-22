@@ -213,7 +213,9 @@ const styles = StyleSheet.create({
     left: 0,
     borderRadius: HEIGHT / 2,
   },
-  magnifier: { width: ACTION_ICON, height: ACTION_ICON },
+  // Laid out left to right in every language: React Native swaps `left` in right-to-left
+  // layouts, which would put the handle at the lower left. iOS doesn't mirror the search glyph.
+  magnifier: { width: ACTION_ICON, height: ACTION_ICON, direction: 'ltr' },
   lens: {
     position: 'absolute',
     left: 0,

@@ -115,6 +115,23 @@ const PADDING_KEYS = [
 ] as const;
 const NO_PADDING = Object.fromEntries(PADDING_KEYS.map((key) => [key, 0])) as ViewStyle;
 
+/**
+ * A floating box under a provider leaves its content layout to the children's wrapper. Kept as
+ * a row, the box would grow the wrapper (`flexGrow: 1`) along it to the screen's width, so a
+ * design whose root is a row (a pill and a round button) sat against the leading edge instead
+ * of centred.
+ */
+const NO_CONTENT_LAYOUT: ViewStyle = {
+  flexDirection: 'column',
+  flexWrap: 'nowrap',
+  alignItems: 'stretch',
+  alignContent: 'flex-start',
+  justifyContent: 'flex-start',
+  gap: 0,
+  rowGap: 0,
+  columnGap: 0,
+};
+
 const selectSnapshot = (s: Snapshot) => s;
 
 /**
@@ -512,7 +529,7 @@ export function TabBarRoot({
         <View
           // Centred, the box would size to its content and never learn the screen's width, so
           // a design's `maxWidth: '100%'` couldn't shrink a bar wider than a narrow phone.
-          style={[styles.floatingBox, style, boxPadding]}
+          style={[styles.floatingBox, style, boxPadding, provider ? NO_CONTENT_LAYOUT : null]}
           onLayout={
             store
               ? (e) => {
