@@ -79,7 +79,7 @@ export function SiteHeader({ crumb }: { crumb?: HeaderCrumb }) {
           <div className="shrink-0 px-3 pt-4">
             <HeaderSearch items={items} variant="row" />
           </div>
-          <nav aria-label="Designs" className="flex min-h-0 flex-1 flex-col">
+          <nav aria-label="Docs and designs" className="flex min-h-0 flex-1 flex-col">
             <SidebarGroups groups={sidebarGroups} />
           </nav>
         </MobileNav>

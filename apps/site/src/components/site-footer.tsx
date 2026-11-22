@@ -105,7 +105,7 @@ export function SiteFooter() {
           <p className={titleClass}>Get started</p>
           <ul className="mt-3 flex flex-col gap-2 text-sm">
             <li>
-              <Link href="/#quick-start" className={linkClass}>
+              <Link href="/docs/#install" className={linkClass}>
                 Quick start
               </Link>
             </li>
@@ -115,12 +115,19 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
+              <Link href="/docs/" className={linkClass}>
+                Docs
+              </Link>
+            </li>
+            <li>
+              <Link href="/docs/panelui/" className={linkClass}>
+                Using with PanelUI
+              </Link>
+            </li>
+            <li>
               <a href={asset('/r/registry.json')} className={linkClass}>
                 Registry index
               </a>
-            </li>
-            <li>
-              <Out href={`${site.repo}/tree/main/docs/designs`}>Design docs</Out>
             </li>
           </ul>
         </nav>
