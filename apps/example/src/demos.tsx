@@ -1,5 +1,6 @@
 import { AccentDark as AccentDarkDesign } from '@registry/accent-dark/accent-dark';
 import * as AccentDarkIcons from '@registry/accent-dark/icons';
+import * as AccountDockIcons from '@registry/account-dock/account-dock-icons';
 import { BadgeDock as BadgeDockDesign } from '@registry/badge-dock/badge-dock';
 import * as BadgeDockIcons from '@registry/badge-dock/icons';
 import { ButtonRow as ButtonRowDesign } from '@registry/button-row/button-row';
@@ -74,6 +75,7 @@ import { TopNotch as TopNotchDesign } from '@registry/top-notch/top-notch';
 import type { Href } from 'expo-router';
 import { type ComponentType, createContext, type ReactElement, type ReactNode, use } from 'react';
 import type { TabIconProps } from 'react-native-tabcn';
+import { AccountDockDemoBar } from '@/account-dock-demo';
 import {
   ChatDrawer,
   ComposerDockDemoBar,
@@ -853,6 +855,20 @@ export const demos: Record<string, Demo> = {
       { label: 'Projects', icon: ComposerDockIcons.ProjectsIcon },
       { label: 'Code', icon: ComposerDockIcons.CodeIcon },
       { label: 'Artifacts', icon: ComposerDockIcons.ArtifactsIcon },
+    ],
+  },
+  'account-dock': {
+    // Tap the chip: the tabs fold into an account bar and the sheet rises. Tap the avatar for
+    // the accounts and the status menu; the round button folds it back.
+    render: () => <AccountDockDemoBar />,
+    background: '#f3f3f5',
+    pattern: { kind: 'grid', color: '#e7e7eb', gap: 24 },
+    initialTab: 2,
+    barHeight: 58,
+    tabs: [
+      { label: 'Members', icon: AccountDockIcons.PeopleIcon },
+      { label: 'Chats', icon: AccountDockIcons.ChatsIcon, badge: 4 },
+      { label: 'Activity', icon: AccountDockIcons.BellIcon },
     ],
   },
   'live-tabs': {

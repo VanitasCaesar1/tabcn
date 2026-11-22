@@ -388,6 +388,7 @@ export function usageSnippet(d: Design) {
   if (d.kind === 'panel') return panelSnippet(d);
   if (d.id === 'side-rail') return railSnippet(d);
   if (d.id === 'section-sheet') return SECTION_SHEET_SNIPPET;
+  if (d.id === 'account-dock') return ACCOUNT_DOCK_SNIPPET;
   if (d.id === 'live-tabs') return LIVE_TABS_SNIPPET;
   return barSnippet(d);
 }
@@ -457,6 +458,40 @@ const SECTION_SHEET_SNIPPET = `${[
   "        <Tabs.Screen name=\"guides\" options={{ title: 'Guides' }} />",
   "        <Tabs.Screen name=\"saved\" options={{ title: 'Saved' }} />",
   '      </Tabs>',
+  '    </TabBarProvider>',
+  '  );',
+  '}',
+].join('\n')}\n`;
+
+/** Account Dock is the tab bar; its sheet is a panel, so it needs the provider. */
+const ACCOUNT_DOCK_SNIPPET = `${[
+  "import { Tabs } from 'expo-router/js-tabs';",
+  "import { TabBarProvider } from 'react-native-tabcn';",
+  "import { tabBar } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
+  "import { AccountDock } from '@/components/tabcn/account-dock';",
+  '',
+  'export default function TabLayout() {',
+  '  // Your own data: workspaces, accounts and the person\'s status.',
+  '  const { workspaces, workspaceId, setWorkspaceId } = useWorkspaces();',
+  '  const { accounts, accountId, setAccountId } = useAccounts();',
+  '  const [status, setStatus] = usePresence();',
+  '  return (',
+  '    <TabBarProvider>',
+  '      <Tabs',
+  '        tabBar={tabBar(',
+  '          <AccountDock',
+  '            workspaces={workspaces}',
+  '            workspaceId={workspaceId}',
+  '            onWorkspaceChange={setWorkspaceId}',
+  '            accounts={accounts}',
+  '            accountId={accountId}',
+  '            onAccountChange={setAccountId}',
+  '            status={status}',
+  '            onStatusChange={setStatus}',
+  '          />,',
+  '        )}',
+  '        screenOptions={{ headerShown: false }}',
+  '      />',
   '    </TabBarProvider>',
   '  );',
   '}',
