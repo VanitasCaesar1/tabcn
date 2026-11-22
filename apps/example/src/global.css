@@ -1,0 +1,7 @@
+/*
+ * PanelUI's theme, so the demo can show every design in Panel, Moon and Grass
+ * (src/panel-theme.tsx). The demo uses no Tailwind classes of its own.
+ */
+@import "tailwindcss";
+@import "uniwind";
+@import "panelui-native/theme.css";

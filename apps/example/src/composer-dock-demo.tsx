@@ -35,7 +35,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TurboModuleRegistry,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -55,6 +54,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { type TabItem, tabcnTiming } from 'react-native-tabcn';
+import { TrueSheet } from '@/true-sheet';
 
 export const COMPOSER_BACKGROUND = '#f8f8f6';
 const INK = '#1f1e1d';
@@ -289,11 +289,7 @@ const SHEET_INSET = 6;
 // TrueSheet draws the native sheet (iOS 26's inset Liquid Glass card, as in the video). It
 // needs the app's own native build; Expo Go doesn't include it, so there the demo draws an
 // inset card of its own with the same contents.
-const NATIVE_SHEET = TurboModuleRegistry.get('TrueSheetModule') != null;
-// Loaded only when it's linked: the package throws on import otherwise.
-const TrueSheet: typeof TrueSheetType | null = NATIVE_SHEET
-  ? require('@lodev09/react-native-true-sheet').TrueSheet
-  : null;
+const NATIVE_SHEET = TrueSheet !== null;
 const SHEET_CONTENT_HEIGHT = 462;
 
 export function ModelSheet() {

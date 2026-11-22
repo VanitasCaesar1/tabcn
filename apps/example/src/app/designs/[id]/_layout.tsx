@@ -6,6 +6,7 @@ import { tabBar } from 'react-native-tabcn/expo-router';
 
 import { findDesign, LAYOUT_LABELS } from '@/catalog';
 import { CurrentDemoProvider, demos, RAIL_MIN_WIDTH, screenBackground, TAB_ROUTES } from '@/demos';
+import { useDemoScreenColors } from '@/panel-theme';
 import { useColors } from '@/use-colors';
 
 export default function DesignLayout() {
@@ -14,6 +15,8 @@ export default function DesignLayout() {
   const demo = demos[id];
   const colors = useColors();
   const { width } = useWindowDimensions();
+  // Under a PanelUI theme every screen takes the theme's background.
+  const themedScreen = useDemoScreenColors();
 
   if (!design || !demo) {
     return (
@@ -53,7 +56,7 @@ export default function DesignLayout() {
             headerShown: false,
             tabBarPosition,
             tabBarHideOnKeyboard: demo.hideOnKeyboard,
-            sceneStyle: { backgroundColor: demo.background },
+            sceneStyle: { backgroundColor: themedScreen?.background ?? demo.background },
           }}
         >
           {TAB_ROUTES.map((name, i) => {
@@ -66,7 +69,9 @@ export default function DesignLayout() {
                   tab
                     ? {
                         title: tab.label,
-                        sceneStyle: { backgroundColor: screenBackground(demo, i) },
+                        sceneStyle: {
+                          backgroundColor: themedScreen?.background ?? screenBackground(demo, i),
+                        },
                         tabBarBadge: tab.badge,
                         tabBarIcon: ({ focused, color, size }) =>
                           tab.icon({ focused, color: String(color), size }),

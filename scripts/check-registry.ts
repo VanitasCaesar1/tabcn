@@ -25,10 +25,15 @@ interface Item {
   name: string;
   type: string;
   title: string;
+  categories?: string[];
   dependencies?: string[];
   files: { path: string; type: string; target: string }[];
 }
 const registry = JSON.parse(read('registry/registry.json')) as { items: Item[] };
+// Theme items (categories: ["theme"]) colour designs rather than being one: PanelUI Colors
+// (docs/designs/panelui.md). They skip the catalog, demos and props checks below.
+const isTheme = (item: Item) => item.categories?.includes('theme') ?? false;
+const designItems = registry.items.filter((item) => !isTheme(item));
 
 // Always available to a design: React, React Native, Reanimated (a tabcn peer) and tabcn itself.
 const ALWAYS = new Set(['react', 'react-native', 'react-native-reanimated', 'react-native-tabcn']);
@@ -41,7 +46,7 @@ const catalogIds = [...catalog.matchAll(/id: '([a-z-]+)'/g)].map((m) => m[1]);
 const demos = read('apps/example/src/demos.tsx');
 const demosBody = demos.slice(demos.indexOf('export const demos'));
 const demoIds = [...demosBody.matchAll(/^ {2}'?([a-z-]+)'?: \{$/gm)].map((m) => m[1]);
-const ids = registry.items.map((i) => i.name);
+const ids = designItems.map((i) => i.name);
 
 /** A catalog entry's `{ ... }` block, from its id to the next entry. */
 function catalogBlock(id: string) {
@@ -83,13 +88,16 @@ for (const [label, list] of [
   for (const id of ids) if (!list.includes(id)) fail(`${id}: in registry.json but not in ${label}`);
   for (const id of list) if (!ids.includes(id)) fail(`${id}: in ${label} but not in registry.json`);
 }
-if (new Set(ids).size !== ids.length) fail('registry.json has duplicate names');
+const allNames = registry.items.map((i) => i.name);
+if (new Set(allNames).size !== allNames.length) fail('registry.json has duplicate names');
 
 for (const item of registry.items) {
   const allowed = new Set([...ALWAYS, ...(item.dependencies ?? [])]);
   const main = `registry/designs/${item.name}/${item.name}.tsx`;
-  if (!item.files.some((f) => f.path === main)) fail(`${item.name}: files must include ${main}`);
-  if (existsSync(join(root, main))) {
+  if (!isTheme(item) && !item.files.some((f) => f.path === main)) {
+    fail(`${item.name}: files must include ${main}`);
+  }
+  if (!isTheme(item) && existsSync(join(root, main))) {
     const props = readDesignProps(read(main), main);
     if (!props) {
       fail(`${item.name}: ${main} needs an exported component with a \`<Component>Props\` type`);
@@ -178,11 +186,70 @@ for (const item of registry.items) {
   }
 }
 
+checkPanelUIColors();
+
+/**
+ * PanelUI Colors maps each design's colour slots to PanelUI tokens. A slot that a design
+ * doesn't have would be passed to it and ignored, and a token PanelUI no longer defines would
+ * leave the slot on the design's own colour, so check both: slots against each design's
+ * `defaultColors`, tokens against the theme.css of the panelui-native the example app installs.
+ */
+function checkPanelUIColors() {
+  const path = 'registry/themes/panelui-colors.ts';
+  if (!existsSync(join(root, path))) return;
+  const source = read(path);
+  const start = source.indexOf('export const panelUIColorMaps = {');
+  const end = source.indexOf('} as const satisfies', start);
+  if (start < 0 || end < 0) return fail(`${path}: can't find panelUIColorMaps`);
+  const body = source.slice(start, end);
+  const shared = source.match(/^const badge = \{([^}]*)\}/m)?.[1] ?? '';
+  const sharedSlots = [...shared.matchAll(/(\w+):/g)].map((m) => m[1]);
+  const blocks = [...body.matchAll(/^ {2}'?([a-z-]+)'?: \{([^}]*)\}/gm)];
+  for (const [, id, block] of blocks) {
+    if (!id || block === undefined) continue;
+    const item = designItems.find((i) => i.name === id);
+    if (!item) {
+      fail(`${path}: maps '${id}', which is not a design in registry.json`);
+      continue;
+    }
+    const withColors = item.files.find((f) =>
+      /^(export )?const defaultColors = \{/m.test(read(f.path)),
+    );
+    if (!withColors) {
+      fail(`${path}: ${id} has no \`defaultColors\` to map`);
+      continue;
+    }
+    const colorsSource = read(withColors.path);
+    const colorsStart = colorsSource.search(/^(export )?const defaultColors = \{/m);
+    const colorsBody = colorsSource.slice(colorsStart, colorsSource.indexOf('\n};', colorsStart));
+    const designSlots = new Set([...colorsBody.matchAll(/^ {2}(\w+):/gm)].map((m) => m[1]));
+    const slots = [...block.matchAll(/(\w+): ['[]/g)].map((m) => m[1] as string);
+    if (block.includes('...badge')) slots.push(...(sharedSlots as string[]));
+    for (const slot of slots) {
+      if (!designSlots.has(slot)) fail(`${path}: ${id}.${slot} is not one of ${id}'s colours`);
+    }
+  }
+  const css = join(root, 'node_modules/panelui-native/theme.css');
+  if (!existsSync(css)) return;
+  const defined = new Set(
+    [...readFileSync(css, 'utf8').matchAll(/--color-([a-z0-9-]+):/g)].map((m) => m[1]),
+  );
+  const union = source.slice(
+    source.indexOf('export type PanelUIToken'),
+    source.indexOf(';', source.indexOf('export type PanelUIToken')),
+  );
+  for (const [, token] of union.matchAll(/'([a-z0-9-]+)'/g)) {
+    if (token && !defined.has(token)) {
+      fail(`${path}: PanelUI's theme.css no longer defines --color-${token}`);
+    }
+  }
+}
+
 if (errors.length) {
   process.stderr.write(`Registry check failed:\n- ${errors.join('\n- ')}\n`);
   process.exit(1);
 }
 const panels = catalogIds.filter((id) => id && /kind: 'panel'/.test(catalogBlock(id))).length;
 process.stdout.write(
-  `Registry check passed: ${ids.length} designs (${ids.length - panels} tab bars, ${panels} panels) agree across registry, catalog and demos.\n`,
+  `Registry check passed: ${ids.length} designs (${ids.length - panels} tab bars, ${panels} panels) agree across registry, catalog and demos; ${registry.items.length - ids.length} theme item checked.\n`,
 );

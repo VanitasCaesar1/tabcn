@@ -28,7 +28,7 @@ import { useOverrideSlot } from '../override';
 import { TestBar } from './fixtures';
 
 const registry = require('../../../../registry/registry.json') as {
-  items: { name: string }[];
+  items: { name: string; categories?: string[] }[];
 };
 const { catalog } = require('../../../../apps/example/src/catalog') as {
   catalog: { id: string; kind: 'bar' | 'panel' }[];
@@ -97,7 +97,10 @@ const REQUIRED_PROPS: Record<string, Record<string, unknown>> = {
   'section-sheet': { sections: { 'tab-0': <Text>First section</Text> } },
 };
 
-const ids = registry.items.map((item) => item.name);
+// Theme items (PanelUI Colors) colour designs rather than being one.
+const ids = registry.items
+  .filter((item) => !item.categories?.includes('theme'))
+  .map((item) => item.name);
 const kindOf = (id: string) => catalog.find((entry) => entry.id === id)?.kind;
 const bars = ids.filter((id) => kindOf(id) === 'bar');
 const panels = ids.filter((id) => kindOf(id) === 'panel');

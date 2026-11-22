@@ -25,6 +25,7 @@ interface RegistryItem {
   type: string;
   title: string;
   description: string;
+  categories?: string[];
   dependencies?: string[];
   registryDependencies?: string[];
   files: RegistryFile[];
@@ -54,6 +55,7 @@ for (const item of registry.items) {
     type: item.type,
     title: item.title,
     description: item.description,
+    ...(item.categories && { categories: item.categories }),
     dependencies: item.dependencies ?? [],
     ...(item.registryDependencies && { registryDependencies: item.registryDependencies }),
     files: item.files.map((file) => ({

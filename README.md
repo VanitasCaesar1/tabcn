@@ -262,6 +262,24 @@ timer.setText(remaining > 0 ? format(remaining) : undefined); // shown in place 
 
 See [`docs/designs/bottom-components.md`](docs/designs/bottom-components.md) for all of the above.
 
+## With PanelUI
+
+tabcn pairs with [PanelUI](https://panelui.dev): PanelUI for the components, tabcn for the tab bar. In an app already set up with PanelUI's theme, add PanelUI Colors next to a design:
+
+```bash
+npx shadcn@latest add https://vanitascaesar1.github.io/tabcn/r/panelui-colors.json
+```
+
+Then pass the design its colours from the running theme:
+
+```tsx
+import { usePanelUIColors } from '@/components/tabcn/panelui-colors';
+
+<SoftPill colors={usePanelUIColors('soft-pill')} />;
+```
+
+The bar now switches with Panel, Moon and Grass, light and dark. Each design's colour slots map to PanelUI's semantic tokens in that one file, which you own and can change. A slot without a mapping keeps the design's own colour. Without PanelUI, leave the file out: designs don't depend on it. tabcn is an independent project, not affiliated with PanelUI. See [`docs/designs/panelui.md`](docs/designs/panelui.md).
+
 ## The 43 designs
 
 Every design animates: tap to see the active tab move. Click one to open its page, with the install command and a QR code for Expo Go.

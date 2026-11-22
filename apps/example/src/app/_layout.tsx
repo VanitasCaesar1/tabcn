@@ -7,6 +7,9 @@ import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import '../global.css';
+import { PanelThemeProvider } from '@/panel-theme';
+
 // Keep the splash up until the demo fonts load. The navigator itself must mount right
 // away: returning null here would drop the deep link the app was opened with.
 SplashScreen.preventAutoHideAsync();
@@ -27,10 +30,13 @@ export default function RootLayout() {
     // Panel dragging ('react-native-tabcn/gestures') needs gesture handler's root view around the app.
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="index" options={{ title: 'tabcn' }} />
-          <Stack.Screen name="designs/[id]" options={{ title: '', headerBackTitle: 'Back' }} />
-        </Stack>
+        {/* The PanelUI theme the design screens show (tabcn, Panel, Moon or Grass). */}
+        <PanelThemeProvider>
+          <Stack>
+            <Stack.Screen name="index" options={{ title: 'tabcn' }} />
+            <Stack.Screen name="designs/[id]" options={{ title: '', headerBackTitle: 'Back' }} />
+          </Stack>
+        </PanelThemeProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );
