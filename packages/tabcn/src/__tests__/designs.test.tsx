@@ -694,6 +694,9 @@ describe('cart-pill', () => {
       </Bar>,
     );
     expect(blurs()).toBe(0);
+  });
+});
+
 // Ink Underline ---------------------------------------------------------------------------
 
 describe('ink-underline', () => {
