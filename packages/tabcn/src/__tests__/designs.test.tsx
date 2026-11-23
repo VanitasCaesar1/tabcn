@@ -7,7 +7,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ComponentType, ReactNode } from 'react';
-import { BackHandler, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, I18nManager, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import {
@@ -694,5 +694,114 @@ describe('cart-pill', () => {
       </Bar>,
     );
     expect(blurs()).toBe(0);
+  });
+});
+
+// Ink Underline ---------------------------------------------------------------------------
+
+describe('ink-underline', () => {
+  const { InkUnderline } = require('../../../../registry/designs/ink-underline/ink-underline') as {
+    InkUnderline: ComponentType<{ haptics?: boolean }>;
+  };
+
+  function inkState(badges: (string | number | undefined)[], activeIndex = 0) {
+    const { state } = makeState(badges.length, activeIndex, []);
+    const labels = ['Today', 'Plan', 'Sessions', 'You'];
+    return {
+      ...state,
+      tabs: state.tabs.map((tab) => ({
+        ...tab,
+        label: labels[tab.index] ?? tab.label,
+        badge: badges[tab.index],
+      })),
+    };
+  }
+
+  it('reads each badge with its label, and draws it as a superscript count or a dot', async () => {
+    await render(
+      <TabBarStateProvider value={inkState([undefined, 2, undefined, ''])}>
+        <InkUnderline haptics={false} />
+      </TabBarStateProvider>,
+    );
+    expect(screen.getByRole('tab', { name: 'Today, tab, 1 of 4' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Plan, 2, tab, 2 of 4' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'You, tab, 4 of 4' })).toBeTruthy();
+    // The count is drawn once the label has a width (it hangs just after the label), hidden
+    // from screen readers: the tab's label already reads it.
+    expect(screen.queryByText('2', { includeHiddenElements: true })).toBeNull();
+    await measured('Plan', 34);
+    expect(screen.queryByText('2')).toBeNull();
+    expect(screen.getByText('2', { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  type Host = ReturnType<typeof screen.getByText>;
+
+  /** The SVG views under a host element: the strokes. */
+  function strokesUnder(node: Host | null): Host[] {
+    if (!node) return [];
+    const kids = (node.children ?? []).filter((c): c is Host => typeof c !== 'string');
+    return [...(node.type === 'RNSVGSvgView' ? [node] : []), ...kids.flatMap(strokesUnder)];
+  }
+
+  async function measured(label: string, width: number) {
+    const text = screen.getByText(label);
+    await act(async () => {
+      fireEvent(text, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width, height: 21 } } });
+    });
+    return strokesUnder(text.parent as Host | null);
+  }
+
+  /** Where a stroke's main path (the first in its SVG group) starts, from its `d`. */
+  const startX = (stroke: Host | undefined) => {
+    const group = stroke?.children?.[0] as Host | undefined;
+    const path = group?.children?.[0] as Host | undefined;
+    return Number(/^M([\d.]+)/.exec(String(path?.props.d))?.[1]);
+  };
+
+  it('draws no stroke until a label is measured, then one as wide as the label and a bit', async () => {
+    await render(
+      <TabBarStateProvider value={inkState([undefined, undefined, undefined])}>
+        <InkUnderline haptics={false} />
+      </TabBarStateProvider>,
+    );
+    expect(strokesUnder(screen.getByText('Today').parent as Host | null)).toHaveLength(0);
+    const strokes = await measured('Today', 44.2);
+    expect(strokes).toHaveLength(1);
+    // Rounded to half a point, plus 3 pt past each end.
+    expect(strokes[0]?.props.width).toBe(50);
+    // Drawn from the leading edge: the left.
+    expect(startX(strokes[0])).toBeLessThan(5);
+  });
+
+  it('starts the stroke at the right in a right-to-left layout', async () => {
+    const rtl = jest.replaceProperty(I18nManager, 'isRTL', true);
+    try {
+      await render(
+        <TabBarStateProvider value={inkState([undefined, undefined])}>
+          <InkUnderline haptics={false} />
+        </TabBarStateProvider>,
+      );
+      const strokes = await measured('Today', 44);
+      expect(startX(strokes[0])).toBeGreaterThan(45);
+    } finally {
+      rtl.restore();
+    }
+  });
+
+  it('keeps one tab selected as the active tab moves', async () => {
+    const view = await render(
+      <TabBarStateProvider value={inkState([undefined, 2, undefined])}>
+        <InkUnderline haptics={false} />
+      </TabBarStateProvider>,
+    );
+    await view.rerender(
+      <TabBarStateProvider value={inkState([undefined, 2, undefined], 2)}>
+        <InkUnderline haptics={false} />
+      </TabBarStateProvider>,
+    );
+    const selected = screen
+      .getAllByRole('tab')
+      .filter((t) => t.props.accessibilityState?.selected === true);
+    expect(selected.map((t) => t.props.accessibilityLabel)).toEqual(['Sessions, tab, 3 of 3']);
   });
 });

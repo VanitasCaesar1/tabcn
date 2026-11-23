@@ -74,6 +74,7 @@ export const DESIGN_TAGS: Record<string, DesignTags> = {
   'live-tabs': { style: 'minimal', scene: 'music', scheme: 'light' },
   'account-dock': { style: 'glass', scene: 'chat', scheme: 'light' },
   'ambient-bar': { style: 'glass', scene: 'finance', scheme: 'dark' },
+  'ink-underline': { style: 'minimal', scene: 'health', scheme: 'light' },
   'mini-player': { style: 'glass', scene: 'music', scheme: 'dark' },
   'context-tray': { style: 'glass', scene: 'health', scheme: 'light' },
   'quick-create': { style: 'minimal', scene: 'social', scheme: 'light' },

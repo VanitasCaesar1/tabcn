@@ -45,6 +45,7 @@ export const DEMO_CONTROLS: Record<string, DemoControls> = {
   'glass-expand': { maxTabs: 4 },
   'glow-glass': { maxTabs: 4 },
   'gradient-stickers': { maxTabs: 5 },
+  'ink-underline': { accent: 'colors.ink', maxTabs: 4 },
   'labeled-plus': { maxTabs: 2 },
   'light-icons': { accent: 'colors.active', maxTabs: 5 },
   'live-tabs': { accent: 'colors.accent', minTabs: 3, maxTabs: 4 },
