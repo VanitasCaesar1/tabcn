@@ -109,6 +109,8 @@ import {
   QuickCreateBar,
   QuickCreatePanel,
   SectionRows,
+  SliderSheetActions,
+  SliderSheetPanel,
   SubTabsBar,
   SubTabsPanel,
   useCartCount,
@@ -961,6 +963,26 @@ export const demos: Record<string, Demo> = {
       { label: 'Library', icon: LibraryIcon },
       { label: 'History', icon: SoftPillIcons.HistoryIcon },
       { label: 'Trends', icon: SoftPillIcons.TrendsIcon },
+    ],
+  },
+  'slider-sheet': {
+    // Paired with Chip Rail on the finance scene: the first holding opens a card above the bar
+    // to reduce or close it with a stepped slider.
+    render: () => (
+      <ChipRail leading={<ChipRailIcons.AvatarIcon focused={false} color="" size={39.5} />} />
+    ),
+    panel: () => <SliderSheetPanel />,
+    extra: SliderSheetActions,
+    background: FINANCE_DARK,
+    // The open card dims the screen; a stack header above the tabs would stay undimmed.
+    fullScreen: true,
+    barHeight: 56,
+    tabs: [
+      { label: 'Home', icon: () => null },
+      { label: 'Trade', icon: () => null },
+      { label: 'Predict', icon: () => null, badge: 3 },
+      { label: 'Explore', icon: () => null },
+      { label: 'Leaders', icon: () => null },
     ],
   },
 };

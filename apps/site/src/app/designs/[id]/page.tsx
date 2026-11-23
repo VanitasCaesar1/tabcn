@@ -149,7 +149,9 @@ export default async function DesignPage({ params }: Props) {
                     ) : (
                       'It works with any tabcn tab bar.'
                     )}
-                    {(design.id === 'mini-player' || design.id === 'bar-sheet') && (
+                    {(design.id === 'mini-player' ||
+                      design.id === 'bar-sheet' ||
+                      design.id === 'slider-sheet') && (
                       <>
                         {' '}
                         Dragging it needs{' '}

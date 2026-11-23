@@ -29,7 +29,7 @@ MUTED = (143, 143, 143)
 # The bar area of a recording: the bottom of the phone screen, full width.
 BAR_BOX = (0, 2152, 1206, 2572)
 # A panel's card shows it open: a taller strip (as bar-loops.py's panel loops), at the moment
-# in panel-open-at.json.
+# in panel-open-at.json; {"at": seconds, "top": y} there starts a tall panel's strip at y.
 PANEL_BOX = (0, 1882, 1206, 2572)
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'panel-open-at.json')) as f:
     PANEL_OPEN_AT = json.load(f)
@@ -134,8 +134,15 @@ def main():
         if id_ not in recordings:
             print(f'skip {id_}: no recording')
             continue
-        at = PANEL_OPEN_AT.get(id_)
-        strip = bar(recordings[id_], at, PANEL_BOX) if at is not None else bar(recordings[id_])
+        open_at = PANEL_OPEN_AT.get(id_)
+        if open_at is None:
+            strip = bar(recordings[id_])
+        elif isinstance(open_at, dict):
+            # A panel taller than the box: from its own top down to the bar's bottom.
+            box = (PANEL_BOX[0], open_at.get('top', PANEL_BOX[1]), PANEL_BOX[2], PANEL_BOX[3])
+            strip = bar(recordings[id_], open_at['at'], box)
+        else:
+            strip = bar(recordings[id_], open_at, PANEL_BOX)
         design_card(strip, title, layout).save(
             os.path.join(out, f'{id_}.jpg'), quality=86, optimize=True)
     print(f'og.jpg + {len(os.listdir(out))} design cards')

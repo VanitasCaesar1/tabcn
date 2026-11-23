@@ -31,7 +31,8 @@ export interface SceneAction {
 
 /**
  * Behaviours a demo hangs on the scene's own controls, the way an app would: a post's comment
- * button opens Bar Sheet's comments, a product's add button fills Cart Pill's bag, a search
+ * button opens Bar Sheet's comments, a product's add button fills Cart Pill's bag, the first
+ * holding opens Slider Sheet, a search
  * field that takes typing raises the keyboard (Companion Chip). A scene draws the control for
  * each action it is given and nothing extra.
  */
@@ -40,6 +41,8 @@ export interface SceneActions {
   comment?: SceneAction;
   /** Shop: the add button on the first product. */
   addToBag?: SceneAction;
+  /** Finance: the first holding's row (Northwind Air). */
+  holding?: SceneAction;
   /** Shop and maps: the search field takes typing (`label` is its accessibility label). */
   search?: { label: string };
 }

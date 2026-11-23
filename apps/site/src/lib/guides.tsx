@@ -236,6 +236,12 @@ function CommentsButton() {
             The sheet is modal only at its highest snap point, and with a screen reader on it opens
             straight to it.
           </p>
+          <p>
+            A sheet with a single snap point is a card that rests above the bar, under docked and
+            floating bars alike: <Design id="slider-sheet">Slider Sheet</Design> measures its card
+            and uses its height as that snap point, with a <Code>backdrop</Code> that dims the
+            screen behind it.
+          </p>
         </DocSection>
       </>
     ),

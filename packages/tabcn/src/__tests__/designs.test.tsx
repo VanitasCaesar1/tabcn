@@ -133,7 +133,8 @@ test('every registry item is a tab bar or a panel in the catalog', () => {
 
 /**
  * Panels need their own smoke test (each has its own props and its own way of showing): the
- * three below, and Bar Sheet, Companion Chip and Sub-Tabs in bottom-designs.test.tsx. A new
+ * three below, Filter Chips further down, and Bar Sheet, Companion Chip, Sub-Tabs and Slider
+ * Sheet in bottom-designs.test.tsx. A new
  * panel fails here until it gets one.
  */
 const PANELS_WITH_TESTS = [
@@ -144,6 +145,7 @@ const PANELS_WITH_TESTS = [
   'companion-chip',
   'sub-tabs',
   'filter-chips',
+  'slider-sheet',
 ];
 
 test('every panel has a smoke test', () => {

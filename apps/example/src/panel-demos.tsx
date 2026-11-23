@@ -1,6 +1,6 @@
 /**
  * The parts of the example app's demos that need hooks: panel demos (Mini Player, Context
- * Tray, Quick Create, Bar Sheet, Companion Chip, Sub-Tabs) and the feeds behind Section Sheet
+ * Tray, Quick Create, Bar Sheet, Companion Chip, Sub-Tabs, Slider Sheet) and the feeds behind Section Sheet
  * and Live Tabs. Kept out of demos.tsx,
  * whose top-level object keys are read as design ids by scripts/check-registry.ts.
  *
@@ -33,6 +33,10 @@ import {
   QuickCreate as QuickCreateDesign,
   useQuickCreate,
 } from '@registry/quick-create/quick-create';
+import {
+  SliderSheet as SliderSheetDesign,
+  useSliderSheet,
+} from '@registry/slider-sheet/slider-sheet';
 import { SubTabs as SubTabsDesign, useSubTabs } from '@registry/sub-tabs/sub-tabs';
 import { type ReactNode, useEffect, useState, useSyncExternalStore } from 'react';
 import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -72,6 +76,7 @@ const ContextTray = themed('context-tray', ContextTrayDesign);
 const LabeledPlus = themed('labeled-plus', LabeledPlusDesign);
 const MiniPlayer = themed('mini-player', MiniPlayerDesign);
 const QuickCreate = themed('quick-create', QuickCreateDesign);
+const SliderSheet = themed('slider-sheet', SliderSheetDesign);
 const SubTabs = themed('sub-tabs', SubTabsDesign);
 
 /**
@@ -371,6 +376,63 @@ export function BarSheetActions({ children }: DemoExtraProps) {
   const sheet = useBarSheet();
   return (
     <SceneActionsProvider value={{ comment: { label: 'Comments', onPress: sheet.open } }}>
+      {children}
+    </SceneActionsProvider>
+  );
+}
+
+// Slider Sheet (paired with Chip Rail, on the finance scene) ---------------------------------
+
+/** The finance scene's first holding (scenes/finance.tsx), held long at 5x. */
+const NWA = {
+  position: 4586.17,
+  /** What was put in: the position at 5x. */
+  margin: 4586.17 / 5,
+  /** Its gain so far: +5.2% on the position. */
+  profit: (4586.17 * 0.052) / 1.052,
+};
+
+/** Dollars with cents and thousands separators: 4586.17 → "$4,586.17". */
+function money(amount: number) {
+  const [whole = '0', cents = '00'] = Math.abs(amount).toFixed(2).split('.');
+  return `$${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${cents}`;
+}
+
+/**
+ * The sheet, declared once beside the navigator: reduce or close the Northwind Air position.
+ * Reducing a share of it returns that share of the margin and of the gain.
+ */
+export function SliderSheetPanel() {
+  const sheet = useSliderSheet();
+  return (
+    <SliderSheet
+      title={(v) => (v >= 1 ? 'Close NWA Long' : 'Reduce NWA Long')}
+      subtitle="Reduce part of your position or close it fully"
+      amount={(v) => money(v * (NWA.margin + NWA.profit))}
+      detail={(v, colors) => (
+        // Nested in the design's muted Text, so the plain parts take its colour.
+        <Text>
+          Est. Profit <Text style={{ color: colors.positive }}>+{money(v * NWA.profit)}</Text>
+          {' · '}Position <Text style={styles.struck}>{money(NWA.position)}</Text>
+          {' → '}
+          <Text style={{ color: colors.foreground }}>
+            {v >= 1 ? 'Closed' : money(NWA.position * (1 - v))}
+          </Text>
+        </Text>
+      )}
+      action={(v) => (v >= 1 ? 'Close position' : 'Reduce position')}
+      onConfirm={sheet.hide}
+      footer="ⓘ 0.0932% fee  ·  View Disclosures"
+      labels={{ slider: 'Amount to reduce' }}
+    />
+  );
+}
+
+/** The first holding's row opens the sheet. */
+export function SliderSheetActions({ children }: DemoExtraProps) {
+  const sheet = useSliderSheet();
+  return (
+    <SceneActionsProvider value={{ holding: { label: 'Northwind Air', onPress: sheet.open } }}>
       {children}
     </SceneActionsProvider>
   );
@@ -701,6 +763,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(20, 20, 22, 0.06)',
   },
   comment: { gap: 2, paddingVertical: 10 },
+  struck: { textDecorationLine: 'line-through' },
   commentAuthor: { fontSize: 14, fontWeight: '600', color: '#141416' },
   commentText: { fontSize: 15, lineHeight: 21, color: '#3a3a3e' },
   toastHost: { position: 'absolute', left: 16, right: 16, alignItems: 'center' },

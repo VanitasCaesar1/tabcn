@@ -1,6 +1,7 @@
 /**
  * Smoke tests for the copy-in designs of docs/designs/bottom-components.md: Bar Sheet
- * (Sheets), Companion Chip (Companions) and Sub-Tabs (Sub-tabs), each under a
+ * (Sheets), Companion Chip (Companions), Sub-Tabs (Sub-tabs) and Slider Sheet (a sheet with
+ * one snap point), each under a
  * TabBarProvider with a test bar. They are panels in the catalog, so designs.test.tsx checks
  * that they are covered here; like its panels, they are loaded from registry/ by path.
  */
@@ -291,5 +292,141 @@ describe('sub-tabs', () => {
     expect(controls['sub-tabs:library']?.state).toBe('open');
     await view.rerender(<SubTabsApp state={focus(state, 2)} onAlbums={jest.fn()} />);
     expect(controls['sub-tabs:library']?.state).toBe('hidden');
+  });
+});
+
+// Slider Sheet ------------------------------------------------------------------------------
+
+const sliderSheet = require(`${designs}/slider-sheet/slider-sheet`) as {
+  SliderSheet: ComponentType<{
+    title: string | ((value: number) => string);
+    subtitle?: string;
+    amount?: (value: number) => string;
+    detail?: (value: number) => ReactNode;
+    action: string | ((value: number) => string);
+    onConfirm: (value: number) => void;
+    steps?: number;
+    value?: number;
+    defaultValue?: number;
+    onValueChange?: (value: number) => void;
+    labels?: { slider?: string };
+    haptics?: boolean;
+  }>;
+};
+
+function SliderApp({
+  state,
+  onConfirm = jest.fn(),
+  ...props
+}: {
+  state: TabBarState;
+  defaultValue?: number;
+  value?: number;
+  steps?: number;
+  onValueChange?: (value: number) => void;
+  onConfirm?: (value: number) => void;
+}) {
+  return (
+    <Shell state={state}>
+      <sliderSheet.SliderSheet
+        title={(v) => (v === 1 ? 'Close NWA Long' : 'Reduce NWA Long')}
+        subtitle="Reduce part of your position or close it fully"
+        amount={(v) => `$${(v * 100).toFixed(2)}`}
+        detail={(v) => <Text>{v === 1 ? '→ Closed' : `→ $${(1 - v).toFixed(2)}`}</Text>}
+        action={(v) => (v === 1 ? 'Close position' : 'Reduce position')}
+        onConfirm={onConfirm}
+        labels={{ slider: 'Amount to reduce' }}
+        haptics={false}
+        {...props}
+      />
+      <Controls id="slider" />
+    </Shell>
+  );
+}
+
+describe('slider-sheet', () => {
+  const slider = () => screen.getByRole('adjustable', { name: 'Amount to reduce' });
+  const adjust = (actionName: 'increment' | 'decrement') =>
+    act(async () => {
+      await fireEvent(slider(), 'accessibilityAction', { nativeEvent: { actionName } });
+    });
+
+  it('opens above the bar at one step and moves a step at a time, never below one', async () => {
+    const onValueChange = jest.fn();
+    await render(<SliderApp state={makeTabState()} onValueChange={onValueChange} />);
+    await layoutBar();
+    expect(screen.queryByText('Reduce NWA Long')).toBeNull();
+    await act(async () => controls.slider?.open());
+    expect(controls.slider).toMatchObject({ state: 'open', snap: 0 });
+    expect(screen.getByText('Reduce NWA Long')).toBeTruthy();
+    expect(screen.getByText('$25.00')).toBeTruthy();
+    expect(slider().props.accessibilityValue).toMatchObject({ now: 25, text: '25 percent' });
+
+    await adjust('increment');
+    expect(onValueChange).toHaveBeenLastCalledWith(0.5);
+    expect(slider().props.accessibilityValue).toMatchObject({ now: 50, text: '50 percent' });
+    expect(screen.getByText('$50.00')).toBeTruthy();
+
+    await adjust('decrement');
+    await adjust('decrement');
+    // One step is the least: 0 isn't offered.
+    expect(onValueChange).toHaveBeenLastCalledWith(0.25);
+    expect(onValueChange).toHaveBeenCalledTimes(2);
+    expect(slider().props.accessibilityValue).toMatchObject({ now: 25 });
+  });
+
+  it('snaps a starting value to the nearest step, and to one step rather than 0', async () => {
+    const first = await render(<SliderApp state={makeTabState()} defaultValue={0.6} />);
+    await layoutBar();
+    await act(async () => controls.slider?.open());
+    expect(slider().props.accessibilityValue).toMatchObject({ now: 50 });
+    await first.unmount();
+
+    await render(<SliderApp state={makeTabState()} defaultValue={0.02} steps={10} />);
+    await layoutBar();
+    await act(async () => controls.slider?.open());
+    expect(slider().props.accessibilityValue).toMatchObject({ now: 10 });
+  });
+
+  it('reads "Close" at 100% and confirms with the value', async () => {
+    const onConfirm = jest.fn();
+    await render(<SliderApp state={makeTabState()} defaultValue={0.75} onConfirm={onConfirm} />);
+    await layoutBar();
+    await act(async () => controls.slider?.open());
+    expect(screen.getByRole('button', { name: 'Reduce position' })).toBeTruthy();
+    await adjust('increment');
+    expect(screen.getByText('Close NWA Long')).toBeTruthy();
+    expect(screen.getByText('→ Closed')).toBeTruthy();
+    // The top step is the most.
+    await adjust('increment');
+    expect(slider().props.accessibilityValue).toMatchObject({ now: 100, text: '100 percent' });
+    await act(async () => {
+      await fireEvent.press(screen.getByRole('button', { name: 'Close position' }));
+    });
+    expect(onConfirm).toHaveBeenCalledWith(1);
+  });
+
+  it('follows a controlled value', async () => {
+    const view = await render(<SliderApp state={makeTabState()} value={0.25} />);
+    await layoutBar();
+    await act(async () => controls.slider?.open());
+    await view.rerender(<SliderApp state={makeTabState()} value={0.75} />);
+    expect(slider().props.accessibilityValue).toMatchObject({ now: 75 });
+    expect(screen.getByText('$75.00')).toBeTruthy();
+  });
+
+  it('closes from its grabber and when another tab is chosen', async () => {
+    const state = makeTabState();
+    const view = await render(<SliderApp state={state} />);
+    await layoutBar();
+    await act(async () => controls.slider?.open());
+    await act(async () => {
+      await fireEvent.press(screen.getByRole('button', { name: 'Close' }));
+    });
+    expect(controls.slider?.state).toBe('hidden');
+    await act(async () => controls.slider?.open());
+    expect(controls.slider?.state).toBe('open');
+    await view.rerender(<SliderApp state={focus(state, 1)} />);
+    expect(controls.slider?.state).toBe('hidden');
   });
 });

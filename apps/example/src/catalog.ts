@@ -497,6 +497,16 @@ export const catalog: DesignEntry[] = [
       'Long-press a tab and its sub-tabs slide up from behind it; choosing one closes the drawer.',
     status: 'ready',
   },
+  {
+    id: 'slider-sheet',
+    ref: 0,
+    title: 'Slider Sheet',
+    kind: 'panel',
+    layout: 'panel',
+    summary:
+      'A dark card above the bar for choosing how much: drag the chip and it becomes a knob with a live percentage bubble, the amount updates as you go, and it snaps to the nearest quarter.',
+    status: 'ready',
+  },
 ];
 
 export function findDesign(id: string): DesignEntry | undefined {

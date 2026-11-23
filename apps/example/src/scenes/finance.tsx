@@ -6,7 +6,8 @@
  * the changes sit on solid green or red chips, as trading apps draw them, so the bar's in-place
  * blur has colour to carry as rows pass under it.
  */
-import { StyleSheet, Text, View } from 'react-native';
+import type { ReactNode } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 
 import {
@@ -15,11 +16,13 @@ import {
   num,
   type Palette,
   RoundButton,
+  type SceneAction,
   type SceneProps,
   SceneScroll,
   SectionHeader,
   scenePalette,
   turnOf,
+  useSceneActions,
 } from './kit';
 
 const HOLDINGS = [
@@ -62,9 +65,12 @@ function changeColor(palette: Palette, up: boolean) {
 export function FinanceScene(props: SceneProps) {
   const palette = scenePalette('finance', props.scheme, props.themed);
   const vivid = props.vivid ?? false;
+  // Slider Sheet's demo opens its sheet from the first holding's row.
+  const holding = useSceneActions()?.holding;
   // Each tab starts the holdings somewhere else; Ambient Bar gets three rounds of them, so there
-  // is always a mark scrolling under its bar.
-  const start = (turnOf(props) * 3) % HOLDINGS.length;
+  // is always a mark scrolling under its bar. With the holding action, Northwind Air (the row
+  // that opens the sheet) stays first, so it's on screen.
+  const start = holding ? 0 : (turnOf(props) * 3) % HOLDINGS.length;
   const turn = [...HOLDINGS.slice(start), ...HOLDINGS.slice(0, start)];
   const rows = (vivid ? [0, 1] : [0]).flatMap((round) =>
     turn.map((row) => ({ ...row, key: `${round}-${row.ticker}` })),
@@ -78,7 +84,17 @@ export function FinanceScene(props: SceneProps) {
       lead={vivid ? <Holdings palette={palette} rows={rows} vivid /> : undefined}
       sections={[
         <Summary key="summary" palette={palette} range={turnOf(props)} />,
-        ...(vivid ? [] : [<Holdings key="holdings" palette={palette} rows={rows} vivid={false} />]),
+        ...(vivid
+          ? []
+          : [
+              <Holdings
+                key="holdings"
+                palette={palette}
+                rows={rows}
+                vivid={false}
+                action={holding}
+              />,
+            ]),
         <Watchlist key="watch" palette={palette} />,
       ]}
     />
@@ -139,10 +155,13 @@ function Holdings({
   palette,
   rows,
   vivid,
+  action,
 }: {
   palette: Palette;
   rows: ((typeof HOLDINGS)[number] & { key: string })[];
   vivid: boolean;
+  /** Runs from the first holding's row (HOLDINGS[0]), drawn as a button named by the action. */
+  action?: SceneAction;
 }) {
   return (
     <View>
@@ -152,7 +171,7 @@ function Holdings({
         const tone = up ? UP : DOWN;
         return (
           <View key={row.key}>
-            <View style={styles.row}>
+            <RowFrame action={row.key === `0-${HOLDINGS[0]?.ticker}` ? action : undefined}>
               <View style={[styles.mark, { backgroundColor: vivid ? row.mark : palette.surface }]}>
                 <Text style={[styles.markText, { color: vivid ? '#ffffff' : palette.text }]}>
                   {row.name[0]}
@@ -176,12 +195,27 @@ function Holdings({
                   </Text>
                 )}
               </View>
-            </View>
+            </RowFrame>
             {i < rows.length - 1 ? <Hairline palette={palette} inset={74} /> : null}
           </View>
         );
       })}
     </View>
+  );
+}
+
+/** A holding's row: a button running the scene action when one is given, else a plain row. */
+function RowFrame({ action, children }: { action?: SceneAction; children: ReactNode }) {
+  if (!action) return <View style={styles.row}>{children}</View>;
+  return (
+    <Pressable
+      role="button"
+      accessibilityLabel={action.label}
+      onPress={action.onPress}
+      style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
+    >
+      {children}
+    </Pressable>
   );
 }
 

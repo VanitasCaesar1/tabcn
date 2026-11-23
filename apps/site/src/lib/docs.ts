@@ -102,6 +102,7 @@ const GUIDE_FOR: Record<string, string> = {
   'account-dock': '/docs/panels/',
   'bar-sheet': '/docs/sheets/',
   'filter-chips': '/docs/panels/',
+  'slider-sheet': '/docs/sheets/',
   'split-search': '/docs/minimize-on-scroll/',
   'side-rail': '/docs/minimize-on-scroll/',
   'companion-chip': '/docs/companions/',
