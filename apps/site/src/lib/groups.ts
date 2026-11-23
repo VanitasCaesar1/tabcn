@@ -1,26 +1,28 @@
-// The five groups the site sorts designs into: the board's four layout groups and the panels.
-// Plain data with no file-system access, so client components can import it too (board.ts and
-// designs.ts read the disk and stay on the server).
+// The layout groups the gallery filters by (its second, quieter filter after style): four kinds of
+// tab bar and the panels. Plain data with no file-system access, so client components can import
+// it too (designs.ts reads the disk and stays on the server).
 import type { Layout } from '../../../example/src/catalog';
+import { type DesignStyle, STYLES } from '../../../example/src/design-tags';
 
 export type GroupId = 'floating' | 'action' | 'docked' | 'rails';
 
-/** A board group, or the panels, which the board leaves out but the rest of the site lists. */
+/** A tab bar's layout group, or the panels. */
 export type SiteGroupId = GroupId | 'panels';
 
-/** The board dock's tabs, left to right. The board walks the groups in this order too. */
-export const GROUPS: { id: GroupId; label: string }[] = [
-  { id: 'floating', label: 'Floating' },
-  { id: 'action', label: 'Action' },
-  { id: 'docked', label: 'Docked' },
-  { id: 'rails', label: 'Rails' },
-];
-
-/** The catalogue, sidebar and footer: the board's groups, then the panels. */
+/** The layout filter, left to right. */
 export const SITE_GROUPS: { id: SiteGroupId; label: string }[] = [
-  ...GROUPS,
+  { id: 'floating', label: 'Floating' },
+  { id: 'docked', label: 'Docked' },
+  { id: 'action', label: 'With action' },
+  { id: 'rails', label: 'Rails' },
   { id: 'panels', label: 'Panels' },
 ];
+
+export type StyleId = DesignStyle;
+
+export function isStyle(value: string | null): value is StyleId {
+  return STYLES.some((s) => s.id === value);
+}
 
 /** One line under each group's heading in the catalogue. */
 export const GROUP_NOTES: Record<SiteGroupId, string> = {

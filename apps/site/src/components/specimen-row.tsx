@@ -2,23 +2,19 @@ import Link from 'next/link';
 import type { Design } from '@/lib/designs';
 import { designPath } from '@/lib/site';
 import { LoopTile } from './loop-tile';
-import { Facts, facts, SourceButton } from './specimen-card';
+import { layoutTag, Tag } from './specimen-card';
 
-// One design in the catalogue's list view: a thumbnail of its bar, the title over its one-line
-// description, the facts on wide screens, and the source button. Hovering the row plays the
-// thumbnail's loop. On phones the description gives way to a short facts line.
+// One design in the gallery's list view: a crop of its bar, the title over its one-line
+// description, and its style and layout on wide screens. Hovering the row plays the crop's loop.
 export function SpecimenRow({ design }: { design: Design }) {
-  const all = facts(design);
-  const short = design.kind === 'panel' ? all : all.slice(0, 2);
   return (
     <li
       data-loop-host
-      className="specimen-row relative grid h-16 grid-cols-[96px_minmax(0,1fr)_28px] items-center gap-3 px-2.5 sm:h-[60px] sm:grid-cols-[132px_minmax(0,1fr)_28px] sm:gap-4 @min-[1100px]/cat:grid-cols-[132px_minmax(0,1fr)_auto_28px]"
+      className="specimen-row relative grid h-16 grid-cols-[96px_minmax(0,1fr)] items-center gap-3 px-3 sm:h-[68px] sm:grid-cols-[132px_minmax(0,1fr)] sm:gap-4 @min-[880px]/cat:grid-cols-[132px_minmax(0,1fr)_auto]"
     >
       <LoopTile
         id={design.id}
         title={design.title}
-        background={design.background}
         poster={design.loopPoster ?? design.fallbackPoster}
         loop={design.loop}
         panel={design.kind === 'panel' && !design.loop}
@@ -34,17 +30,14 @@ export function SpecimenRow({ design }: { design: Design }) {
             {design.title}
           </Link>
         </h3>
-        <p id={`${design.id}-row-about`} className="hidden text-[13px] text-muted sm:line-clamp-1">
+        <p id={`${design.id}-row-about`} className="truncate text-[13px] text-muted">
           {design.description}
         </p>
-        <p className="truncate text-[12px] text-muted tabular-nums sm:hidden">
-          <Facts items={short} />
-        </p>
       </div>
-      <p className="hidden whitespace-nowrap text-right text-[13px] text-muted tabular-nums @min-[1100px]/cat:block">
-        <Facts items={all} />
-      </p>
-      <SourceButton design={design} />
+      <div className="hidden items-center gap-2 @min-[880px]/cat:flex">
+        <Tag>{design.styleLabel}</Tag>
+        <Tag>{layoutTag(design)}</Tag>
+      </div>
     </li>
   );
 }

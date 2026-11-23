@@ -2,13 +2,16 @@
 // descriptions from registry/registry.json, and facts read from each design's source. Server
 // only: it reads the file system while the static export renders.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { catalog, type DesignKind, LAYOUT_LABELS, type Layout } from '../../../example/src/catalog';
+import { DEMO_CONTROLS, type DemoControls } from '../../../example/src/demo-controls';
+import { DESIGN_TAGS, type DesignStyle, STYLES } from '../../../example/src/design-tags';
 import registry from '../../../../registry/registry.json';
 import type { DesignProps } from '../../../../scripts/design-props';
 import { asset } from './base-path';
 import { GROUP_NOTES, GROUP_OF, SITE_GROUPS, type SiteGroupId, siteGroupOf } from './groups';
 import { absoluteUrl } from './site';
+import { PANEL_BARS, PANEL_USAGE, type UsageDesign, usageFor } from './usage';
 
 export { legacyGroup } from './groups';
 
@@ -44,8 +47,17 @@ export interface Design {
   description: string;
   layout: Layout;
   layoutLabel: string;
-  /** The site group it's listed under: one of the board's four, or the panels. */
+  /** The layout group it's filtered by: Floating, Docked, With action, Rails, or the panels. */
   group: SiteGroupId;
+  /** What it looks like at a glance (apps/example/src/design-tags.ts): the gallery's first filter. */
+  style: DesignStyle;
+  styleLabel: string;
+  /** The light or dark palette of the app screen it's shown in. */
+  scheme: 'light' | 'dark';
+  /** The Customize panel's optional controls this design takes (apps/example/src/demo-controls.ts). */
+  controls: DemoControls;
+  /** The files the registry copies in, for the Code tab: the name it lands under and its text. */
+  sources: { name: string; code: string }[];
   /** The demo screen's colour behind the bar (`#rrggbb`), from the example app's demos. */
   background: string;
   /** The exported component, e.g. `SlidingCapsule`. */
@@ -96,8 +108,9 @@ export interface DesignSummary {
   layout: Layout;
   layoutLabel: string;
   group: SiteGroupId;
+  style: DesignStyle;
+  styleLabel: string;
   thumb: string | null;
-  background: string;
 }
 
 function ogImage(id: string) {
@@ -181,100 +194,6 @@ if (!existsSync(propsFile)) {
 }
 const propsData = JSON.parse(readFileSync(propsFile, 'utf8')) as Record<string, DesignProps>;
 
-/** The tab bar each panel's page shows it with (the pairing in the example app). */
-const PANEL_USAGE: Record<
-  string,
-  { bar: string; barId: string; lines: string[]; imports: string[]; tabcn?: string[] }
-> = {
-    'mini-player': {
-      bar: 'SoftPill',
-      barId: 'soft-pill',
-      imports: ["import { MiniPlayer } from '@/components/tabcn/mini-player';"],
-      lines: [
-        '      {/* Dragging needs <GestureHandlerRootView style={{ flex: 1 }}> around the',
-        '          app, in app/_layout.tsx (react-native-gesture-handler). */}',
-        '      {/* Declared once beside <Tabs>, so it stays across tabs. Show it with',
-        "          useTabPanel('player').peek() when a track starts. */}",
-        '      <MiniPlayer track={track} playing={playing} onPlayPause={toggle} onNext={next} />',
-      ],
-    },
-    'quick-create': {
-      bar: 'LabeledPlus',
-      barId: 'labeled-plus',
-      imports: [
-        "import { QuickCreate, useQuickCreate } from '@/components/tabcn/quick-create';",
-        "import { MicIcon, TextIcon } from '@/components/tabcn/quick-create-icons';",
-      ],
-      lines: [
-        '      {/* Slides up from the bar’s + button (its usePanelAnchor(\'action\')). */}',
-        '      <QuickCreate',
-        '        actions={[',
-        "          { label: 'Voice', icon: MicIcon, onPress: startRecording },",
-        "          { label: 'Text', icon: TextIcon, onPress: newScript },",
-        '        ]}',
-        '      />',
-      ],
-    },
-    'bar-sheet': {
-      bar: 'SoftPill',
-      barId: 'soft-pill',
-      imports: ["import { BarSheet } from '@/components/tabcn/bar-sheet';"],
-      lines: [
-        '      {/* Dragging needs <GestureHandlerRootView style={{ flex: 1 }}> around the',
-        '          app, in app/_layout.tsx (react-native-gesture-handler). */}',
-        '      {/* Declared once beside <Tabs>. Open it from any screen with',
-        '          useBarSheet().open, or move it with snapTo(index). */}',
-        '      <BarSheet title="Comments" subtitle="128 replies">',
-        '        <CommentList />',
-        '      </BarSheet>',
-      ],
-    },
-    'filter-chips': {
-      bar: 'SoftPill',
-      barId: 'soft-pill',
-      imports: [
-        "import { FilterChips } from '@/components/tabcn/filter-chips';",
-        "import { SortIcon, TruckIcon } from '@/components/tabcn/filter-chips-icons';",
-      ],
-      lines: [
-        '      {/* Declared once beside <Tabs>, or on the screen that filters (hide it on blur',
-        "          with useTabPanel('filters').hide). Only Apply calls onChange. */}",
-        '      <FilterChips',
-        '        groups={[',
-        "          { id: 'sort', label: 'Sort', icon: SortIcon, options: sortOptions },",
-        "          { id: 'delivery', label: 'Delivery', icon: TruckIcon, multiple: true, options: deliveryOptions },",
-        '        ]}',
-        '        value={filters}',
-        '        onChange={setFilters}',
-        '      />',
-      ],
-    },
-    'companion-chip': {
-      bar: 'SplitSearch',
-      barId: 'split-search',
-      tabcn: ['TabBarCompanion', 'TabBarProvider'],
-      imports: ["import { CompanionChip } from '@/components/tabcn/companion-chip';"],
-      lines: [
-        '      {/* Sits above the bar’s end and moves with it. From a screen, pass',
-        '          visible={useIsFocused()} to show it on that screen only. */}',
-        '      <TabBarCompanion position="above-end">',
-        '        <CompanionChip',
-        '          variant="round"',
-        '          icon={LocateIcon}',
-        '          accessibilityLabel="Locate me"',
-        '          onPress={recenter}',
-        '        />',
-        '      </TabBarCompanion>',
-      ],
-    },
-  };
-
-/** Panels with no PANEL_USAGE entry, and the bar their demo draws them with. */
-const PANEL_BARS: Record<string, string> = {
-  'context-tray': 'glass-expand',
-  'sub-tabs': 'soft-pill',
-};
-
 function load(): Design[] {
   return catalog.map((entry, index) => {
     const item = registry.items.find((i) => i.name === entry.id);
@@ -301,6 +220,8 @@ function load(): Design[] {
     const fallbackPoster =
       entry.kind === 'panel' && !hasLoop ? (stillList[1] ?? stillList[0] ?? null) : null;
     const pairedId = PANEL_USAGE[entry.id]?.barId ?? PANEL_BARS[entry.id];
+    const tags = DESIGN_TAGS[entry.id];
+    if (!tags) throw new Error(`${entry.id}: no entry in apps/example/src/design-tags.ts`);
     return {
       id: entry.id,
       ref: entry.ref,
@@ -310,6 +231,14 @@ function load(): Design[] {
       layout: entry.layout,
       layoutLabel: LAYOUT_LABELS[entry.layout],
       group: siteGroupOf(entry.layout),
+      style: tags.style,
+      styleLabel: STYLES.find((s) => s.id === tags.style)?.label ?? tags.style,
+      scheme: tags.scheme,
+      controls: DEMO_CONTROLS[entry.id] ?? {},
+      sources: item.files.map((f) => ({
+        name: basename(f.target),
+        code: readFileSync(join(root, f.path), 'utf8'),
+      })),
       background: demoBackground(entry.id),
       component,
       hasAction: /^\s+onActionPress: /m.test(source),
@@ -334,7 +263,6 @@ function load(): Design[] {
   });
 }
 
-
 export const designs = load();
 
 const layoutOrder = Object.keys(LAYOUT_LABELS) as Layout[];
@@ -355,11 +283,41 @@ export const groups = SITE_GROUPS.map(({ id, label }) => {
   return { id, label, note: GROUP_NOTES[id], layouts, items: layouts.flatMap((l) => l.items) };
 }).filter((g) => g.items.length > 0);
 
-/** The reading order: the sidebar's and the catalogue's, which Previous / Next walk too. */
-export const ordered = groups.flatMap((g) => g.items);
-
-/** The groups with their counts, for the filter, sidebar and footer. */
+/** The layout groups with their counts, for the gallery's layout filter. */
 export const siteGroups = groups.map(({ id, label, items }) => ({ id, label, count: items.length }));
+
+/** A section of the sidebar and the gallery: the tab bars of one style, or all the panels. */
+export type SectionId = DesignStyle | 'panels';
+
+/**
+ * The tab bars by style, in STYLES order (catalog order inside each), then the panels in their
+ * own section: the sidebar, the gallery and the footer list them this way.
+ */
+export const sections = [
+  ...STYLES.map(({ id, label, note }) => ({
+    id: id as SectionId,
+    label,
+    note,
+    items: designs.filter((d) => d.kind === 'bar' && d.style === id),
+  })),
+  {
+    id: 'panels' as SectionId,
+    label: 'Panels',
+    note: GROUP_NOTES.panels,
+    items: designs.filter((d) => d.kind === 'panel'),
+  },
+].filter((s) => s.items.length > 0);
+
+/** The reading order: the sidebar's and the gallery's, which Previous / Next walk too. */
+export const ordered = sections.flatMap((s) => s.items);
+
+/** Every style with how many designs (bars and panels) have it, for the gallery's style filter. */
+export const styleCounts = STYLES.map(({ id, label, note }) => ({
+  id,
+  label,
+  note,
+  count: designs.filter((d) => d.style === id).length,
+}));
 
 export function groupLabel(id: SiteGroupId) {
   return SITE_GROUPS.find((g) => g.id === id)?.label ?? id;
@@ -384,13 +342,35 @@ export function summary({
   layout,
   layoutLabel,
   group,
+  style,
+  styleLabel,
   thumb,
-  background,
 }: Design): DesignSummary {
-  return { id, title, description, layout, layoutLabel, group, thumb, background };
+  return { id, title, description, layout, layoutLabel, group, style, styleLabel, thumb };
 }
 
-/** The Expo Router layout a user writes to use this design. */
+/** The part of a design the usage snippet and "Copy for AI" need, for a client component. */
+export function usageDesign(d: Design): UsageDesign {
+  return {
+    id: d.id,
+    title: d.title,
+    kind: d.kind,
+    description: d.description,
+    component: d.component,
+    hasAction: d.hasAction,
+    icons: d.icons,
+    iconsFile: d.iconsFile,
+    panelUI: d.panelUI,
+    tabs: d.tabs,
+    controls: d.controls,
+  };
+}
+
+/** The Expo Router layout a user writes to use this design, with no settings picked. */
+export function usageSnippet(d: Design) {
+  return usageFor(usageDesign(d));
+}
+
 /** The lines that give a design PanelUI's colours (docs/designs/panelui.md). */
 export function panelUISnippet(d: Design) {
   return `${[
@@ -403,271 +383,3 @@ export function panelUISnippet(d: Design) {
   ].join('\n')}\n`;
 }
 
-export function usageSnippet(d: Design) {
-  if (d.id === 'sub-tabs') return SUB_TABS_SNIPPET;
-  if (d.kind === 'panel') return panelSnippet(d);
-  if (d.id === 'side-rail') return railSnippet(d);
-  if (d.id === 'section-sheet') return SECTION_SHEET_SNIPPET;
-  if (d.id === 'account-dock') return ACCOUNT_DOCK_SNIPPET;
-  if (d.id === 'live-tabs') return LIVE_TABS_SNIPPET;
-  return barSnippet(d);
-}
-
-/** Sub-Tabs has two parts: `useSubTabs` on one tab inside the bar, and the drawer beside it. */
-const SUB_TABS_SNIPPET = `${[
-  '// In your bar design (a copy of any tabcn bar): the tab that owns the drawer.',
-  "import { View } from 'react-native';",
-  "import { TabButton, type TabItem } from 'react-native-tabcn';",
-  "import { useSubTabs } from '@/components/tabcn/sub-tabs';",
-  '',
-  'function LibraryTab({ tab }: { tab: TabItem }) {',
-  "  const sub = useSubTabs('library', { width: 168 });",
-  '  return (',
-  '    <TabButton tab={tab} {...sub.tabProps}>',
-  '      {tab.renderIcon?.({ focused: tab.focused, color, size: 22 })}',
-  '      <View {...sub.anchorProps} />',
-  '    </TabButton>',
-  '  );',
-  '}',
-  '',
-  '// app/(tabs)/_layout.tsx: the drawer, declared once beside <Tabs>',
-  "import { router } from 'expo-router';",
-  "import { Tabs } from 'expo-router/js-tabs';",
-  "import { TabBarProvider } from 'react-native-tabcn';",
-  "import { tabBar } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
-  "import { SubTabs } from '@/components/tabcn/sub-tabs';",
-  "import { MyTabBar } from '@/components/tabcn/my-tab-bar';",
-  '',
-  'export default function TabLayout() {',
-  '  return (',
-  '    <TabBarProvider>',
-  '      <Tabs tabBar={tabBar(<MyTabBar />)} screenOptions={{ headerShown: false }} />',
-  '      <SubTabs',
-  '        name="library"',
-  '        items={[',
-  "          { label: 'Albums', onPress: () => router.navigate('/library/albums') },",
-  "          { label: 'Artists', onPress: () => router.navigate('/library/artists') },",
-  '        ]}',
-  '      />',
-  '    </TabBarProvider>',
-  '  );',
-  '}',
-].join('\n')}\n`;
-
-/** Section Sheet is the tab bar; each section's sheet body comes from `sections`. */
-const SECTION_SHEET_SNIPPET = `${[
-  "import { Tabs } from 'expo-router/js-tabs';",
-  "import { TabBarProvider } from 'react-native-tabcn';",
-  "import { tabBar } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
-  "import { SectionSheet } from '@/components/tabcn/section-sheet';",
-  '',
-  'export default function TabLayout() {',
-  '  return (',
-  '    // Needs the provider, and <GestureHandlerRootView style={{ flex: 1 }}> around the app.',
-  '    <TabBarProvider>',
-  '      <Tabs',
-  '        backBehavior="history"',
-  '        tabBar={tabBar(',
-  '          <SectionSheet',
-  '            sections={{ index: <ExploreList />, guides: <GuideList />, saved: <SavedList /> }}',
-  '          />,',
-  '        )}',
-  '        screenOptions={{ headerShown: false }}',
-  '      >',
-  "        <Tabs.Screen name=\"index\" options={{ title: 'Explore' }} />",
-  "        <Tabs.Screen name=\"guides\" options={{ title: 'Guides' }} />",
-  "        <Tabs.Screen name=\"saved\" options={{ title: 'Saved' }} />",
-  '      </Tabs>',
-  '    </TabBarProvider>',
-  '  );',
-  '}',
-].join('\n')}\n`;
-
-/** Account Dock is the tab bar; its sheet is a panel, so it needs the provider. */
-const ACCOUNT_DOCK_SNIPPET = `${[
-  "import { Tabs } from 'expo-router/js-tabs';",
-  "import { TabBarProvider } from 'react-native-tabcn';",
-  "import { tabBar } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
-  "import { AccountDock } from '@/components/tabcn/account-dock';",
-  '',
-  'export default function TabLayout() {',
-  '  // Your own data: workspaces, accounts and the person\'s status.',
-  '  const { workspaces, workspaceId, setWorkspaceId } = useWorkspaces();',
-  '  const { accounts, accountId, setAccountId } = useAccounts();',
-  '  const [status, setStatus] = usePresence();',
-  '  return (',
-  '    <TabBarProvider>',
-  '      <Tabs',
-  '        tabBar={tabBar(',
-  '          <AccountDock',
-  '            workspaces={workspaces}',
-  '            workspaceId={workspaceId}',
-  '            onWorkspaceChange={setWorkspaceId}',
-  '            accounts={accounts}',
-  '            accountId={accountId}',
-  '            onAccountChange={setAccountId}',
-  '            status={status}',
-  '            onStatusChange={setStatus}',
-  '          />,',
-  '        )}',
-  '        screenOptions={{ headerShown: false }}',
-  '      />',
-  '    </TabBarProvider>',
-  '  );',
-  '}',
-].join('\n')}\n`;
-
-/** Live Tabs draws what screens write with `useLiveTab`. */
-const LIVE_TABS_SNIPPET = `${[
-  '// app/(tabs)/_layout.tsx',
-  "import { Tabs } from 'expo-router/js-tabs';",
-  "import { TabBarProvider } from 'react-native-tabcn';",
-  "import { tabBar } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
-  "import { LiveTabs } from '@/components/tabcn/live-tabs';",
-  '',
-  'export default function TabLayout() {',
-  '  return (',
-  '    <TabBarProvider>',
-  '      <Tabs tabBar={tabBar(<LiveTabs />)} screenOptions={{ headerShown: false }} />',
-  '    </TabBarProvider>',
-  '  );',
-  '}',
-  '',
-  '// Anywhere under the provider, such as the Timer screen, once a second:',
-  "import { useLiveTab } from 'react-native-tabcn';",
-  '',
-  "const timer = useLiveTab('timer'); // the tab's route name",
-  'timer.progress.value = elapsed / duration; // fills the ring; 0 or 1 hides it',
-  "timer.setText(remaining > 0 ? format(remaining) : undefined); // replaces the label",
-].join('\n')}\n`;
-
-/**
- * Panels need a `TabBarProvider` around the navigator. Mini Player and Quick Create are
- * declared beside `<Tabs>`; Context Tray is set by a screen with `useTabBarOverride`.
- */
-function panelSnippet(d: Design) {
-  if (d.id === 'context-tray') {
-    return `${[
-      '// app/(tabs)/_layout.tsx: the provider lets screens drive the bar',
-      "import { Tabs } from 'expo-router/js-tabs';",
-      "import { TabBarProvider } from 'react-native-tabcn';",
-      "import { tabBar } from 'react-native-tabcn/expo-router';",
-      "import { GlassExpand } from '@/components/tabcn/glass-expand';",
-      '',
-      'export default function TabLayout() {',
-      '  return (',
-      '    <TabBarProvider>',
-      '      <Tabs tabBar={tabBar(<GlassExpand />)} screenOptions={{ headerShown: false }} />',
-      '    </TabBarProvider>',
-      '  );',
-      '}',
-      '',
-      '// app/(tabs)/plan.tsx: the tray shows in the bar’s place while this screen is focused',
-      "import { router } from 'expo-router';",
-      "import { useTabBarOverride } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
-      "import { ContextTray } from '@/components/tabcn/context-tray';",
-      '',
-      'export default function PlanScreen() {',
-      '  useTabBarOverride(',
-      '    <ContextTray label="Today’s plan" progress={0.42} onClose={() => router.navigate(\'/\')} />,',
-      '  );',
-      '  // …',
-      '}',
-    ].join('\n')}\n`;
-  }
-  const usage = PANEL_USAGE[d.id];
-  const bar = usage?.bar ?? 'MyTabBar';
-  const barProps = d.id === 'quick-create' ? ' onActionPress={toggleCreate}' : '';
-  const lines = [
-    "import { Tabs } from 'expo-router/js-tabs';",
-    `import { ${(usage?.tabcn ?? ['TabBarProvider']).join(', ')} } from 'react-native-tabcn';`,
-    "import { tabBar } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
-    `import { ${bar} } from '@/components/tabcn/${usage?.barId ?? 'my-tab-bar'}';`,
-    ...(usage?.imports ?? []),
-    '',
-    ...(d.id === 'quick-create'
-      ? [
-          '// The bar, with its + button toggling the menu (any bar that marks its button with',
-          "// usePanelAnchor('action') works).",
-          'function Bar() {',
-          '  const toggleCreate = useQuickCreate();',
-          `  return <${bar}${barProps} />;`,
-          '}',
-          '',
-        ]
-      : []),
-    'export default function TabLayout() {',
-    '  return (',
-    '    // Panels need the provider around the tabs navigator.',
-    '    <TabBarProvider>',
-    `      <Tabs tabBar={tabBar(<${d.id === 'quick-create' ? 'Bar' : bar} />)} screenOptions={{ headerShown: false }} />`,
-    ...(usage?.lines ?? []),
-    '    </TabBarProvider>',
-    '  );',
-    '}',
-  ];
-  return `${lines.join('\n')}\n`;
-}
-
-/** Side Rail: a rail on wide windows (`tabBarPosition: 'left'`), a bottom bar on phones. */
-function railSnippet(d: Design) {
-  const [first, second] = d.icons;
-  const lines = [
-    "import { Tabs } from 'expo-router/js-tabs';",
-    "import { useWindowDimensions } from 'react-native';",
-    "import { tabBar } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
-    `import { ${d.component} } from '@/components/tabcn/${d.id}';`,
-    ...(first && second && d.iconsFile
-      ? [`import { ${first}, ${second} } from '@/${d.iconsFile}';`]
-      : []),
-    '',
-    'export default function TabLayout() {',
-    '  const { width } = useWindowDimensions();',
-    '  return (',
-    '    <Tabs',
-    `      tabBar={tabBar(<${d.component} />)}`,
-    "      screenOptions={{ headerShown: false, tabBarPosition: width >= 600 ? 'left' : 'bottom' }}",
-    '    >',
-    first
-      ? `      <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ${first} }} />`
-      : `      <Tabs.Screen name="index" options={{ title: 'Home' }} />`,
-    second
-      ? `      <Tabs.Screen name="starred" options={{ title: 'Starred', tabBarIcon: ${second} }} />`
-      : `      <Tabs.Screen name="starred" options={{ title: 'Starred' }} />`,
-    '    </Tabs>',
-    '  );',
-    '}',
-  ];
-  return `${lines.join('\n')}\n`;
-}
-
-function barSnippet(d: Design) {
-  const [first, second] = d.icons.length >= 2 ? d.icons : [];
-  const props = d.hasAction ? ` onActionPress={() => router.push('/new')}` : '';
-  const lines = [
-    "import { Tabs } from 'expo-router/js-tabs';",
-    ...(d.hasAction ? ["import { router } from 'expo-router';"] : []),
-    "import { tabBar } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
-    `import { ${d.component} } from '@/components/tabcn/${d.id}';`,
-    ...(first && second && d.iconsFile
-      ? [`import { ${first}, ${second} } from '@/${d.iconsFile}';`]
-      : []),
-    '',
-    'export default function TabLayout() {',
-    '  return (',
-    '    <Tabs',
-    `      tabBar={tabBar(<${d.component}${props} />)}`,
-    '      screenOptions={{ headerShown: false }}',
-    '    >',
-    first && second
-      ? `      <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ${first} }} />`
-      : `      <Tabs.Screen name="index" options={{ title: 'Home' }} />`,
-    first && second
-      ? `      <Tabs.Screen name="explore" options={{ title: 'Explore', tabBarIcon: ${second} }} />`
-      : `      <Tabs.Screen name="explore" options={{ title: 'Explore' }} />`,
-    '    </Tabs>',
-    '  );',
-    '}',
-  ];
-  return `${lines.join('\n')}\n`;
-}

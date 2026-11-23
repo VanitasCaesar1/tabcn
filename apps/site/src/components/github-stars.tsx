@@ -147,7 +147,7 @@ export function GitHubLink({ repo, saved, href }: { repo: string; saved: number;
       target="_blank"
       rel="noreferrer"
       aria-label={show ? `tabcn on GitHub, ${count} stars` : 'tabcn on GitHub'}
-      className="flex h-9 shrink-0 items-center justify-center gap-2 rounded-full font-medium text-[13px] text-foreground shadow-[inset_0_0_0_1px_var(--border)] outline-hidden transition-[background-color] duration-150 ease-out hover:bg-surface focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:bg-foreground/10 active:duration-100 max-sm:w-9 sm:px-3 motion-reduce:transition-none"
+      className="flex h-9 shrink-0 items-center justify-center gap-2 rounded-[10px] bg-card font-medium text-[13px] text-foreground shadow-[inset_0_0_0_1px_var(--card-border)] outline-hidden transition-[background-color] duration-150 ease-out hover:bg-cell focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:bg-foreground/10 active:duration-100 max-sm:w-9 sm:px-3 motion-reduce:transition-none"
     >
       <GitHubIcon />
       <span className="hidden sm:inline">GitHub</span>

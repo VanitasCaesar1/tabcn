@@ -13,10 +13,10 @@ const trim = (path: string) => path.replace(/\/+$/, '');
 export function SidebarDocs() {
   const pathname = trim(usePathname() ?? '');
   return (
-    <div className="mb-3 flex flex-col gap-4">
+    <div className="mb-5 flex flex-col gap-3">
       {DOC_GROUPS.map((group) => (
         <div key={group}>
-          <p className="mb-1 px-2 font-medium text-[11px] text-muted">{group}</p>
+          <p className="flex h-7 items-center px-2 font-medium text-[12px] text-muted">{group}</p>
           <ul className="flex flex-col">
             {docs
               .filter((page) => page.group === group)
@@ -28,19 +28,12 @@ export function SidebarDocs() {
                       href={page.href}
                       aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'relative flex h-8 items-center gap-2.5 rounded-[10px] px-2 text-[13px] outline-hidden transition-[color,background-color] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-foreground motion-reduce:transition-none',
+                        'relative flex h-8 items-center gap-2 rounded-lg px-2 text-[14px] outline-hidden transition-[color,background-color] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-foreground motion-reduce:transition-none',
                         active
-                          ? 'bg-surface font-medium text-foreground'
-                          : 'text-muted hover:bg-surface/60 hover:text-foreground',
+                          ? 'bg-cell font-medium text-accent'
+                          : 'text-foreground/80 hover:bg-cell/60 hover:text-foreground',
                       )}
                     >
-                      <span
-                        aria-hidden
-                        className={cn(
-                          'absolute top-2 bottom-2 left-0 w-0.5 rounded-full bg-foreground transition-[opacity] duration-200 ease-out motion-reduce:transition-none',
-                          active ? 'opacity-100' : 'opacity-0',
-                        )}
-                      />
                       <span className="min-w-0 flex-1 truncate">{page.title}</span>
                     </Link>
                   </li>
@@ -49,7 +42,6 @@ export function SidebarDocs() {
           </ul>
         </div>
       ))}
-      <p className="px-2 font-medium text-[11px] text-muted">Designs</p>
     </div>
   );
 }

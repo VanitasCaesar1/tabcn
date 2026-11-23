@@ -21,9 +21,14 @@ export function designPath(id: string) {
   return `/designs/${id}/`;
 }
 
-/** The catalogue on the home page, showing one group. */
+/** The gallery on the home page, showing one layout group. */
 export function groupPath(id: string) {
   return `/?c=${id}#designs`;
+}
+
+/** The gallery on the home page, showing one style. */
+export function stylePath(id: string) {
+  return `/?s=${id}#designs`;
 }
 
 /** Below this many stars the header's GitHub button shows no count. */
@@ -39,6 +44,9 @@ export function registryUrl(id: string) {
 
 /** The design the home page's install command adds, and the Quick start's example. */
 export const HERO_DESIGN = 'sliding-capsule';
+
+/** The recordings the home page's phone plays, in order. */
+export const HERO_SHOWCASE = ['ambient-bar', 'glow-glass', 'mini-player', 'sliding-capsule'];
 
 /** The published tabcn version, decided at build time; null while unpublished. */
 export const npmVersion: string | null = (repo as { npm?: string | null }).npm ?? null;

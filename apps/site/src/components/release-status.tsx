@@ -10,7 +10,7 @@ const link =
 // under it never moves, and the words always say the state: the dot is only decoration.
 export function ReleaseStatus() {
   return (
-    <div className="rise mt-2.5 flex h-5 items-center justify-center whitespace-nowrap text-[12px] [--rise-delay:180ms]">
+    <div className="rise mt-3 flex h-5 items-center whitespace-nowrap pl-1 text-[12px] [--rise-delay:180ms]">
       {npmVersion ? (
         <a
           href="https://www.npmjs.com/package/react-native-tabcn"

@@ -3,31 +3,31 @@
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
 import { cn } from '@/lib/cn';
-import { isSiteGroup, type SiteGroupId } from '@/lib/groups';
-import { LayoutIcon } from './layout-icons';
 import { TIMING_MS } from './motion';
 import { SidebarDocs } from './sidebar-docs';
 import { type SidebarItem, SidebarLink } from './sidebar-link';
 
 export interface SidebarGroup {
-  id: SiteGroupId;
+  /** A style id, or 'panels'. */
+  id: string;
   label: string;
   count: number;
-  layouts: { layout: string; label: string; items: SidebarItem[] }[];
+  items: SidebarItem[];
 }
 
-const STORAGE_KEY = 'tabcn-sidebar-open';
+/** The sections someone closed (everything else stays open). */
+const STORAGE_KEY = 'tabcn-sidebar-closed';
 
-function readStored(): SiteGroupId[] | null {
+function readStored(valid: Set<string>): string[] {
   try {
     const value = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null');
-    return Array.isArray(value) ? value.filter((v): v is SiteGroupId => isSiteGroup(v)) : null;
+    return Array.isArray(value) ? value.filter((v): v is string => valid.has(v)) : [];
   } catch {
-    return null;
+    return [];
   }
 }
 
-function store(ids: SiteGroupId[]) {
+function store(ids: string[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
   } catch {}
@@ -35,53 +35,43 @@ function store(ids: SiteGroupId[]) {
 
 const plural = (n: number) => `${n} ${n === 1 ? 'design' : 'designs'}`;
 
-// The sidebar's list, shared by the desktop column and the phone menu: the docs, then one row per group, named
-// and counted, that opens to show that group's designs. Any number can be open. A design page
-// opens its own group; the home page reopens the groups last left open, or Floating. The server
-// renders the route's group open, so hydration agrees, and saved groups apply just after.
+// The sidebar's list, shared by the desktop column and the phone menu: the docs, then the designs
+// by style and the panels, one section each, all open until someone closes one. Closed sections
+// are remembered; a design page always opens its own. The server renders every section open, so
+// hydration agrees, and the saved choice applies just after.
 export function SidebarGroups({ groups }: { groups: SidebarGroup[] }) {
   const pathname = usePathname() ?? '';
   const baseId = useId();
 
   const routeId = pathname.match(/^\/designs\/([^/]+)/)?.[1];
   const routeGroup = routeId
-    ? groups.find((g) => g.layouts.some((l) => l.items.some((d) => d.id === routeId)))?.id
+    ? groups.find((g) => g.items.some((d) => d.id === routeId))?.id
     : undefined;
-  const fallback = groups[0]?.id ?? 'floating';
 
-  const [open, setOpen] = useState<SiteGroupId[]>([routeGroup ?? fallback]);
-  const [lastRoute, setLastRoute] = useState(routeGroup);
-  // Arriving on a design opens its group (and keeps the others as they were).
-  if (routeGroup !== lastRoute) {
-    setLastRoute(routeGroup);
-    if (routeGroup && !open.includes(routeGroup)) setOpen([...open, routeGroup]);
-  }
+  const [closed, setClosed] = useState<string[]>([]);
 
-  // The home page reopens the groups last left open.
   useEffect(() => {
-    if (routeGroup) return;
-    const saved = readStored();
-    if (saved) setOpen(saved);
-  }, [routeGroup]);
+    const saved = readStored(new Set(groups.map((g) => g.id)));
+    setClosed(saved.filter((id) => id !== routeGroup));
+  }, [groups, routeGroup]);
 
-  const toggle = (gid: SiteGroupId) => {
-    const next = open.includes(gid) ? open.filter((o) => o !== gid) : [...open, gid];
-    setOpen(next);
+  const toggle = (gid: string) => {
+    const next = closed.includes(gid) ? closed.filter((c) => c !== gid) : [...closed, gid];
+    setClosed(next);
     store(next);
   };
 
   return (
     <div
       data-sidebar-scroll
-      className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pt-3 pb-10 [mask-image:linear-gradient(to_bottom,transparent,black_12px,black_calc(100%-32px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pt-4 pb-10 [mask-image:linear-gradient(to_bottom,transparent,black_12px,black_calc(100%-32px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       style={{ '--timing-ms': `${TIMING_MS}ms` } as React.CSSProperties}
     >
       <SidebarDocs />
-      <ul className="flex flex-col gap-0.5">
+      <ul className="flex flex-col gap-3">
         {groups.map((g) => {
-          const isOpen = open.includes(g.id);
+          const isOpen = !closed.includes(g.id);
           const panelId = `${baseId}-${g.id}`;
-          const here = g.id === routeGroup;
           return (
             <li key={g.id}>
               <button
@@ -90,39 +80,21 @@ export function SidebarGroups({ groups }: { groups: SidebarGroup[] }) {
                 aria-controls={panelId}
                 aria-label={`${g.label}, ${plural(g.count)}`}
                 onClick={() => toggle(g.id)}
-                className={cn(
-                  'flex h-9 w-full touch-manipulation items-center gap-2.5 rounded-lg px-2 text-left text-[13px] outline-hidden transition-[background-color,color] duration-150 ease-out hover:bg-foreground/5 focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:-outline-offset-2 motion-reduce:transition-none',
-                  isOpen || here ? 'text-foreground' : 'text-muted hover:text-foreground',
-                )}
+                className="group/head flex h-7 w-full touch-manipulation items-center gap-2 rounded-md px-2 text-left text-[12px] text-muted outline-hidden transition-[color] duration-150 ease-out hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:-outline-offset-2 motion-reduce:transition-none"
               >
-                <span className="grid size-6 shrink-0 place-items-center rounded-md bg-surface shadow-[inset_0_0_0_1px_var(--border)]">
-                  <LayoutIcon group={g.id} className="size-4" />
-                </span>
                 <span className="flex-1 font-medium">{g.label}</span>
-                <span className="text-[12px] text-muted tabular-nums">{g.count}</span>
+                <span className="tabular-nums">{g.count}</span>
                 <Caret open={isOpen} />
               </button>
               <div id={panelId} className="side-fold" data-open={isOpen ? '' : undefined}>
                 <div className="min-h-0 overflow-hidden" inert={!isOpen}>
-                  <div className="pt-0.5 pb-2 pl-3">
-                    {g.layouts.map((l) => (
-                      <div key={l.layout}>
-                        {g.layouts.length > 1 && (
-                          <p className="mt-2 mb-0.5 flex items-baseline justify-between px-2 text-[11px] text-muted">
-                            {l.label}
-                            <span className="tabular-nums">{l.items.length}</span>
-                          </p>
-                        )}
-                        <ul className="flex flex-col">
-                          {l.items.map((d) => (
-                            <li key={d.id}>
-                              <SidebarLink item={d} />
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                  <ul className="flex flex-col pt-0.5">
+                    {g.items.map((d) => (
+                      <li key={d.id}>
+                        <SidebarLink item={d} />
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </div>
               </div>
             </li>
@@ -138,7 +110,7 @@ function Caret({ open }: { open: boolean }) {
   const path =
     'stroke-current transition-opacity duration-150 ease-out motion-reduce:transition-none';
   return (
-    <svg aria-hidden viewBox="0 0 12 12" fill="none" className="size-3 shrink-0 text-muted">
+    <svg aria-hidden viewBox="0 0 12 12" fill="none" className="size-3 shrink-0">
       <path
         d="m4.5 3 3 3-3 3"
         strokeWidth="1.4"

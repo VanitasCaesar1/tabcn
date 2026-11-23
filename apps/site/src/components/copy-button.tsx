@@ -25,6 +25,7 @@ export function CopyButton({
   // with; 'ghost' is a plain icon that picks up a background on hover.
   tone = 'ghost',
   className,
+  children,
 }: {
   value: string;
   label?: string;
@@ -32,6 +33,8 @@ export function CopyButton({
   onCopy?: (value: string) => void;
   tone?: 'ghost' | 'solid';
   className?: string;
+  /** A visible label beside the icon: the button becomes a labelled toolbar button. */
+  children?: React.ReactNode;
 }) {
   const reduceMotion = useReducedMotion();
   const [status, setStatus] = useState<Status>('idle');
@@ -71,18 +74,20 @@ export function CopyButton({
     <span className={cn('relative inline-flex', className)}>
       <button
         type="button"
-        aria-label={label}
+        aria-label={children ? undefined : label}
         onClick={copy}
         className={cn(
-          'relative flex size-8 touch-manipulation items-center justify-center rounded-full outline-hidden transition-[color,background-color,opacity] duration-150 ease-out select-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-foreground motion-reduce:transition-none',
+          children
+            ? 'h-9 gap-2 rounded-[10px] bg-card px-3 font-medium text-[13px] text-foreground shadow-[inset_0_0_0_1px_var(--card-border)] hover:bg-cell'
+            : 'size-8 rounded-full',
+          'relative flex touch-manipulation items-center justify-center outline-hidden transition-[color,background-color,opacity] duration-150 ease-out select-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-foreground motion-reduce:transition-none',
           // Grows the hit area to 40px without growing the visible circle.
-          'after:absolute after:-inset-1 after:rounded-full',
-          tone === 'solid'
-            ? 'bg-foreground text-background hover:opacity-90 active:opacity-80 active:duration-100'
-            : cn(
-                'text-muted hover:bg-background hover:text-foreground',
-                visible && 'text-foreground',
-              ),
+          !children && 'after:absolute after:-inset-1 after:rounded-full',
+          children
+            ? null
+            : tone === 'solid'
+              ? 'bg-foreground text-background hover:opacity-90 active:opacity-80 active:duration-100'
+              : cn('text-muted hover:bg-cell hover:text-foreground', visible && 'text-foreground'),
         )}
       >
         {/* Both icons share one grid cell so the swap never shifts layout. */}
@@ -90,6 +95,7 @@ export function CopyButton({
           <CopyGlyph copied={status === 'copied'} reduceMotion={reduceMotion} />
           <CheckGlyph copied={status === 'copied'} reduceMotion={reduceMotion} />
         </span>
+        {children}
       </button>
 
       {/* Out of flow, so appearing never nudges the row. It fades in and out on tabcnTiming;

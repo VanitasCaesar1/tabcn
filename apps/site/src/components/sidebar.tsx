@@ -1,26 +1,16 @@
 import Link from 'next/link';
-import { groups } from '@/lib/designs';
+import { sections } from '@/lib/designs';
 import { npmVersion } from '@/lib/site';
 import { Logomark } from './logomark';
 import type { SidebarGroup } from './sidebar-groups';
 import { SidebarGroups } from './sidebar-groups';
 
-/** The groups as the sidebar's client list needs them (shared with the phone menu). */
-export const sidebarGroups: SidebarGroup[] = groups.map((g) => ({
-  id: g.id,
-  label: g.label,
-  count: g.items.length,
-  layouts: g.layouts.map((l) => ({
-    layout: l.layout,
-    label: l.label,
-    items: l.items.map(({ id, title, thumb, background, isNew }) => ({
-      id,
-      title,
-      thumb,
-      background,
-      isNew,
-    })),
-  })),
+/** The sections as the sidebar's client list needs them (shared with the phone menu). */
+export const sidebarGroups: SidebarGroup[] = sections.map((s) => ({
+  id: s.id,
+  label: s.label,
+  count: s.items.length,
+  items: s.items.map(({ id, title, isNew }) => ({ id, title, isNew })),
 }));
 
 /** The mark, the name and the version chip: the sidebar's and the phone menu's top row. */
@@ -32,7 +22,7 @@ export function Brand() {
     >
       <Logomark />
       <span className="font-semibold text-[15px] text-foreground tracking-tight">tabcn</span>
-      <span className="flex h-5 items-center rounded-full px-1.5 font-mono text-[11px] text-muted tabular-nums shadow-[inset_0_0_0_1px_var(--border)]">
+      <span className="flex h-5 items-center rounded-md px-1.5 font-mono text-[11px] text-muted tabular-nums shadow-[inset_0_0_0_1px_var(--card-border)]">
         {npmVersion ? `v${npmVersion}` : 'pre-release'}
       </span>
     </Link>
@@ -43,8 +33,8 @@ const footLink =
   'inline-flex items-center gap-0.5 rounded-sm outline-hidden transition-[color] duration-150 ease-out hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 motion-reduce:transition-none';
 
 // A real column on wide screens: full height, one hairline between it and the page. The brand on
-// top lines up with the header; under it, the design groups, each opening to its designs; links
-// to the quick start and the PanelUI guide at the foot. (Layout from ui lab,
+// top lines up with the header; under it, the docs, then the designs by style and the panels,
+// each section opening to its designs; links to the quick start and the PanelUI guide at the foot. (Layout from ui lab,
 // https://lab.xevrion.dev, MIT.)
 export function Sidebar() {
   return (
