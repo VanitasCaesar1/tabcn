@@ -7,7 +7,15 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ComponentType, ReactNode } from 'react';
-import { BackHandler, I18nManager, StyleSheet, Text, View } from 'react-native';
+import {
+  BackHandler,
+  I18nManager,
+  type StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import {
@@ -773,6 +781,21 @@ describe('search-dock', () => {
   });
 });
 
+/** Cart Pill in Shop's row: a cart, and search on the second tab (`tab-1`). */
+function Shop({ state, ...props }: { state: TabBarState } & Record<string, unknown>) {
+  return (
+    <TabBarStateProvider value={state}>
+      <CartPill
+        material="tint"
+        onCartPress={() => {}}
+        search={{ route: 'tab-1' }}
+        haptics={false}
+        {...props}
+      />
+    </TabBarStateProvider>
+  );
+}
+
 describe('cart-pill', () => {
   // expo-blur's native view, as the test renderer names it.
   const blurs = () => {
@@ -801,6 +824,116 @@ describe('cart-pill', () => {
       </Bar>,
     );
     expect(blurs()).toBe(0);
+  });
+
+  // Every node in the rendered tree, for props the queries don't reach (GlassView renders as a
+  // plain View with its props under Jest).
+  const nodes = () => {
+    const all: { type: string; props: { style?: StyleProp<ViewStyle>; [key: string]: unknown } }[] =
+      [];
+    const walk = (node: ReturnType<typeof screen.toJSON>) => {
+      if (!node || typeof node === 'string') return;
+      if (Array.isArray(node)) return node.forEach(walk);
+      all.push(node);
+      for (const child of node.children ?? []) walk(child as typeof node);
+    };
+    walk(screen.toJSON());
+    return all;
+  };
+
+  it('draws clear Liquid Glass with a faint lens, not milky glass and a white block', async () => {
+    await render(
+      <Bar>
+        <CartPill material="glass" onBackPress={() => {}} onCartPress={() => {}} haptics={false} />
+      </Bar>,
+    );
+    const glass = nodes().filter((node) => node.props.glassEffectStyle != null);
+    // The pill, the back button and the cart.
+    expect(glass).toHaveLength(3);
+    expect(glass.map((node) => node.props.tintColor)).toEqual([
+      undefined,
+      undefined,
+      'rgba(84, 50, 234, 0.92)',
+    ]);
+    expect(glass.filter((node) => node.props.isInteractive)).toHaveLength(2);
+    const fills = nodes().map((node) => StyleSheet.flatten(node.props.style)?.backgroundColor);
+    expect(fills).toContain('rgba(0, 0, 0, 0.07)');
+    expect(fills).not.toContain('#ffffff');
+    // Glass draws its own depth: no shadow on top.
+    const shadows = nodes().map((node) => StyleSheet.flatten(node.props.style)?.boxShadow);
+    expect(shadows.filter(Boolean)).toHaveLength(0);
+  });
+
+  describe('search', () => {
+    // Home, Search, Explore, Orders; Search is `tab-1`.
+    function shopState(activeIndex: number) {
+      const { state, press } = makeState(4, 0, []);
+      const at = (index: number): TabBarState => ({
+        ...state,
+        activeIndex: index,
+        tabs: state.tabs.map((tab) => ({ ...tab, focused: tab.index === index })),
+      });
+      return { state: at(activeIndex), at, press };
+    }
+    const press = (target: Parameters<typeof fireEvent.press>[0]) =>
+      act(async () => {
+        await fireEvent.press(target);
+      });
+
+    it('shows the tabs and the cart, and no field, away from the search tab', async () => {
+      await render(<Shop state={shopState(0).state} />);
+      expect(screen.getAllByRole('tab')).toHaveLength(4);
+      expect(screen.getByLabelText('Cart')).toBeTruthy();
+      expect(screen.queryByLabelText('Ask a follow-up')).toBeNull();
+    });
+
+    it('swaps the tabs and the cart for back and the field on the search tab', async () => {
+      await render(<Shop state={shopState(1).state} />);
+      expect(screen.getByLabelText('Ask a follow-up')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Back' })).toBeTruthy();
+      expect(screen.queryAllByRole('tab')).toHaveLength(0);
+      expect(screen.queryByLabelText('Cart')).toBeNull();
+    });
+
+    it('goes back to the tab that was active before search', async () => {
+      const { state, at, press: navigate } = shopState(2);
+      const view = await render(<Shop state={state} />);
+      await view.rerender(<Shop state={at(1)} />);
+      await press(screen.getByRole('button', { name: 'Back' }));
+      expect(navigate).toHaveBeenLastCalledWith(2);
+    });
+
+    it('goes back to the first tab when search was the first one shown', async () => {
+      const { state, press: navigate } = shopState(1);
+      await render(<Shop state={state} />);
+      await press(screen.getByRole('button', { name: 'Back' }));
+      expect(navigate).toHaveBeenLastCalledWith(0);
+    });
+
+    it('takes back over from onBackPress on the search tab', async () => {
+      const onBackPress = jest.fn();
+      const { state, press: navigate } = shopState(1);
+      await render(<Shop state={state} onBackPress={onBackPress} />);
+      // The pushed-screen back is hidden with the tabs; only search's own back is reachable.
+      expect(screen.getAllByRole('button', { name: 'Back' })).toHaveLength(1);
+      await press(screen.getByRole('button', { name: 'Back' }));
+      expect(onBackPress).not.toHaveBeenCalled();
+      expect(navigate).toHaveBeenLastCalledWith(0);
+    });
+
+    it('sends the typed text and clears the field', async () => {
+      const onSubmit = jest.fn();
+      await render(<Shop state={shopState(1).state} search={{ route: 'tab-1', onSubmit }} />);
+      const field = screen.getByLabelText('Ask a follow-up');
+      await act(async () => {
+        await fireEvent.changeText(field, 'Something warmer');
+      });
+      await act(async () => {
+        await fireEvent(field, 'submitEditing');
+      });
+      expect(onSubmit).toHaveBeenCalledWith('Something warmer');
+      expect(screen.getByLabelText('Ask a follow-up').props.value).toBe('');
+    });
   });
 });
 

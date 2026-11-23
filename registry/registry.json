@@ -642,7 +642,7 @@
       "name": "cart-pill",
       "type": "registry:item",
       "title": "Cart Pill",
-      "description": "Shop's frosted pill of four filled icons with a sliding white capsule, centred between an optional frosted back button and a purple cart button with the item count cut out of the basket, over a soft bottom-edge blur (Liquid Glass, blur fallback).",
+      "description": "Shop's clear Liquid Glass pill of four filled icons with a gliding lens behind the active one, centred between an optional glass back button and a purple glass cart button with the item count cut out of the basket. Opt-in search: on the search tab the row turns into a back button and an \"Ask a follow-up\" field that rides above the keyboard. Soft bottom-edge blur; blur and solid fallbacks.",
       "dependencies": [
         "react-native-tabcn",
         "@react-native-masked-view/masked-view",
