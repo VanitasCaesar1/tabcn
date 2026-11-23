@@ -53,7 +53,7 @@ Stage exports (images, videos) on our site.
 
 -   **Every design is shown in an app-like screen.** No design's card, recording, README GIF, link
     preview, bar loop or live preview shows a flat colour slab or placeholder shapes. Each design is
-    assigned to one of seven scenes.
+    assigned to one of eight scenes.
 -   **One palette across the gallery.** Cards share one dark background and neutral scene colours; the
     only strong colour on a card comes from the design itself.
 -   **A phone frame that reads as an iPhone at a glance:** rounded titanium edge with light falloff,
@@ -175,11 +175,14 @@ is re-made.
 
 ### Part 2: app scenes (example app, then re-recording)
 
--   **Scenes.** A new folder `apps/example/src/scenes/` with seven screens that look like apps: `chat`,
-    `music`, `shop`, `maps`, `finance`, `social`, `files` (see the scene table below). Each takes the tab
+-   **Scenes.** A new folder `apps/example/src/scenes/` with eight screens that look like apps: `chat`,
+    `music`, `shop`, `maps`, `finance`, `social`, `files`, and `health` (see the scene table below).
+    `health` was added after launch: each screen's title is the tab's name, so a design whose tabs come
+    from a tracker or wellbeing app (Steps, Water, Plan; CHANI's Grow and Audio) read wrong on any of
+    the first seven. A design's scene should match what its tab names say. Each takes the tab
     index, the bar's height and a palette. Each scene is one app layout with real words, numbers and
     photos; a tab switch changes its header (the tab's name) and the order of its content, as the Ambient
-    Bar demo does today, so every switch shows a change without a separate view per tab. All seven share
+    Bar demo does today, so every switch shows a change without a separate view per tab. All eight share
     one palette module (`scenes/palette.ts`): a neutral light and
     a neutral dark set, plus a muted accent per scene, so the design is the strongest colour on screen.
     Under a PanelUI theme a scene takes the theme's colours, as `DemoScreen` does today.
@@ -326,15 +329,16 @@ scheme follows the bar: a dark bar sits on the dark palette, a light or glass ba
 batch checks the assignment against the design's reference before recording; a change is a one-line edit
 in `demos.tsx`.
 
-| Scene                             | Light palette                                                                                                                                             | Dark palette                                                                          |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `social` (feed, photos, creators) | glass-expand, sticker-tiles, pill-plus, soft-pill, gradient-stickers, playful-tiles, labeled-plus, tile-plus, account-dock, quick-create, bar-sheet, orbs | dark-capsule, offset-plus, color-flood                                                |
-| `music` (listen, video)           | frosted-media                                                                                                                                             | light-icons, glow-glass, solid-dark, tinted-icons, center-cta, live-tabs, mini-player |
-| `shop`                            | cart-pill, split-search, button-row, filter-chips                                                                                                         |                                                                                       |
-| `maps`                            | search-dock, segment-search, context-tray, section-sheet                                                                                                  | accent-dark                                                                           |
-| `finance`                         | sliding-capsule, scrub-pill, mono-type                                                                                                                    | ambient-bar, chip-rail                                                                |
-| `chat`                            | composer-dock, glass-badges, companion-chip, sub-tabs                                                                                                     | badge-dock                                                                            |
-| `files`                           | side-rail, material-pill, top-notch                                                                                                                       | outline-dark                                                                          |
+| Scene                             | Light palette                                                                                                                           | Dark palette                          |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `social` (feed, photos, creators) | sticker-tiles, soft-pill, gradient-stickers, playful-tiles, labeled-plus, search-dock, tile-plus, tinted-icons, quick-create, bar-sheet | solid-dark, dark-capsule, offset-plus |
+| `music` (listen, video)           | top-notch, live-tabs, sub-tabs                                                                                                          | frosted-media, mini-player            |
+| `shop`                            | split-search, button-row, cart-pill, companion-chip                                                                                     | filter-chips                          |
+| `maps`                            | segment-search, pill-plus, orbs, section-sheet                                                                                          | center-cta, light-icons, accent-dark  |
+| `finance`                         | sliding-capsule, color-flood, scrub-pill                                                                                                | chip-rail, glow-glass, ambient-bar    |
+| `chat`                            | glass-badges, composer-dock, account-dock                                                                                               | badge-dock                            |
+| `files`                           | material-pill, side-rail                                                                                                                | outline-dark                          |
+| `health` (rings, plan, sessions)  | glass-expand, mono-type, context-tray                                                                                                   |                                       |
 
 ### Target Files to Create/Modify
 

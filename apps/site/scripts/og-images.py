@@ -1,6 +1,7 @@
 """Make the link-preview images (Open Graph / X cards) for the site, 1200 x 630 JPEG:
   public/og.jpg          the site: a grid of real tab bars under the name
-  public/og/<id>.jpg     each design: its bar, large, under its title
+  public/og/<id>.jpg     each design: its bar, large, under its title; a panel is shown open
+                         (the moment in panel-open-at.json, from a taller strip)
 
 They are cut from the full-resolution simulator recordings (1206 x 2622, the same takes the
 site's videos come from), so re-run this whenever a design's look changes:
@@ -9,6 +10,7 @@ site's videos come from), so re-run this whenever a design's look changes:
 
 Needs ffmpeg and Pillow. Text is set in Geist (scripts/fonts, SIL Open Font License).
 """
+import json
 import os
 import re
 import subprocess
@@ -26,6 +28,11 @@ FG = (237, 237, 237)
 MUTED = (143, 143, 143)
 # The bar area of a recording: the bottom of the phone screen, full width.
 BAR_BOX = (0, 2152, 1206, 2572)
+# A panel's card shows it open: a taller strip (as bar-loops.py's panel loops), at the moment
+# in panel-open-at.json.
+PANEL_BOX = (0, 1882, 1206, 2572)
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'panel-open-at.json')) as f:
+    PANEL_OPEN_AT = json.load(f)
 # Designs shown on the site's card: varied shapes and colours.
 HOME = ['glass-expand', 'gradient-stickers', 'orbs', 'sticker-tiles', 'frosted-media',
         'top-notch', 'labeled-plus', 'glow-glass', 'mono-type']
@@ -48,13 +55,14 @@ def catalog():
     return out
 
 
-def bar(recording):
-    """The design's bar on its background, from the first settled frame of its recording."""
+def bar(recording, at=0.6, box=BAR_BOX):
+    """The design's bar on its background, from the first settled frame of its recording (or a
+    panel open above it, from a taller box at the moment it is open)."""
     with tempfile.TemporaryDirectory() as t:
         png = os.path.join(t, 'f.png')
-        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', '0.6', '-i', recording,
+        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', str(at), '-i', recording,
                         '-frames:v', '1', png], check=True)
-        return Image.open(png).convert('RGB').crop(BAR_BOX)
+        return Image.open(png).convert('RGB').crop(box)
 
 
 def rounded(im, radius):
@@ -102,9 +110,16 @@ def design_card(strip, title, layout):
     d.text((48, 40), title, font=font('SemiBold', 60), fill=FG)
     d.text((48, 116), f'tabcn  ·  {layout}', font=font('Regular', 28), fill=MUTED)
     margin = 48
+    # As wide as the card allows, unless that is taller than the space under the title (a
+    # panel's strip): then as tall as that space, centred.
     w = W - 2 * margin
     h = round(w * strip.height / strip.width)
-    paste_bar(im, strip, (margin, H - margin - h, margin + w, H - margin), 24)
+    room = H - margin - 172
+    if h > room:
+        h = room
+        w = round(h * strip.width / strip.height)
+    x = (W - w) // 2
+    paste_bar(im, strip, (x, H - margin - h, x + w, H - margin), 24)
     return im
 
 
@@ -119,7 +134,9 @@ def main():
         if id_ not in recordings:
             print(f'skip {id_}: no recording')
             continue
-        design_card(bar(recordings[id_]), title, layout).save(
+        at = PANEL_OPEN_AT.get(id_)
+        strip = bar(recordings[id_], at, PANEL_BOX) if at is not None else bar(recordings[id_])
+        design_card(strip, title, layout).save(
             os.path.join(out, f'{id_}.jpg'), quality=86, optimize=True)
     print(f'og.jpg + {len(os.listdir(out))} design cards')
 

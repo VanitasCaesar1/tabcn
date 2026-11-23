@@ -1,5 +1,5 @@
 /**
- * The colours of the seven app scenes behind the demos (docs/designs/site-redesign.md, Part 2).
+ * The colours of the eight app scenes behind the demos (docs/designs/site-redesign.md, Part 2).
  * Neutral light and dark sets with one muted accent per scene, so the design on top is the
  * strongest colour on screen. Plain data with no React Native imports: the site's build reads it.
  */
@@ -131,6 +131,22 @@ export const SCENES: Record<SceneName, Record<SceneScheme, ScenePalette>> = {
       text: '#f2f2f3',
       subtle: '#8b8b91',
       accent: '#8b97ad',
+    },
+  },
+  health: {
+    light: {
+      background: '#f5f5f3',
+      surface: '#ffffff',
+      text: '#121212',
+      subtle: '#71716c',
+      accent: '#5b6b5e',
+    },
+    dark: {
+      background: '#0a0a0a',
+      surface: '#171717',
+      text: '#f3f3f1',
+      subtle: '#8d8d88',
+      accent: '#9aab9d',
     },
   },
 };

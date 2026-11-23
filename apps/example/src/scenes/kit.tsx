@@ -1,5 +1,5 @@
 /**
- * What the seven scenes share: their props, the palette they draw with (the scene's own, or the
+ * What the eight scenes share: their props, the palette they draw with (the scene's own, or the
  * PanelUI theme's), the scroll view that runs under the bar, the large iOS-style header, photos,
  * avatars and line icons.
  */
