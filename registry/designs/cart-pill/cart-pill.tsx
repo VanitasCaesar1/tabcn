@@ -6,6 +6,8 @@
  * the left (Shop shows it on pushed screens) and a purple cart button at the right with the
  * item count cut out of the white basket (Shop shows it on product screens). Behind the whole
  * bottom edge the screen is softly blurred, more so toward the bottom, with no colour wash.
+ * That edge is one blur under a gradient mask (@react-native-masked-view/masked-view, the
+ * gradient drawn with react-native-svg).
  *
  * Motion: the capsule glides to the tapped tab on tabcnSpring (no overshoot, stretch or
  * lift) while the icons crossfade grey to black. The pill never moves or resizes. The back
@@ -21,9 +23,11 @@
  * right-to-left layout.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import MaskedViewClass from '@react-native-masked-view/masked-view';
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
+import type { ComponentType, ReactElement } from 'react';
 import {
   I18nManager,
   Platform,
@@ -32,6 +36,7 @@ import {
   Text,
   useWindowDimensions,
   View,
+  type ViewProps,
 } from 'react-native';
 import Animated, {
   Easing,
@@ -44,7 +49,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import {
   BadgeCount,
   type Insets,
@@ -59,6 +64,11 @@ import {
   usePanelAnchor,
   useTabBar,
 } from 'react-native-tabcn';
+
+// The package types MaskedView as a class component, which React 19's JSX types don't accept.
+const MaskedView = MaskedViewClass as unknown as ComponentType<
+  ViewProps & { maskElement: ReactElement }
+>;
 
 const defaultColors = {
   /**
@@ -144,11 +154,12 @@ const COUNT_DX = 1;
 const COUNT_DY = -0.3;
 /** Glyph opacity while a button is held. */
 const PRESSED_OPACITY = 0.6;
-/** Height of the edge blur, from the screen's bottom edge, and its bands. */
+/** Height of the edge blur, from the screen's bottom edge. */
 const EDGE = 80;
-const EDGE_BANDS = [80, 64, 48, 32, 16];
-/** Blur intensity each band adds, so the bottom 16 pt is blurred five times over. */
-const EDGE_STEP = 5;
+/** How far down from its top the edge blur is fully in (the bottom 16 pt are all full). */
+const EDGE_FULL = 64;
+/** The edge blur's strength where it is fully in (expo-blur intensity, 0-100). */
+const EDGE_INTENSITY = 25;
 
 /** The buttons fade in and out on tabcnTiming's curve; instant with reduce motion on. */
 const FADE_EASING = Easing.bezier(0.25, 0.1, 0.25, 1);
@@ -274,27 +285,41 @@ function Glass({ surface, colors }: { surface: Surface; colors: CartPillColors }
 }
 
 /**
- * The scroll-edge blur: full-width blur bands that all end at the screen's bottom edge, each
- * shorter than the one behind it, so the blur builds up toward the bottom. Thin material at a
- * low intensity, so it adds almost no colour. Touches pass through it.
+ * The scroll-edge blur: one full-width blur ending at the screen's bottom edge, seen through a
+ * gradient mask, so it builds from nothing at its top to full strength 16 pt above the bottom.
+ * One blur, not a stack of them: every blur re-samples the content under it on each scrolled
+ * frame. Thin material at a low intensity, so it adds almost no colour. Touches pass through.
  */
 function EdgeBlur({ below, insets }: { below: number; insets: Insets }) {
   return (
-    <View
+    <MaskedView
       pointerEvents="none"
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
       style={[styles.edge, { bottom: -below, left: -insets.left, right: -insets.right }]}
+      maskElement={<EdgeMask />}
     >
-      {EDGE_BANDS.map((height) => (
-        <BlurView
-          key={height}
-          intensity={EDGE_STEP}
-          tint="systemUltraThinMaterialLight"
-          style={[styles.band, { height }]}
-        />
-      ))}
-    </View>
+      <BlurView
+        intensity={EDGE_INTENSITY}
+        tint="systemUltraThinMaterialLight"
+        style={StyleSheet.absoluteFill}
+      />
+    </MaskedView>
+  );
+}
+
+/** The edge blur's mask: clear at the top, opaque from `EDGE_FULL` points down. */
+function EdgeMask() {
+  return (
+    <Svg width="100%" height="100%">
+      <Defs>
+        <LinearGradient id="cart-pill-edge" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor="#000" stopOpacity={0} />
+          <Stop offset={EDGE_FULL / EDGE} stopColor="#000" stopOpacity={1} />
+        </LinearGradient>
+      </Defs>
+      <Rect width="100%" height="100%" fill="url(#cart-pill-edge)" />
+    </Svg>
   );
 }
 
@@ -643,11 +668,5 @@ const styles = StyleSheet.create({
   edge: {
     position: 'absolute',
     height: EDGE,
-  },
-  band: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
   },
 });

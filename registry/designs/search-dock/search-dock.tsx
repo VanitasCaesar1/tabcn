@@ -2,7 +2,10 @@
  * Search Dock: Pinterest's tab bar. Three separate white tiles float in one row over the
  * feed: a Home square, a search field that fills the rest of the row, and a Profile square
  * holding the user's photo. The tiles don't touch; the feed shows through the gaps. They are
- * flat, opaque white with no border, shadow or blur, and there are no labels.
+ * flat, opaque white with no border or blur, and there are no labels. Pinterest's tiles have
+ * no shadow either, but over a white page their edges vanish and the page's own icons read as
+ * part of the dock, so each tile carries a faint neutral shadow: a tight 1 pt edge and a soft
+ * lift. Turn it off with `colors={{ shadow: null }}`.
  *
  * The search field is the Search tab: it shows a magnifier and the current query (or a grey
  * placeholder), and tapping it switches to the Search route. Pass `onAccessoryPress` to add
@@ -57,8 +60,12 @@ const defaultColors = {
   active: '#000000',
   /** The field's text when there is no query: Pinterest's grey, #767676 (inferred). */
   placeholder: '#767676',
-  /** Shadow under the tiles. The app has none; set a colour to lift them off a white page. */
-  shadow: undefined as string | undefined,
+  /**
+   * Colour of the faint shadow that keeps the tiles apart from a white page: a tight edge
+   * (0 1px 2px) and a soft lift (0 4px 16px), both in this colour. Keep it neutral and low:
+   * over photos it should barely show. `null` (or 'transparent') draws no shadow, as the app.
+   */
+  shadow: 'rgba(0, 0, 0, 0.1)' as string | null,
   /** Badge fill: Pinterest red. */
   badge: '#e60023',
   /** Badge count text. */
@@ -120,8 +127,10 @@ const ACCESSORY_CENTER = 29.1;
 const ACCESSORY_HIT = 44;
 /** Opacity of the camera glyph while it is held. */
 const PRESSED_OPACITY = 0.4;
-/** Extra distance the hidden row travels, so a custom shadow leaves the screen with it. */
-const HIDE_EXTRA = 16;
+/** The tiles' shadow: a tight edge and a soft lift. The lift reaches 4 + 16 = 20 pt below. */
+const SHADOW = (color: string) => `0 1px 2px ${color}, 0 4px 16px ${color}`;
+/** Extra distance the hidden row travels, so the shadow under it leaves the screen too. */
+const HIDE_EXTRA = 24;
 
 export function SearchDock({
   colors: custom,
@@ -142,7 +151,10 @@ export function SearchDock({
   // Android navigation bars) it keeps a small gap above the system area instead.
   const bottom =
     Platform.OS === 'ios' && insets.bottom > 0 ? insets.bottom - INSET_OVERLAP : insets.bottom + 12;
-  const shadow = colors.shadow ? { boxShadow: `0 2px 12px ${colors.shadow}` } : undefined;
+  const shadow =
+    colors.shadow && colors.shadow !== 'transparent'
+      ? { boxShadow: SHADOW(colors.shadow) }
+      : undefined;
   const tile = { backgroundColor: colors.tile };
 
   // While hidden, the row is off screen: screen readers skip it and it takes no touches.
