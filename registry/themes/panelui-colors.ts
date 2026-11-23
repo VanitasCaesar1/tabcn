@@ -57,6 +57,7 @@ const badge = { badge: 'destructive', badgeText: 'destructive-solid-foreground' 
 /**
  * Colour slot → PanelUI token, per design. Frosted Media, Segment Search and Center CTA are
  * left out: they draw white over photos or a fixed gradient, so their colours are the design.
+ * Ambient Bar too: its colours are the glows the app gives each tab.
  */
 export const panelUIColorMaps = {
   'account-dock': {

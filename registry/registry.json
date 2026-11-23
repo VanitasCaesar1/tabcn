@@ -801,6 +801,31 @@
       ]
     },
     {
+      "name": "ambient-bar",
+      "type": "registry:item",
+      "title": "Ambient Bar",
+      "description": "A bar with no colour of its own: a deep blur of the screen scrolling behind it, so content's colours glow through, and a lens that brightens what is under the active tab.",
+      "dependencies": [
+        "react-native-tabcn",
+        "@react-native-masked-view/masked-view",
+        "expo-blur",
+        "expo-haptics",
+        "react-native-svg"
+      ],
+      "files": [
+        {
+          "path": "registry/designs/ambient-bar/ambient-bar.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/ambient-bar.tsx"
+        },
+        {
+          "path": "registry/designs/ambient-bar/ambient-bar-icons.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/ambient-bar-icons.tsx"
+        }
+      ]
+    },
+    {
       "name": "mini-player",
       "type": "registry:item",
       "title": "Mini Player",

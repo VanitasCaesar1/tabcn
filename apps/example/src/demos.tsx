@@ -1,6 +1,8 @@
 import { AccentDark as AccentDarkDesign } from '@registry/accent-dark/accent-dark';
 import * as AccentDarkIcons from '@registry/accent-dark/icons';
 import * as AccountDockIcons from '@registry/account-dock/account-dock-icons';
+import { AmbientBar } from '@registry/ambient-bar/ambient-bar';
+import * as AmbientBarIcons from '@registry/ambient-bar/ambient-bar-icons';
 import { BadgeDock as BadgeDockDesign } from '@registry/badge-dock/badge-dock';
 import * as BadgeDockIcons from '@registry/badge-dock/icons';
 import { ButtonRow as ButtonRowDesign } from '@registry/button-row/button-row';
@@ -76,6 +78,7 @@ import type { Href } from 'expo-router';
 import { type ComponentType, createContext, type ReactElement, type ReactNode, use } from 'react';
 import type { TabIconProps } from 'react-native-tabcn';
 import { AccountDockDemoBar } from '@/account-dock-demo';
+import { AmbientBarScreen } from '@/ambient-bar-demo';
 import {
   ChatDrawer,
   ComposerDockDemoBar,
@@ -871,6 +874,23 @@ export const demos: Record<string, Demo> = {
       { label: 'Members', icon: AccountDockIcons.PeopleIcon },
       { label: 'Chats', icon: AccountDockIcons.ChatsIcon, badge: 4 },
       { label: 'Activity', icon: AccountDockIcons.BellIcon },
+    ],
+  },
+  'ambient-bar': {
+    // A dark list of holdings with saturated marks scrolls under the bar, which blurs them in
+    // place: each mark glows in the bar as it passes behind it.
+    render: () => <AmbientBar />,
+    extra: AmbientBarScreen,
+    background: '#000000',
+    dark: true,
+    initialTab: 1,
+    barHeight: 60,
+    tabs: [
+      { label: 'Portfolio', icon: AmbientBarIcons.PieIcon },
+      { label: 'Markets', icon: AmbientBarIcons.TrendIcon },
+      { label: 'Plans', icon: AmbientBarIcons.LoopIcon },
+      { label: 'Ask', icon: AmbientBarIcons.SparkIcon },
+      { label: 'Profile', icon: AmbientBarIcons.PersonIcon },
     ],
   },
   'live-tabs': {
