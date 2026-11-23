@@ -4,7 +4,16 @@
  * from behind it. A panel with snap points is drawn as a sheet.
  * Specs: docs/designs/panels.md, docs/designs/bottom-components.md (Sheets).
  */
-import { type ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ComponentRef,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import {
   AccessibilityInfo,
   BackHandler,
@@ -34,6 +43,7 @@ import {
   type SnapPoint,
   type Snapshot,
   type TabBarStore,
+  useStoreSelector,
   warnOnce,
 } from './provider';
 import type { TabFrame } from './TabList';
@@ -65,7 +75,7 @@ export interface SheetGeometry {
 
 interface PanelLayerProps {
   store: TabBarStore;
-  snapshot: Snapshot;
+  panels: readonly PanelRecord[];
   /** The bar's frame relative to `TabBarRoot`. */
   barFrame: TabFrame | null;
   /** Points a panel's bottom edge sits below its anchor's top edge (hidden behind the bar). */
@@ -105,21 +115,28 @@ function useScreenReaderRule(store: TabBarStore) {
   }, [store]);
 }
 
-export function PanelLayer({
+const selectAnchors = (s: Snapshot) => s.anchors;
+
+/**
+ * Memoised, as is each panel: the root re-renders for things that don't touch them (its own
+ * size, the keyboard), and each panel's content has its own subscription (see `PanelContent`).
+ */
+export const PanelLayer = memo(function PanelLayer({
   store,
-  snapshot,
+  panels,
   barFrame,
   overlap,
   geometry,
   cover,
 }: PanelLayerProps) {
   useScreenReaderRule(store);
-  if (snapshot.panels.length === 0) return null;
+  const anchors = useStoreSelector(store, selectAnchors);
+  if (panels.length === 0) return null;
   // The open panel draws above the peeking ones (later siblings draw on top).
-  const ordered = [...snapshot.panels].sort(
+  const ordered = [...panels].sort(
     (a, b) => Number(a.state === 'open') - Number(b.state === 'open'),
   );
-  const modal = modalPanel(snapshot);
+  const modal = modalPanel(panels);
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       {ordered.map((panel) => (
@@ -127,18 +144,18 @@ export function PanelLayer({
           key={panel.id}
           store={store}
           panel={panel}
-          frame={panel.anchor === 'bar' ? barFrame : snapshot.anchors[panel.anchor.name]}
+          frame={panel.anchor === 'bar' ? barFrame : anchors[panel.anchor.name]}
           overlap={overlap}
           geometry={geometry}
           modal={modal}
-          covered={isCovered(panel, snapshot)}
+          covered={isCovered(panel, panels)}
           barLaidOut={barFrame != null}
           cover={cover}
         />
       ))}
     </View>
   );
-}
+});
 
 /** A sheet's layout: its window, its content's fixed height and the heights it rests at. */
 export interface SheetLayout {
@@ -210,7 +227,17 @@ function sheetVisible(state: PanelRecord['state'], snap: number, sheet: SheetLay
   return sheet.hiddenVisible;
 }
 
-function PanelView({
+/** The panel's content and backdrop, read through the panel's own subscription. */
+function usePanelContent(store: TabBarStore, id: string) {
+  const subscribe = useCallback(
+    (listener: () => void) => store.subscribePanelContent(id, listener),
+    [store, id],
+  );
+  const get = useCallback(() => store.getPanelContent(id), [store, id]);
+  return useSyncExternalStore(subscribe, get, get);
+}
+
+const PanelView = memo(function PanelView({
   store,
   panel,
   frame,
@@ -235,6 +262,7 @@ function PanelView({
   cover: SharedValue<number>;
 }) {
   const { id, state, snap, peekHeight, leaving, snapPoints } = panel;
+  const { content, backdrop: backdropElement } = usePanelContent(store, id);
   const [measuredHeight, setMeasuredHeight] = useState(0);
   const sheet =
     snapPoints.length > 0 && frame && geometry
@@ -476,7 +504,7 @@ function PanelView({
     return { opacity: Math.min(1, Math.max(0, t)) };
   });
   const backdrop =
-    panel.backdrop != null ? (
+    panel.hasBackdrop && backdropElement != null ? (
       <Animated.View
         pointerEvents={open ? 'auto' : 'none'}
         importantForAccessibility="no-hide-descendants"
@@ -496,7 +524,7 @@ function PanelView({
           style={StyleSheet.absoluteFill}
           onPress={() => store.setPanelState(id, rest)}
         >
-          {panel.backdrop}
+          {backdropElement}
         </Pressable>
       </Animated.View>
     ) : null;
@@ -523,7 +551,7 @@ function PanelView({
         style={[sheet ? { height: sheet.contentHeight } : null, contentStyle]}
         onLayout={isSheet ? undefined : (e) => setMeasuredHeight(e.nativeEvent.layout.height)}
       >
-        <PanelContext value={context}>{panel.content}</PanelContext>
+        <PanelContext value={context}>{content}</PanelContext>
       </Animated.View>
     </View>
   );
@@ -540,7 +568,7 @@ function PanelView({
       )}
     </>
   );
-}
+});
 
 /** How far a backdrop reaches past the root's frame: covers the status bar and the edges. */
 const SCREEN_MARGIN = 120;
