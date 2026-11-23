@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Tokens and base styles follow ui lab (https://lab.xevrion.dev, MIT, see LICENSE-ui-lab). */
+/* Base tokens started from ui lab (https://lab.xevrion.dev, MIT, see LICENSE-ui-lab). */
 
 /* dark: follows the toggle, and the system setting when nothing is set. The layout starts
    dark, so the site is dark first. */
@@ -15,23 +15,50 @@
   }
 }
 
+/* One palette for the whole site: near-black (or near-white) page, neutral greys, one accent.
+   Per-design colours appear only inside a design's own recording or loop. */
 :root {
   color-scheme: light dark;
-  --background: light-dark(#ffffff, #0a0a0a);
-  --foreground: light-dark(#171717, #ededed);
-  --surface: light-dark(#f5f5f5, #161616);
-  --border: light-dark(#e5e5e5, #262626);
-  --muted: light-dark(#6b6b6b, #8f8f8f);
+  --background: light-dark(#fafafa, #09090b);
+  --foreground: light-dark(#18181b, #ededef);
+  /* Controls, code blocks, quiet fills. */
+  --surface: light-dark(#f1f1f3, #151518);
+  --border: light-dark(#e4e4e7, #232327);
+  --muted: light-dark(#66666e, #8e8e96);
+  /* Cards: one background and one hairline for every card on the site, and the darker (or
+     lighter) stage a design sits on inside a card. */
+  --card: light-dark(#ffffff, #111114);
+  --card-border: light-dark(oklch(0 0 0 / 0.08), oklch(1 0 0 / 0.075));
+  --card-border-hover: light-dark(oklch(0 0 0 / 0.16), oklch(1 0 0 / 0.16));
+  --card-stage: light-dark(#f4f4f5, #0c0c0e);
+  /* A control cell inside a card (the Customize panel, the toolbar). */
+  --cell: light-dark(#f4f4f5, #18181b);
+  --cell-hover: light-dark(#ececee, #1f1f23);
+  --switch-off: light-dark(#d4d4d8, #3a3a40);
+  /* The one accent: selected states and the switch. */
+  --accent: light-dark(#4f46e5, #8b8aff);
+  --accent-foreground: light-dark(#ffffff, #0b0b14);
   --marker: light-dark(#d93d31, #ff6b5f);
   --focus-ring: light-dark(oklch(0.2 0 0 / 0.38), oklch(0.95 0 0 / 0.45));
   --shadow-raised:
-    0 0 0 1px light-dark(oklch(0 0 0 / 0.06), oklch(1 0 0 / 0.08)),
-    0 1px 2px light-dark(oklch(0 0 0 / 0.06), oklch(0 0 0 / 0.4)),
-    0 6px 16px -6px light-dark(oklch(0 0 0 / 0.12), oklch(0 0 0 / 0.6));
-  /* Syntax colours for the usage snippet. */
+    0 0 0 1px var(--card-border), 0 1px 2px light-dark(oklch(0 0 0 / 0.04), oklch(0 0 0 / 0.4));
+  /* Syntax colours for the snippets. */
   --code-keyword: light-dark(#b42f86, #ff7ac6);
   --code-string: light-dark(#2f7a3d, #8fd694);
   --code-tag: light-dark(#2563c9, #7cb1ff);
+  /* The header and the stuck filter bar: the page showing faintly through a blur. */
+  --sticky-bg: color-mix(in oklab, var(--background) 82%, transparent);
+
+  /* The iPhone frame (phone.tsx): silver under the light theme, graphite under the dark. The
+     edge is lit from the top left, so the metal is brightest there and darkest across the
+     middle of the long sides. */
+  --phone-edge-hi: light-dark(#ffffff, #9a9ca3);
+  --phone-edge: light-dark(#cfd0d5, #4a4b51);
+  --phone-edge-lo: light-dark(#9798a0, #222326);
+  --phone-lip: light-dark(oklch(1 0 0 / 0.9), oklch(1 0 0 / 0.22));
+  --phone-rim: light-dark(#3b3c40, #050506);
+  --phone-outline: light-dark(oklch(0 0 0 / 0.22), oklch(0 0 0 / 0.6));
+  --phone-shadow: light-dark(oklch(0.2 0 0 / 0.28), oklch(0 0 0 / 0.75));
 }
 
 :root[data-theme="light"] {
@@ -48,6 +75,13 @@
   --color-surface: var(--surface);
   --color-border: var(--border);
   --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-card-border: var(--card-border);
+  --color-card-stage: var(--card-stage);
+  --color-cell: var(--cell);
+  --color-cell-hover: var(--cell-hover);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-marker: var(--marker);
   --color-code-keyword: var(--code-keyword);
   --color-code-string: var(--code-string);
@@ -69,29 +103,6 @@ body {
   color: var(--foreground);
 }
 
-@keyframes ul-draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-/* Drawn on tabcnSpring: the stroke only grows, so it counts as a resize. */
-.ul-stroke {
-  stroke-dasharray: 1;
-  animation: ul-draw 400ms var(--tabcn-spring) 500ms both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ul-stroke {
-    animation: none;
-  }
-}
-
-/* Home hero: the departure board of tab bars (hero.tsx, bar-board.tsx). */
-
 /* The library's motion as CSS curves. tabcnSpring (stiffness 420, damping 41) is critically
    damped: sampled over 400 ms from x(t) = 1 - (1 + wt)e^-wt with w = sqrt(420), it only rises, so
    nothing overshoots. Browsers without linear() keep the bezier, which has the same shape.
@@ -99,20 +110,11 @@ body {
 :root {
   --tabcn-spring: cubic-bezier(0.25, 1, 0.5, 1);
   --tabcn-timing: cubic-bezier(0.25, 0.1, 0.25, 1);
-  /* An edge around every tile (it also keeps near-black bars apart from the dark page), its
-     shadow, and the veil that dims every tile but the one in focus. */
-  --tile-ring: light-dark(oklch(0 0 0 / 0.08), oklch(1 0 0 / 0.1));
-  --tile-shadow: light-dark(oklch(0 0 0 / 0.22), oklch(0 0 0 / 0.8));
-  --tile-veil: light-dark(oklch(1 0 0 / 0.5), oklch(0.145 0 0 / 0.62));
-  /* A lighter veil for the lead row's other tiles, so their loops still read. */
-  --tile-veil-near: light-dark(oklch(1 0 0 / 0.35), oklch(0.145 0 0 / 0.45));
-  /* The dock's capsule behind the group in focus. */
-  --dock-capsule: light-dark(#ffffff, #2a2a2a);
+  /* The capsule behind the selected option of a segmented control. */
+  --dock-capsule: light-dark(#ffffff, #2a2a2e);
   --dock-capsule-shadow:
     0 1px 2px light-dark(oklch(0 0 0 / 0.1), oklch(0 0 0 / 0.5)),
     inset 0 0 0 1px light-dark(oklch(0 0 0 / 0.05), oklch(1 0 0 / 0.06));
-  /* The header and the stuck filter bar: the page showing faintly through a blur. */
-  --sticky-bg: color-mix(in oklab, var(--background) 82%, transparent);
 }
 
 /* A custom property takes any value, so declaring it twice would always keep the second, even
@@ -153,216 +155,165 @@ body {
   animation: fade-in 200ms var(--tabcn-timing) var(--rise-delay, 0ms) both;
 }
 
-/* The hero's command card: continuous (squircle) corners where the browser draws them, a plain
-   radius that looks about the same everywhere else. */
+/* Continuous (squircle) corners where the browser draws them, a plain radius that looks about
+   the same everywhere else. */
 .cmd-card {
-  border-radius: 20px;
+  border-radius: 14px;
 }
 @supports (corner-shape: squircle) {
   .cmd-card {
     corner-shape: squircle;
-    border-radius: 28px;
+    border-radius: 22px;
   }
 }
 
-/* Tile sizes follow the page column (the hero is the container), not the window. The lead row
-   is 402 px wide once the column allows: an iPhone 17 Pro's width in points, so its bars show at
-   actual size. The two rows under it are 62% of that. Tiles keep the recordings' crop, 1206 x 420. */
-.hero {
-  --lead-w: min(402px, calc(100cqi - 96px));
-  --lead-h: calc(var(--lead-w) * 420 / 1206);
-  --chorus-w: calc(var(--lead-w) * 0.62);
-  --chorus-h: calc(var(--chorus-w) * 420 / 1206);
-}
-
-/* Rows only fade in, on tabcnTiming, starting at 300, 340 and 380 ms. */
-.bar-row {
-  --pitch: calc(var(--tile-w) + var(--gap));
+/* The iPhone frame (phone.tsx). Everything is in container units of the frame's own width, so
+   it keeps its proportions at any size. The screen is the recordings' 1206 x 2622; around it a
+   1.9 % black bezel, a thin dark rim and a 1.4 % metal edge, which makes the body about the
+   iPhone 17 Pro's 71.9 x 150 mm. */
+.phone {
+  --edge: 1.4cqw;
+  --rim: 0.35cqw;
+  --bezel: 1.9cqw;
+  --inset: calc(var(--edge) + var(--rim) + var(--bezel));
+  --screen-r: 13.4cqw;
+  --body-r: calc(var(--screen-r) + var(--inset));
   position: relative;
-  height: var(--tile-h);
-  animation: fade-in 200ms var(--tabcn-timing) calc(300ms + var(--row) * 40ms) both;
-}
-
-/* Each row sets its own size; --pitch has to be worked out on the row, where --tile-w is set. */
-.bar-row[data-size="lead"] {
-  --tile-w: var(--lead-w);
-  --tile-h: var(--lead-h);
-  --gap: 16px;
-  --radius: 16px;
-  --veil: var(--tile-veil-near);
-}
-
-.bar-row[data-size="chorus"] {
-  --tile-w: var(--chorus-w);
-  --tile-h: var(--chorus-h);
-  --gap: 14px;
-  --radius: 12px;
-  --veil: var(--tile-veil);
-}
-
-.bar-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin-top: 14px;
-  /* Back in over CUT_IN_MS after a cut (see [data-cut] below). */
-  transition: opacity var(--cut-in-ms, 200ms) var(--tabcn-timing);
-}
-
-.bar-row[data-size="lead"] + .bar-row {
-  margin-top: 4px;
-}
-
-/* The faded edges. The mask reaches past the row above and below, so the focus outline and
-   the tiles' shadows aren't cut off. */
-.bar-mask {
-  position: absolute;
-  inset: -12px 0 -32px;
-  pointer-events: none;
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-}
-
-/* Slot --offset sits in the middle. Each step changes --offset by one and the track slides on
-   tabcnSpring; a step that lands mid-slide carries on from where the track is. */
-.bar-track {
-  position: absolute;
-  inset: 12px 0 auto;
-  height: var(--tile-h);
-  translate: calc(50% - var(--tile-w) / 2 - var(--offset) * var(--pitch) * var(--dir)) 0;
-  transition: translate var(--spring-ms, 400ms) var(--tabcn-spring);
-}
-
-/* Automatic steps ripple down the rows; prev, next and the dock move them all at once. */
-[data-step="auto"] .bar-track {
-  transition-delay: calc(var(--row) * var(--stagger, 90ms));
-}
-
-/* A long jump: the rows fade out, move with the slide switched off, and fade back in. */
-.bar-rows[data-cut="out"] {
-  opacity: 0;
-  transition-duration: var(--cut-out-ms, 120ms);
-}
-
-.bar-rows[data-cut="snap"] {
-  opacity: 0;
-  transition: none;
-}
-
-.bar-rows[data-cut="snap"] .bar-track {
-  transition: none;
-}
-
-.bar-tile {
-  position: absolute;
-  top: 0;
-  left: calc(var(--i) * var(--pitch) * var(--dir));
-  width: var(--tile-w);
-  height: var(--tile-h);
-  overflow: hidden;
-  border-radius: var(--radius, 16px);
-  pointer-events: auto;
+  aspect-ratio: 1000 / 2088;
+  border-radius: var(--body-r);
+  background: linear-gradient(
+    152deg,
+    var(--phone-edge-hi) 0%,
+    var(--phone-edge) 14%,
+    var(--phone-edge-lo) 46%,
+    var(--phone-edge) 78%,
+    var(--phone-edge-hi) 100%
+  );
   box-shadow:
-    0 0 0 1px var(--tile-ring),
-    0 14px 30px -16px var(--tile-shadow);
-  outline: 1.5px solid transparent;
-  outline-offset: 3px;
-  transition: outline-color var(--timing-ms, 200ms) var(--tabcn-timing);
+    inset 0 0 0 0.22cqw var(--phone-lip),
+    0 0 0 0.12cqw var(--phone-outline),
+    0 4cqw 9cqw -3cqw var(--phone-shadow);
 }
 
-.bar-tile::after {
-  content: "";
+/* The thin dark line between the metal and the glass, then the black bezel. */
+.phone-rim {
+  position: absolute;
+  inset: var(--edge);
+  border-radius: calc(var(--body-r) - var(--edge));
+  background: var(--phone-rim);
+}
+
+.phone-bezel {
+  position: absolute;
+  inset: var(--rim);
+  border-radius: calc(var(--body-r) - var(--edge) - var(--rim));
+  background: #000;
+  box-shadow: inset 0 0 0.6cqw oklch(1 0 0 / 0.06);
+}
+
+.phone-screen {
+  position: absolute;
+  inset: var(--bezel);
+  overflow: hidden;
+  border-radius: var(--screen-r);
+  background: #000;
+  /* Keeps the rounded clip on the iframe and video in Safari. */
+  isolation: isolate;
+}
+
+/* The Dynamic Island: 126 x 37 points, 11 points down, on a 402-point screen. */
+.phone-island {
+  position: absolute;
+  top: 2.6cqw;
+  left: 50%;
+  z-index: 2;
+  width: 29cqw;
+  height: 8.5cqw;
+  translate: -50% 0;
+  border-radius: 9999px;
+  background: #000;
+  pointer-events: none;
+}
+
+/* A faint reflection across the glass. It never takes a tap: the live preview is under it. */
+.phone-glass {
   position: absolute;
   inset: 0;
-  background: var(--veil, var(--tile-veil));
+  z-index: 3;
+  border-radius: inherit;
   pointer-events: none;
-  transition: opacity var(--timing-ms, 200ms) var(--tabcn-timing);
+  background: linear-gradient(
+    128deg,
+    oklch(1 0 0 / 0.07) 0%,
+    oklch(1 0 0 / 0.025) 32%,
+    transparent 52%
+  );
+  box-shadow: inset 0 0 0 0.15cqw oklch(1 0 0 / 0.04);
 }
 
-.bar-tile[data-focus] {
-  outline-color: var(--foreground);
-}
-
-.bar-tile[data-focus]::after {
-  opacity: 0;
-}
-
-/* A loop shows over its poster once it is actually playing (the board, the catalogue). It fades
-   in over tabcnTiming and snaps back to the poster, its own first frame, when it stops. */
-.loop-video {
-  opacity: 0;
-}
-
-.loop-video[data-shown] {
-  opacity: 1;
-  transition: opacity var(--timing-ms, 200ms) var(--tabcn-timing);
-}
-
-/* The dock under the board: a tab bar of layout groups and the pause button. It fades in last. */
-.dock {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  margin-top: 24px;
-  padding-inline: 16px;
-  animation: fade-in 200ms var(--tabcn-timing) 420ms both;
-}
-
-.dock-pill {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr));
-  width: min(312px, 100% - 52px);
-  height: 52px;
-  padding: 4px;
-  border-radius: 9999px;
-  background: var(--surface);
-  box-shadow: var(--shadow-raised);
-}
-
-/* Sits behind the group in focus: one tab wide, moved by its own width per tab. The catalogue's
-   filter dock and view switch (.filter-capsule) and the sidebar's dock (.side-capsule) use it
-   too; --pad matches the track's padding. */
-.dock-capsule {
+/* Side buttons: behind the body, so they come out of its edge. Left: action button, volume up,
+   volume down. Right: side button and Camera Control. */
+.phone-button {
   position: absolute;
-  inset: var(--pad, 4px) auto var(--pad, 4px) var(--pad, 4px);
-  width: calc((100% - 2 * var(--pad, 4px)) / var(--n, 4));
-  border-radius: 9999px;
-  background: var(--dock-capsule);
-  box-shadow: var(--dock-capsule-shadow);
-  translate: calc(var(--g) * 100%) 0;
-  transition: translate var(--spring-ms, 400ms) var(--tabcn-spring);
+  z-index: -1;
+  width: 1.4cqw;
+  border-radius: 0.6cqw;
+  background: linear-gradient(
+    90deg,
+    var(--phone-edge-lo),
+    var(--phone-edge-hi) 45%,
+    var(--phone-edge) 100%
+  );
+  box-shadow: 0 0 0 0.1cqw var(--phone-outline);
 }
 
-.dock-tab {
-  transition: color var(--timing-ms, 200ms) var(--tabcn-timing);
+.phone-button[data-side="left"] {
+  left: -0.7cqw;
 }
 
-.dock-tab:hover {
-  transition-duration: 150ms;
+.phone-button[data-side="right"] {
+  right: -0.7cqw;
+  background: linear-gradient(
+    270deg,
+    var(--phone-edge-lo),
+    var(--phone-edge-hi) 45%,
+    var(--phone-edge) 100%
+  );
 }
 
-@media (max-width: 639px) {
-  .bar-row[data-size="lead"] {
-    --gap: 12px;
-    --radius: 12px;
-  }
-  .bar-row[data-size="chorus"] {
-    --gap: 12px;
-    --radius: 10px;
-  }
-  .bar-rows {
-    gap: 12px;
-  }
-  .bar-row[data-size="lead"] + .bar-row {
-    margin-top: 0;
-  }
-  .bar-mask {
-    mask-image: linear-gradient(90deg, transparent, #000 20px, #000 calc(100% - 20px), transparent);
-  }
-  .dock {
-    margin-top: 20px;
-  }
+/* Camera Control sits nearly flush and reads darker: sapphire in a metal surround. */
+.phone-button[data-kind="camera"] {
+  right: -0.35cqw;
+  background: linear-gradient(270deg, var(--phone-rim), var(--phone-edge-lo));
+}
+
+/* The bottom of the same phone, for gallery cards: its top fades into the card, so only the
+   bar and the rounded foot of the screen show. */
+.phone-foot {
+  /* --crop is the loop's height over its width; the screen shows all of it. */
+  aspect-ratio: auto;
+  height: calc((100cqw - 2 * var(--inset)) * var(--crop, 0.348) + var(--inset));
+  border-radius: 0 0 var(--body-r) var(--body-r);
+  mask-image: linear-gradient(to bottom, transparent 4%, #000 58%);
+  box-shadow:
+    inset 0 0 0 0.22cqw var(--phone-lip),
+    0 0 0 0.12cqw var(--phone-outline);
+}
+
+.phone-foot .phone-rim {
+  inset: 0 var(--edge) var(--edge);
+  border-radius: 0 0 calc(var(--body-r) - var(--edge)) calc(var(--body-r) - var(--edge));
+}
+
+.phone-foot .phone-bezel {
+  inset: 0 var(--rim) var(--rim);
+  border-radius: 0 0 calc(var(--body-r) - var(--edge) - var(--rim))
+    calc(var(--body-r) - var(--edge) - var(--rim));
+}
+
+.phone-foot .phone-screen {
+  inset: 0 var(--bezel) var(--bezel);
+  border-radius: 0 0 var(--screen-r) var(--screen-r);
 }
 
 /* Site chrome and the catalogue (site-header.tsx, sidebar-groups.tsx, catalogue.tsx). */
@@ -393,7 +344,20 @@ body {
   }
 }
 
-/* A dock's labels change colour as the capsule moves behind them. */
+/* A segmented control's capsule glides on tabcnSpring behind the option picked (the catalogue's
+   view switch, the design page's tabs). --pad matches the track's padding. */
+.dock-capsule {
+  position: absolute;
+  inset: var(--pad, 4px) auto var(--pad, 4px) var(--pad, 4px);
+  width: calc((100% - 2 * var(--pad, 4px)) / var(--n, 4));
+  border-radius: var(--capsule-r, 9999px);
+  background: var(--dock-capsule);
+  box-shadow: var(--dock-capsule-shadow);
+  translate: calc(var(--g) * 100%) 0;
+  transition: translate var(--spring-ms, 400ms) var(--tabcn-spring);
+}
+
+/* Labels change colour as the capsule moves behind them. */
 .seg {
   transition: color var(--timing-ms, 200ms) var(--tabcn-timing);
 }
@@ -415,7 +379,7 @@ body {
     opacity var(--timing-ms, 200ms) var(--tabcn-timing);
 }
 
-/* A sidebar group opening or closing: its height eases between none and all of its list. */
+/* A sidebar section opening or closing: its height eases between none and all of its list. */
 .side-fold {
   display: grid;
   grid-template-rows: 0fr;
@@ -427,63 +391,44 @@ body {
 }
 
 /* A cut: out over CUT_OUT_MS, swap while hidden, back over CUT_IN_MS. */
-.cat-results,
-.sidebar-list {
+.cat-results {
   transition: opacity var(--cut-in-ms, 200ms) var(--tabcn-timing);
 }
 
-.cat-results[data-cut],
-.sidebar-list[data-cut] {
+.cat-results[data-cut] {
   opacity: 0;
   transition-duration: var(--cut-out-ms, 120ms);
 }
 
-/* A group of cards renders only near the screen. The padding keeps the cards' shadows inside
-   the paint containment that comes with it. */
+/* A section of cards renders only near the screen. */
 .cat-block {
   content-visibility: auto;
-  contain-intrinsic-size: auto 640px;
-  margin: -12px -12px -16px;
-  padding: 12px 12px 16px;
+  contain-intrinsic-size: auto 720px;
 }
 
 .cat-block + .cat-block {
-  /* 40px between groups, after the padding and negative margins collapse. */
-  margin-top: 28px;
+  margin-top: 56px;
 }
 
-/* A catalogue card: nothing moves on hover or focus; the card lightens and its tile takes the
-   outline the hero gives the bar in focus. */
+/* A gallery card: nothing moves on hover or focus; the hairline darkens and the loop plays. */
 .specimen,
 .specimen-row {
-  transition: background-color 150ms ease-out;
+  transition:
+    border-color 150ms ease-out,
+    background-color 150ms ease-out;
 }
 
 .specimen:hover,
-.specimen:has(:focus-visible),
+.specimen:has(:focus-visible) {
+  border-color: var(--card-border-hover);
+}
+
 .specimen-row:hover,
 .specimen-row:has(:focus-visible) {
-  background-color: var(--surface);
+  background-color: var(--cell);
 }
 
-.specimen-tile,
-.specimen-thumb {
-  background-color: var(--demo);
-  box-shadow: 0 0 0 1px var(--tile-ring);
-}
-
-.specimen-tile {
-  outline: 1.5px solid transparent;
-  outline-offset: 3px;
-  transition: outline-color var(--timing-ms, 200ms) var(--tabcn-timing);
-}
-
-.specimen:hover .specimen-tile,
-.specimen:has(:focus-visible) .specimen-tile {
-  outline-color: var(--foreground);
-}
-
-/* The demo colour holds the place; the poster fades in over it once loaded, or shows at once
+/* The neutral stage holds the place; the poster fades in over it once loaded, or shows at once
    when it was cached. */
 .loop-poster {
   opacity: 0;
@@ -504,23 +449,45 @@ body {
   }
 }
 
+/* A loop shows over its poster once it is actually playing. It fades in over tabcnTiming and
+   snaps back to the poster, its own first frame, when it stops. */
+.loop-video {
+  opacity: 0;
+}
+
+.loop-video[data-shown] {
+  opacity: 1;
+  transition: opacity var(--timing-ms, 200ms) var(--tabcn-timing);
+}
+
+/* The hero's phone: one recording crossfades into the next. */
+.hero-screen {
+  opacity: 0;
+  transition: opacity 400ms var(--tabcn-timing);
+}
+
+.hero-screen[data-on] {
+  opacity: 1;
+}
+
+/* The switch in the Customize panel: the knob slides on tabcnSpring, the track crossfades. */
+.switch-track {
+  transition: background-color var(--timing-ms, 200ms) var(--tabcn-timing);
+}
+
+.switch-knob {
+  transition: translate var(--spring-ms, 400ms) var(--tabcn-spring);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .rise,
-  .bar-row,
-  .dock {
+  .rise {
     animation: none;
   }
-  .bar-rows,
-  .bar-track,
-  .bar-tile,
-  .bar-tile::after,
   .loop-video,
   .loop-video[data-shown],
   .loop-poster,
+  .hero-screen,
   .dock-capsule,
-  .dock-tab,
-  .filter-capsule,
-  .side-capsule,
   .side-fold,
   .seg,
   .spy-marker,
@@ -528,11 +495,10 @@ body {
   .sticky-filter,
   .cat-results,
   .cat-results[data-cut],
-  .sidebar-list,
-  .sidebar-list[data-cut],
   .specimen,
   .specimen-row,
-  .specimen-tile {
+  .switch-track,
+  .switch-knob {
     transition: none;
   }
 }

@@ -20,13 +20,13 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { TabBarProvider } from 'react-native-tabcn';
+import { TabBarProvider, useMinimizeOnScroll } from 'react-native-tabcn';
 import { tabBar } from 'react-native-tabcn/react-navigation';
 
 import { catalog } from '@/catalog';
-import { type Demo, demos, isDarkScreen, RAIL_MIN_WIDTH, screenBackground } from '@/demos';
-import { Pattern } from '@/pattern';
+import { type Demo, demoScene, demos, RAIL_MIN_WIDTH } from '@/demos';
+import { SCENE_COMPONENTS, sceneBackground, scenePalette } from '@/scenes';
+import { floodColors } from '@/scenes/kit';
 
 const Tab = createBottomTabNavigator();
 
@@ -66,7 +66,7 @@ export default function ReactNavigationDemo() {
                   name={`tab-${i}`}
                   options={{
                     title: tab.label,
-                    sceneStyle: { backgroundColor: screenBackground(demo, i) },
+                    sceneStyle: { backgroundColor: screenColor(demo, id, i) },
                     tabBarBadge: tab.badge,
                     tabBarIcon: ({ focused, color, size }) =>
                       tab.icon({ focused, color: String(color), size }),
@@ -85,6 +85,12 @@ export default function ReactNavigationDemo() {
   );
 }
 
+/** A tab's screen colour: its flood colour, or its scene's background. */
+function screenColor(demo: Demo, id: string, index: number) {
+  const scene = demoScene(id, demo, index);
+  return scene.flood ?? sceneBackground(scene.name, scene.scheme);
+}
+
 function Screen({
   demo,
   id,
@@ -98,22 +104,26 @@ function Screen({
 }) {
   const barHeight = useBottomTabBarHeight();
   const navigation = useNavigation();
-  const { height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  const dark = isDarkScreen(demo, index);
-  const text = dark ? '#ffffff' : '#111114';
-  const chip = dark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.06)';
+  const onScroll = useMinimizeOnScroll();
   const built = catalog.filter((d) => demos[d.id]);
   const Extra = demo.extra;
-  const background = screenBackground(demo, index);
-  return (
-    // The stack header is transparent on iOS 26, so clear it by hand.
-    <View style={[styles.flex, { backgroundColor: background, paddingTop: insets.top + 44 }]}>
-      {demo.pattern ? (
-        <Pattern spec={demo.pattern} centerY={height - barHeight + (demo.barHeight ?? 58) / 2} />
-      ) : null}
-      <Text style={[styles.title, { color: text }]}>{demo.tabs[index]?.label}</Text>
-      <Text style={[styles.note, { color: text }]}>
+  const setting = demoScene(id, demo, index);
+  const colors = setting.flood ? floodColors(setting.flood) : undefined;
+  const palette = scenePalette(setting.name, setting.scheme, colors);
+  const Scene = SCENE_COMPONENTS[setting.name];
+  const scene = (
+    <Scene
+      index={index}
+      barHeight={barHeight}
+      scheme={setting.scheme}
+      themed={colors}
+      title={demo.tabs[index]?.label ?? ''}
+      vivid={demo.vivid}
+      onScroll={onScroll}
+      // The stack header is transparent on iOS 26, so clear it by hand.
+      nav={demo.fullScreen ? null : <View style={styles.header} />}
+    >
+      <Text style={[styles.note, { color: palette.subtle }]}>
         Rendered by @react-navigation/bottom-tabs with tabBar() from
         'react-native-tabcn/react-navigation'.
       </Text>
@@ -123,42 +133,48 @@ function Screen({
         contentContainerStyle={styles.chips}
         showsHorizontalScrollIndicator={false}
       >
-        {built.map((d) => (
-          <Pressable
-            key={d.id}
-            role="button"
-            accessibilityState={{ selected: d.id === id }}
-            onPress={() => onPick(d.id)}
-            style={[styles.chip, { backgroundColor: d.id === id ? text : chip }]}
-          >
-            <Text style={{ color: d.id === id ? background : text, fontWeight: '600' }}>
-              {d.title}
-            </Text>
-          </Pressable>
-        ))}
+        {built.map((d) => {
+          const on = d.id === id;
+          return (
+            <Pressable
+              key={d.id}
+              role="button"
+              accessibilityState={{ selected: on }}
+              onPress={() => onPick(d.id)}
+              style={[styles.chip, { backgroundColor: on ? palette.text : palette.surface }]}
+            >
+              <Text style={[styles.chipText, { color: on ? palette.background : palette.text }]}>
+                {d.title}
+              </Text>
+            </Pressable>
+          );
+        })}
       </ScrollView>
-      {/* A panel demo's controls, the override slot, or a list to scroll: the same as under
-          Expo Router, wired to this navigator. */}
-      {Extra ? (
-        <Extra
-          index={index}
-          text={text}
-          chip={chip}
-          adapter="react-navigation"
-          barHeight={barHeight}
-          goToFirstTab={() => navigation.navigate('tab-0' as never)}
-        />
-      ) : null}
-    </View>
+    </Scene>
+  );
+  // A panel demo's behaviour, hung on the scene's controls: the same as under Expo Router,
+  // wired to this navigator.
+  return Extra ? (
+    <Extra
+      index={index}
+      adapter="react-navigation"
+      barHeight={barHeight}
+      goToFirstTab={() => navigation.navigate('tab-0' as never)}
+    >
+      {scene}
+    </Extra>
+  ) : (
+    scene
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  title: { fontSize: 30, fontWeight: '700', marginTop: 24, marginHorizontal: 20 },
-  note: { fontSize: 14, opacity: 0.7, marginTop: 6, marginHorizontal: 20 },
-  // A horizontal ScrollView grows by default; keep the chips one row tall so the extra below gets the rest.
+  header: { height: 44 },
+  note: { fontSize: 14, marginHorizontal: 16 },
+  // A horizontal ScrollView grows by default; keep the chips one row tall.
   chipRow: { flexGrow: 0 },
-  chips: { gap: 8, paddingHorizontal: 20, paddingVertical: 16 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
+  chips: { gap: 8, paddingHorizontal: 16, paddingVertical: 14 },
+  chip: { paddingHorizontal: 13, paddingVertical: 7, borderRadius: 9, borderCurve: 'continuous' },
+  chipText: { fontSize: 15, fontWeight: '500' },
 });

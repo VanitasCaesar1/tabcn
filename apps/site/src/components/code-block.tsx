@@ -1,3 +1,4 @@
+import { cn } from '@/lib/cn';
 import { CopyButton } from './copy-button';
 
 // A small TSX highlighter for the snippets on this site: comments, strings, keywords and JSX
@@ -47,14 +48,37 @@ function highlight(code: string) {
   return out;
 }
 
-export function CodeBlock({ code, filename }: { code: string; filename: string }) {
+export function CodeBlock({
+  code,
+  filename,
+  header,
+  className,
+  preClassName,
+}: {
+  code: string;
+  filename: string;
+  /** Takes the filename's place in the top row (the Code tab's file switcher). */
+  header?: React.ReactNode;
+  className?: string;
+  preClassName?: string;
+}) {
   return (
-    <div className="overflow-hidden rounded-[20px] bg-surface shadow-raised">
-      <div className="flex h-11 items-center justify-between gap-3 border-border border-b pr-1.5 pl-4">
-        <span className="truncate font-mono text-[12px] text-muted">{filename}</span>
+    <div
+      className={cn(
+        'flex flex-col overflow-hidden rounded-2xl border border-card-border bg-card',
+        className,
+      )}
+    >
+      <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-card-border border-b pr-1.5 pl-4">
+        {header ?? <span className="truncate font-mono text-[12px] text-muted">{filename}</span>}
         <CopyButton value={code} label={`Copy ${filename}`} className="shrink-0" />
       </div>
-      <pre className="overflow-x-auto p-4 font-mono text-[12.5px] leading-[1.7] [scrollbar-width:thin]">
+      <pre
+        className={cn(
+          'min-h-0 overflow-auto p-4 font-mono text-[12.5px] leading-[1.7] [scrollbar-width:thin]',
+          preClassName,
+        )}
+      >
         <code>{highlight(code)}</code>
       </pre>
     </div>

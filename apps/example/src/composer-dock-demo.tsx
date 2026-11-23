@@ -110,9 +110,29 @@ interface DemoState {
   drawer: boolean;
 }
 
+// The chat opens part-way through a conversation, so the dock sits under real content.
+const SEED: Message[] = [
+  {
+    id: 1,
+    from: 'me',
+    text: 'Can you plan three days in Lisbon in March? We like food markets and long walks more than museums.',
+  },
+  {
+    id: 2,
+    from: 'assistant',
+    text: 'Here’s a loose plan.\n\nDay 1: Alfama on foot in the morning, lunch at the market in Campo de Ourique, sunset from a viewpoint above the river.\n\nDay 2: Tram 28 early before the crowds, then Belém for custard tarts and a long walk west along the water.\n\nDay 3: The train to Sintra, back in time for dinner in Príncipe Real.',
+  },
+  { id: 3, from: 'me', text: 'Love it. Can you add a place to eat each night, under €40 a head?' },
+  {
+    id: 4,
+    from: 'assistant',
+    text: 'Sure. Night 1: a small tasca near the cathedral with grilled sardines. Night 2: a seafood counter in Cais do Sodré. Night 3: a family-run spot in Príncipe Real with a short menu that changes daily. Want me to check which ones take bookings?',
+  },
+];
+
 let state: DemoState = {
   scrubbing: null,
-  messages: [],
+  messages: SEED,
   model: 1,
   effort: RECOMMENDED,
   pickingModel: false,
@@ -130,10 +150,12 @@ function useDemo(): DemoState {
       return () => listeners.delete(l);
     },
     () => state,
+    // The web build renders on the server first.
+    () => state,
   );
 }
 
-let nextId = 1;
+let nextId = SEED.length + 1;
 function send(text: string) {
   set({ messages: [...state.messages, { id: nextId++, from: 'me', text }] });
   setTimeout(() => {
@@ -949,27 +971,8 @@ function Header({ title }: { title?: string }) {
   );
 }
 
-function greeting() {
-  const h = new Date().getHours();
-  return h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening';
-}
-
 function ChatScreen() {
   const { messages } = useDemo();
-  if (messages.length === 0) {
-    return (
-      // Tapping the empty chat puts the keyboard away.
-      <Pressable accessible={false} onPress={Keyboard.dismiss} style={[styles.flex, styles.center]}>
-        <Svg width={30} height={30} viewBox="0 0 24 24">
-          <Path
-            d="M12 2.5 13.6 10.4 21.5 12 13.6 13.6 12 21.5 10.4 13.6 2.5 12 10.4 10.4Z"
-            fill="#d97757"
-          />
-        </Svg>
-        <Text style={styles.greeting}>{greeting()}, Robin</Text>
-      </Pressable>
-    );
-  }
   return (
     <ScrollView
       contentContainerStyle={styles.chat}
@@ -1186,8 +1189,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   headerTitle: { fontSize: 17, fontWeight: '600', color: INK },
-  greeting: { marginTop: 8, fontSize: 21, color: INK, fontFamily: 'Charter' },
-  chat: { padding: 20, gap: 18 },
+  chat: { padding: 20, paddingBottom: 32, gap: 18 },
   mine: {
     alignSelf: 'flex-end',
     maxWidth: '80%',

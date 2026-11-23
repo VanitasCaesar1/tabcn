@@ -87,7 +87,7 @@ export function ThemeToggle() {
         const rect = e.currentTarget.getBoundingClientRect();
         setTheme(next, rect.x + rect.width / 2, rect.y + rect.height / 2);
       }}
-      className="relative flex size-9 shrink-0 items-center justify-center rounded-full text-muted outline-hidden transition-[color,background-color] duration-150 ease-out hover:bg-surface hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:bg-foreground/10 active:duration-100 motion-reduce:transition-none"
+      className="relative flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-card text-muted shadow-[inset_0_0_0_1px_var(--card-border)] outline-hidden transition-[color,background-color] duration-150 ease-out hover:bg-cell hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:bg-foreground/10 active:duration-100 motion-reduce:transition-none"
     >
       {/* The server can't know the theme, so the icons mount once it's known,
           already in place, instead of animating in on every page load. */}

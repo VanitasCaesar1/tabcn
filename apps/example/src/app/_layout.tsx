@@ -33,8 +33,9 @@ export default function RootLayout() {
         {/* The PanelUI theme the design screens show (tabcn, Panel, Moon or Grass). */}
         <PanelThemeProvider>
           <Stack>
-            <Stack.Screen name="index" options={{ title: 'tabcn' }} />
-            <Stack.Screen name="designs/[id]" options={{ title: '', headerBackTitle: 'Back' }} />
+            {/* The list draws its own large title, and each design its own back control. */}
+            <Stack.Screen name="index" options={{ title: 'tabcn', headerShown: false }} />
+            <Stack.Screen name="designs/[id]" options={{ title: '', headerShown: false }} />
           </Stack>
         </PanelThemeProvider>
       </ThemeProvider>

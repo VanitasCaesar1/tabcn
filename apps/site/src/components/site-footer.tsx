@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { asset } from '@/lib/base-path';
 import { cn } from '@/lib/cn';
-import { siteGroups } from '@/lib/designs';
+import { sections, styleCounts } from '@/lib/designs';
 import { site } from '@/lib/site';
 import { Arrow } from './arrow';
 import { BackToTop } from './back-to-top';
@@ -17,7 +17,7 @@ const outArrow =
   'size-3 transition-[translate] duration-150 ease-out group-hover/out:translate-x-0.5 group-hover/out:-translate-y-0.5 motion-reduce:transition-none';
 
 const iconLink =
-  'grid size-8 place-items-center rounded-full text-muted shadow-[inset_0_0_0_1px_var(--border)] outline-hidden transition-[color,background-color] duration-150 ease-out hover:bg-surface hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:bg-foreground/10 active:duration-100 motion-reduce:transition-none';
+  'grid size-8 place-items-center rounded-lg bg-card text-muted shadow-[inset_0_0_0_1px_var(--card-border)] outline-hidden transition-[color,background-color] duration-150 ease-out hover:bg-cell hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:bg-foreground/10 active:duration-100 motion-reduce:transition-none';
 
 const titleClass = 'font-medium text-[13px] text-foreground';
 
@@ -30,11 +30,11 @@ function Out({ href, children }: { href: string; children: React.ReactNode }) {
   );
 }
 
-// The page ends on the same dotted stage it began on: the name and a line about it, the five
-// groups with their counts, where to start, and the project's links. (Layout from ui lab, MIT.)
+// The name and a line about it, the designs by style with their counts, where to start, and the
+// project's links. (Layout from ui lab, MIT.)
 export function SiteFooter() {
   return (
-    <footer className="relative isolate mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6">
+    <footer className="mx-auto w-full max-w-6xl px-4 pt-16 sm:px-6">
       <div className="grid grid-cols-2 gap-x-6 gap-y-10 border-border border-t py-12 sm:grid-cols-[minmax(0,1.4fr)_repeat(3,auto)] sm:gap-x-16">
         <div className="col-span-2 sm:col-span-1">
           <Link
@@ -87,9 +87,15 @@ export function SiteFooter() {
         <nav aria-label="Designs">
           <p className={titleClass}>Designs</p>
           <ul className="mt-3 flex flex-col gap-2 text-sm">
-            {siteGroups.map((g) => (
+            {[
+              ...styleCounts,
+              ...sections
+                .filter((s) => s.id === 'panels')
+                .map((s) => ({ id: s.id, label: s.label, count: s.items.length })),
+            ].map((g) => (
               <li key={g.id}>
                 <GroupLink
+                  param={g.id === 'panels' ? 'c' : 's'}
                   group={g.id}
                   className={cn(linkClass, 'flex w-full justify-between gap-6')}
                 >
@@ -162,10 +168,6 @@ export function SiteFooter() {
         </p>
         <BackToTop />
       </div>
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-64 bg-[radial-gradient(color-mix(in_oklab,var(--foreground)_11%,transparent)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:radial-gradient(ellipse_60%_100%_at_50%_100%,black,transparent)]"
-      />
     </footer>
   );
 }

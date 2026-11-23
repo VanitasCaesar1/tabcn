@@ -383,14 +383,14 @@ function Artwork({
   colors,
 }: {
   track: MiniPlayerTrack;
-  /** Points, or 'fill' for a square as wide as its parent. */
+  /** Points, or 'fill' to fill a square parent. */
   size: number | 'fill';
   radius: number;
   colors: MiniPlayerColors;
 }) {
   const box =
     size === 'fill'
-      ? { width: '100%' as const, aspectRatio: 1, borderRadius: radius }
+      ? { width: '100%' as const, height: '100%' as const, borderRadius: radius }
       : { width: size, height: size, borderRadius: radius };
   if (track.artwork) {
     return (
@@ -615,7 +615,8 @@ const styles = StyleSheet.create({
   },
   headerButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   body: { paddingHorizontal: 20, paddingTop: 4 },
-  bigArtFrame: { maxWidth: '100%', alignSelf: 'center' },
+  // Square from the frame, not the image: an Image's own size can override its aspectRatio.
+  bigArtFrame: { maxWidth: '100%', aspectRatio: 1, alignSelf: 'center' },
   artFallback: { alignItems: 'center', justifyContent: 'center' },
   titles: { marginTop: 20, gap: 2 },
   title: { fontSize: 20, fontWeight: '700' },

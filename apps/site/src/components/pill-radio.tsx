@@ -89,7 +89,7 @@ export function PillRadio<T extends string>({
             data-value={option.value}
             onClick={() => onChange(option.value)}
             className={cn(
-              'relative h-7 touch-manipulation rounded-full px-2 text-xs outline-hidden transition-[color] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-1 motion-reduce:transition-none sm:px-2.5',
+              'relative h-7 touch-manipulation rounded-md px-2 text-xs outline-hidden transition-[color] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-1 motion-reduce:transition-none sm:px-2.5',
               active ? 'text-foreground' : 'text-muted hover:text-foreground',
               pillClassName,
             )}
@@ -98,7 +98,7 @@ export function PillRadio<T extends string>({
               <motion.span
                 layoutId={layoutId}
                 aria-hidden
-                className="absolute inset-0 rounded-full bg-background shadow-raised"
+                className="absolute inset-0 rounded-md bg-[var(--dock-capsule)] shadow-[var(--dock-capsule-shadow)]"
                 transition={transition}
               />
             )}

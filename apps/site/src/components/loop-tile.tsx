@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
+import { PhoneFoot } from './phone';
 import {
   claim,
   finePointer,
@@ -13,14 +14,14 @@ import {
   watch,
 } from './use-loop-player';
 
-// A design's bar on its demo colour: the poster, and its loop over it while the card is the one
-// playing (see use-loop-player.ts). The demo colour shows from the first paint, so the box has
-// its final shape and colour before the poster fades in. The pictures are decoration: the
-// card's title link names the design.
+// A design's bar: its poster, and its loop over it while the card is the one playing (see
+// use-loop-player.ts). On a card the loop is the screen of a phone's foot on a neutral stage, so
+// the design's own colours stay inside its screen; in a list row it is a small rounded crop. The
+// box has its final shape from the first paint, before the poster fades in. The pictures are
+// decoration: the card's title link names the design.
 export function LoopTile({
   id,
   title,
-  background,
   poster,
   loop,
   panel = false,
@@ -28,8 +29,6 @@ export function LoopTile({
 }: {
   id: string;
   title: string;
-  /** The demo screen's colour, `#rrggbb`. */
-  background: string;
   poster: string | null;
   loop: string | null;
   /** A taller crop (804 x 460) showing the panel above its bar. */
@@ -146,54 +145,63 @@ export function LoopTile({
 
   const card = variant === 'card';
 
+  const media = (
+    <div aria-hidden className="absolute inset-0">
+      {poster && (
+        // biome-ignore lint/performance/noImgElement: a static export of small, pre-sized JPGs.
+        <img
+          ref={img}
+          src={poster}
+          alt=""
+          width={804}
+          height={panel ? 460 : 280}
+          loading="lazy"
+          decoding="async"
+          fetchPriority="low"
+          draggable={false}
+          onLoad={() => setLoaded(true)}
+          data-loaded={loaded ? '' : undefined}
+          data-instant={instant ? '' : undefined}
+          className={cn(
+            'loop-poster absolute inset-0 size-full object-cover',
+            panel && 'object-bottom',
+          )}
+        />
+      )}
+      {mounted && loop && (
+        <video
+          ref={video}
+          src={loop}
+          muted
+          loop
+          playsInline
+          disablePictureInPicture
+          preload="auto"
+          onPlaying={() => setShown(true)}
+          data-shown={shown ? '' : undefined}
+          className="loop-video absolute inset-0 size-full object-cover"
+        />
+      )}
+    </div>
+  );
+
   return (
     <div
       ref={box}
       className={cn(
         'relative shrink-0 overflow-hidden',
         card
-          ? cn('specimen-tile rounded-[12px]', panel ? 'aspect-[804/460]' : 'aspect-[804/280]')
-          : 'specimen-thumb h-[33px] w-24 rounded-[8px] sm:h-[46px] sm:w-[132px]',
+          ? 'flex aspect-[2/1] items-end justify-center bg-card-stage pb-[4.5%]'
+          : 'h-[33px] w-24 rounded-[8px] bg-card-stage shadow-[0_0_0_1px_var(--card-border)] sm:h-[46px] sm:w-[132px]',
       )}
-      style={{ '--demo': background } as React.CSSProperties}
     >
-      <div aria-hidden className="absolute inset-0">
-        {poster && (
-          // biome-ignore lint/performance/noImgElement: a static export of small, pre-sized JPGs.
-          <img
-            ref={img}
-            src={poster}
-            alt=""
-            width={804}
-            height={panel ? 460 : 280}
-            loading="lazy"
-            decoding="async"
-            fetchPriority="low"
-            draggable={false}
-            onLoad={() => setLoaded(true)}
-            data-loaded={loaded ? '' : undefined}
-            data-instant={instant ? '' : undefined}
-            className={cn(
-              'loop-poster absolute inset-0 size-full object-cover',
-              panel && 'object-bottom',
-            )}
-          />
-        )}
-        {mounted && loop && (
-          <video
-            ref={video}
-            src={loop}
-            muted
-            loop
-            playsInline
-            disablePictureInPicture
-            preload="auto"
-            onPlaying={() => setShown(true)}
-            data-shown={shown ? '' : undefined}
-            className="loop-video absolute inset-0 size-full object-cover"
-          />
-        )}
-      </div>
+      {card ? (
+        <PhoneFoot crop={panel ? 460 / 804 : 280 / 804} className={panel ? 'w-[70%]' : 'w-[90%]'}>
+          {media}
+        </PhoneFoot>
+      ) : (
+        media
+      )}
       {card && manual && loop && (near || touch || pressed) && (
         <button
           type="button"

@@ -12,7 +12,7 @@ import { useReducedMotion } from '@/lib/use-reduced-motion';
 import { TIMING_EASE, TIMING_MS } from './motion';
 
 // The ⌘K search from ui lab (https://lab.xevrion.dev, MIT, see LICENSE-ui-lab), over the designs.
-// Each result shows a thumbnail of its bar on the demo colour.
+// Each result shows a small crop of its bar, its title and its style.
 
 const noop = () => () => {};
 const isMac = () => /Mac|iPhone|iPad/.test(navigator.platform);
@@ -27,7 +27,8 @@ function search(items: DesignSummary[], query: string) {
   return items
     .map((item) => {
       const title = item.title.toLowerCase();
-      const hay = `${title} ${item.id} ${item.description} ${item.layoutLabel}`.toLowerCase();
+      const hay =
+        `${title} ${item.id} ${item.description} ${item.layoutLabel} ${item.styleLabel}`.toLowerCase();
       if (!words.every((w) => hay.includes(w))) return null;
       const rank = title.startsWith(q)
         ? 0
@@ -102,7 +103,7 @@ export function HeaderSearch({
           openSearch();
         }}
         aria-haspopup="dialog"
-        className="flex h-10 w-full items-center gap-2 rounded-full bg-surface px-3.5 text-[14px] text-muted shadow-[inset_0_0_0_1px_var(--border)] outline-hidden transition-[color,background-color] duration-150 ease-out hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:bg-foreground/10 active:duration-100 motion-reduce:transition-none"
+        className="flex h-10 w-full items-center gap-2 rounded-[10px] bg-card px-3.5 text-[14px] text-muted shadow-[inset_0_0_0_1px_var(--card-border)] outline-hidden transition-[color,background-color] duration-150 ease-out hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:bg-foreground/10 active:duration-100 motion-reduce:transition-none"
       >
         <SearchIcon />
         <span className="flex-1 text-left">Search {items.length} designs</span>
@@ -118,7 +119,7 @@ export function HeaderSearch({
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-keyshortcuts="Meta+K Control+K"
-        className="flex h-9 shrink-0 items-center gap-2 rounded-full text-[13px] text-muted outline-hidden transition-[color,background-color] duration-150 ease-out hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:bg-foreground/10 active:duration-100 max-md:w-9 max-md:justify-center max-md:hover:bg-surface md:w-48 md:bg-surface md:pr-2 md:pl-3 md:shadow-[inset_0_0_0_1px_var(--border)] lg:w-[232px] motion-reduce:transition-none"
+        className="flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-card text-[13px] text-muted shadow-[inset_0_0_0_1px_var(--card-border)] outline-hidden transition-[color,background-color] duration-150 ease-out hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:outline-offset-2 active:bg-foreground/10 active:duration-100 max-md:w-9 max-md:justify-center max-md:hover:bg-cell md:w-48 md:pr-2 md:pl-3 lg:w-[232px] motion-reduce:transition-none"
       >
         <SearchIcon />
         <span className="sr-only md:hidden">Search designs</span>
@@ -213,7 +214,7 @@ function SearchDialog({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.12 } }}
             transition={t}
-            className="relative flex max-h-[min(560px,72dvh)] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-background shadow-[0_0_0_1px_var(--border),0_24px_60px_-12px_oklch(0_0_0/0.35)]"
+            className="relative flex max-h-[min(560px,72dvh)] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-card shadow-[0_0_0_1px_var(--card-border),0_24px_60px_-12px_oklch(0_0_0/0.35)]"
           >
             <div className="flex h-14 shrink-0 items-center gap-3 border-border border-b px-4">
               <span className="text-muted">
@@ -255,7 +256,7 @@ function SearchDialog({
                 // 16px on phones: iOS zooms into any smaller input it focuses.
                 className="h-full min-w-0 flex-1 bg-transparent text-base text-foreground outline-hidden placeholder:text-muted sm:text-[15px]"
               />
-              <kbd className="hidden h-6 items-center rounded-full px-2 font-medium font-sans text-[11px] text-muted shadow-[inset_0_0_0_1px_var(--border)] sm:flex">
+              <kbd className="hidden h-6 items-center rounded-md px-2 font-medium font-sans text-[11px] text-muted shadow-[inset_0_0_0_1px_var(--border)] sm:flex">
                 Esc
               </kbd>
             </div>
@@ -285,13 +286,12 @@ function SearchDialog({
                       onPointerMove={() => i !== current && setActive(i)}
                       className={cn(
                         'flex items-center gap-3 rounded-xl px-3 py-2.5 outline-hidden transition-[background-color] duration-100',
-                        i === current && 'bg-surface',
+                        i === current && 'bg-cell',
                       )}
                     >
                       <span
                         aria-hidden
-                        className="relative h-[22px] w-16 shrink-0 overflow-hidden rounded-[5px] shadow-[0_0_0_1px_var(--tile-ring)]"
-                        style={{ backgroundColor: item.background }}
+                        className="relative h-[22px] w-16 shrink-0 overflow-hidden rounded-[5px] bg-card-stage shadow-[0_0_0_1px_var(--card-border)]"
                       >
                         {item.thumb && (
                           // biome-ignore lint/performance/noImgElement: a static export of tiny, pre-sized JPGs.
@@ -314,7 +314,7 @@ function SearchDialog({
                           {item.description}
                         </span>
                       </span>
-                      <span className="shrink-0 text-[12px] text-muted">{item.layoutLabel}</span>
+                      <span className="shrink-0 text-[12px] text-muted">{item.styleLabel}</span>
                     </Link>
                   </div>
                 ))}

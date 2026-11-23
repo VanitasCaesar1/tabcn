@@ -75,45 +75,65 @@ import {
 import * as TopNotchIcons from '@registry/top-notch/icons';
 import { TopNotch as TopNotchDesign } from '@registry/top-notch/top-notch';
 import type { Href } from 'expo-router';
-import { type ComponentType, createContext, type ReactElement, type ReactNode, use } from 'react';
+import {
+  type ComponentType,
+  cloneElement,
+  createContext,
+  type ReactElement,
+  type ReactNode,
+  use,
+} from 'react';
 import type { TabIconProps } from 'react-native-tabcn';
 import { AccountDockDemoBar } from '@/account-dock-demo';
-import { AmbientBarScreen } from '@/ambient-bar-demo';
 import {
   ChatDrawer,
   ComposerDockDemoBar,
   ComposerDockScreen,
   ModelSheet,
 } from '@/composer-dock-demo';
+import { DEMO_CONTROLS } from '@/demo-controls';
+import { DESIGN_TAGS, type SceneScheme } from '@/design-tags';
 import {
-  BarSheetControls,
+  BarSheetActions,
   BarSheetPanel,
-  CartPillControls,
+  CartPillActions,
   ChatsBadge,
-  CompanionChipExtra,
+  CompanionChipActions,
   CompanionChipPanel,
   ContextTrayExtra,
   type DemoExtraProps,
-  FilterChipsControls,
   FilterChipsPanel,
-  GlassBadgesControls,
   LibraryIcon,
-  LiveTabsControls,
   LiveTabsFeed,
-  MinimizeList,
-  MiniPlayerControls,
   MiniPlayerPanel,
   QuickCreateBar,
-  QuickCreateControls,
   QuickCreatePanel,
   SectionRows,
   SubTabsBar,
-  SubTabsNote,
   SubTabsPanel,
   useCartCount,
 } from '@/panel-demos';
 import { themed, useDemoColors } from '@/panel-theme';
-import type { PatternSpec } from '@/pattern';
+import type { PreviewSettings } from '@/preview-settings';
+
+// Each scene's screen colour (scenes/palette.ts), written out: the site's build reads each
+// demo's `background:` line as text, and it resolves a name only to a hex literal declared here.
+const SOCIAL_LIGHT = '#ffffff';
+const SOCIAL_DARK = '#000000';
+const MUSIC_LIGHT = '#fafafa';
+const MUSIC_DARK = '#0b0b0b';
+const SHOP_LIGHT = '#f4f4f2';
+const SHOP_DARK = '#0c0c0c';
+const MAPS_LIGHT = '#eceae4';
+const MAPS_DARK = '#1a1b1d';
+const FINANCE_LIGHT = '#ffffff';
+const FINANCE_DARK = '#000000';
+const CHAT_LIGHT = '#ffffff';
+const CHAT_DARK = '#000000';
+const FILES_LIGHT = '#f6f6f7';
+const FILES_DARK = '#0b0b0c';
+// Composer Dock draws its own warm off-white chat app (composer-dock-demo.tsx).
+const COMPOSER_LIGHT = '#f8f8f6';
 
 // Each design in the PanelUI theme picked on the demo screen (src/panel-theme.tsx).
 const AccentDark = themed('accent-dark', AccentDarkDesign);
@@ -172,23 +192,24 @@ export interface Demo {
   render: (ctx: DemoContext) => ReactElement;
   /** Tabs as in the reference image: labels, icons, count. */
   tabs: DemoTab[];
-  /** Screen background behind the bar, taken from the reference. */
+  /**
+   * The screen colour: the background of the design's scene (DESIGN_TAGS in design-tags.ts) in
+   * its palette, as a constant above. The site's cards use it.
+   */
   background: string;
   /**
-   * A screen colour per tab, in tab order, for designs whose bar takes each screen's colour
-   * (Colour Flood). A tab without an entry uses `background`.
+   * A colour per tab, in tab order, for a design whose bar floods its tab's screen with that
+   * colour (Colour Flood). The scene is drawn on it in white. A tab without an entry is the scene.
    */
   backgrounds?: (string | undefined)[];
-  /** Light text on the demo screens. */
-  dark?: boolean;
-  /** Background pattern from the reference image. */
-  pattern?: PatternSpec;
+  /** A palette per tab, in tab order, for a design whose bar turns light or dark per tab. */
+  schemes?: (SceneScheme | undefined)[];
+  /** The scene in colour where it is normally muted (finance's company marks). */
+  vivid?: boolean;
   /** Tab selected in the reference image. Default 0. */
   initialTab?: number;
-  /** Bar height in points, used to centre patterns on the bar. */
+  /** Bar height in points. */
   barHeight?: number;
-  /** Coloured shapes behind the bar (relative to its centre) for glass designs to blur. */
-  blobs?: { dx: number; dy: number; r: number; color: string }[];
   /**
    * A panel demo's panel: declared once in the design layout, under its TabBarProvider beside
    * the navigator, so it stays across tabs. `render` draws the bar it pairs with.
@@ -199,7 +220,7 @@ export interface Demo {
    * page (Composer Dock's chat app). Gets the tab's index.
    */
   screen?: ComponentType<{ index: number }>;
-  /** Extra content under the demo screen's title: a panel's controls, a list to scroll. */
+  /** A panel demo's controls, under the scene's title. */
   extra?: ComponentType<DemoExtraProps>;
   /** Draw the bar as a rail on the left (`tabBarPosition: 'left'`) when the window is wide. */
   railWhenWide?: boolean;
@@ -212,32 +233,46 @@ export interface Demo {
   /** Hide the bar while the keyboard is up (`tabBarHideOnKeyboard`). */
   hideOnKeyboard?: boolean;
   /**
-   * Hide the stack header above the tabs. Sheets size themselves as if the tab navigator
-   * filled the screen, so a header above it would cover a sheet raised to full height.
+   * Hide the React Navigation demo's stack header above the tabs (the design screens never show
+   * one). Sheets size themselves as if the tab navigator filled the screen, so a header above it
+   * would cover a sheet raised to full height.
    */
   fullScreen?: boolean;
 }
 
-/** The screen colour of a demo's tab: its own entry in `backgrounds`, or the demo's `background`. */
-export function screenBackground(demo: Demo, index: number) {
-  return demo.backgrounds?.[index] ?? demo.background;
+/**
+ * The scene a demo's tab shows: its name and palette (the design's tags, or the Customize
+ * panel's choice), and the colour a flooding bar paints the tab with, if any.
+ */
+export function demoScene(id: string, demo: Demo, index: number, chosen?: SceneScheme) {
+  const tags = DESIGN_TAGS[id];
+  return {
+    name: tags?.scene ?? 'social',
+    scheme: demo.schemes?.[index] ?? chosen ?? tags?.scheme ?? 'light',
+    flood: demo.backgrounds?.[index],
+  };
 }
 
 /**
- * Whether a demo's tab has a dark screen, for light text on it: the tab's own entry in
- * `backgrounds` decides by its brightness, otherwise the demo's `dark`.
+ * The bar with the Customize panel's accent applied, for designs that list it in DEMO_CONTROLS.
+ * The prop is a top-level prop, or `colors.<key>` for a key of the design's `colors`.
  */
-export function isDarkScreen(demo: Demo, index: number) {
-  const own = demo.backgrounds?.[index];
-  if (!own) return demo.dark ?? false;
-  const hex = /^#([0-9a-f]{6})$/i.exec(own)?.[1];
-  if (!hex) return demo.dark ?? false;
-  const [r, g, b] = [0, 2, 4].map((i) => Number.parseInt(hex.slice(i, i + 2), 16) / 255) as [
-    number,
-    number,
-    number,
-  ];
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.5;
+export function withControls(id: string, bar: ReactElement, settings: PreviewSettings) {
+  const prop = DEMO_CONTROLS[id]?.accent;
+  if (!prop || !settings.accent) return bar;
+  const current = bar.props as { colors?: object };
+  if (prop.startsWith('colors.')) {
+    const key = prop.slice('colors.'.length);
+    return cloneElement(bar, { colors: { ...current.colors, [key]: settings.accent } } as object);
+  }
+  return cloneElement(bar, { [prop]: settings.accent } as object);
+}
+
+/** The demo's tabs, cut to the Customize panel's count (never below the design's minimum). */
+export function visibleTabCount(id: string, demo: Demo, settings: PreviewSettings) {
+  if (!settings.tabs) return demo.tabs.length;
+  const min = DEMO_CONTROLS[id]?.minTabs ?? 2;
+  return Math.max(min, Math.min(demo.tabs.length, Math.round(settings.tabs)));
 }
 
 /** Window width (pt) from which a `railWhenWide` demo shows its rail: iPads, landscape. */
@@ -283,8 +318,7 @@ export const demos: Record<string, Demo> = {
     render: () => (
       <ChipRail leading={<ChipRailIcons.AvatarIcon focused={false} color="" size={39.5} />} />
     ),
-    background: '#ab9ff1',
-    pattern: { kind: 'waves', color: '#a296ec', gap: 9.6, amp: 1.2, wavelength: 18 },
+    background: FINANCE_DARK,
     barHeight: 56,
     tabs: [
       { label: 'Home', icon: () => null },
@@ -296,8 +330,7 @@ export const demos: Record<string, Demo> = {
   },
   'sticker-tiles': {
     render: () => <StickerTiles fontFamily="Nunito_700Bold" />,
-    background: '#d5ebf6',
-    pattern: { kind: 'plus', color: '#bfdcec', gap: 24, size: 4, stroke: 1 },
+    background: SOCIAL_LIGHT,
     barHeight: 68,
     tabs: [
       { label: 'Home', icon: StickerTilesIcons.HomeIcon },
@@ -310,9 +343,7 @@ export const demos: Record<string, Demo> = {
   },
   'pill-plus': {
     render: ({ onActionPress }) => <PillPlus onActionPress={onActionPress} />,
-    // corner: a light map behind the bar.
-    background: '#c5dff3',
-    pattern: { kind: 'grid', color: '#d9e9f6', gap: 24 },
+    background: MAPS_LIGHT,
     initialTab: 1,
     barHeight: 54,
     tabs: [
@@ -323,16 +354,9 @@ export const demos: Record<string, Demo> = {
   },
   orbs: {
     render: () => <Orbs />,
-    // The app's sea-blue map, with lighter shallows and a darker channel for the glass to blur.
-    background: '#2ea5f0',
+    background: MAPS_LIGHT,
     initialTab: 1,
     barHeight: 82,
-    blobs: [
-      { dx: -150, dy: -30, r: 70, color: '#58bdf6' },
-      { dx: 120, dy: 20, r: 60, color: '#1f8fdc' },
-      { dx: 10, dy: 60, r: 50, color: '#47b3f4' },
-    ],
-    dark: true,
     tabs: [
       { label: 'Scratch', icon: OrbsIcons.ScratchIcon },
       { label: 'Chat', icon: OrbsIcons.ChatIcon, badge: '' },
@@ -343,8 +367,7 @@ export const demos: Record<string, Demo> = {
     render: ({ onActionPress }) => (
       <CenterCta onActionPress={onActionPress} fontFamily="PatrickHand_400Regular" />
     ),
-    background: '#ece5d3',
-    pattern: { kind: 'capsules', color: '#e3dbc6', gap: 44 },
+    background: MUSIC_DARK,
     barHeight: 69,
     tabs: [
       { label: 'City', icon: CenterCtaIcons.BuildingIcon },
@@ -353,8 +376,7 @@ export const demos: Record<string, Demo> = {
   },
   'glass-expand': {
     render: () => <GlassExpand />,
-    // GO Club: the bar floats on a flat light-lavender card.
-    background: '#ebe9ff',
+    background: SOCIAL_LIGHT,
     barHeight: 82,
     tabs: [
       { label: 'Steps', icon: GlassExpandIcons.SneakerIcon },
@@ -365,8 +387,7 @@ export const demos: Record<string, Demo> = {
   },
   'segment-search': {
     render: ({ onActionPress }) => <SegmentSearch onActionPress={onActionPress} />,
-    background: '#edf6fd',
-    pattern: { kind: 'rings', color: '#d9e5f0', gap: 9.6, stroke: 0.6 },
+    background: MAPS_LIGHT,
     barHeight: 58,
     tabs: [
       { label: 'Home', icon: () => null },
@@ -375,8 +396,7 @@ export const demos: Record<string, Demo> = {
   },
   'soft-pill': {
     render: () => <SoftPill />,
-    background: '#e5dfd4',
-    pattern: { kind: 'stripes', light: '#f4efe7', dark: '#e1dace', gap: 8 },
+    background: SOCIAL_LIGHT,
     initialTab: 2,
     barHeight: 58.5,
     tabs: [
@@ -389,8 +409,7 @@ export const demos: Record<string, Demo> = {
   },
   'gradient-stickers': {
     render: () => <GradientStickers />,
-    background: '#ddf1e6',
-    pattern: { kind: 'dots', color: '#cbe6d8', gap: 24, r: 1.7, stagger: true },
+    background: SOCIAL_LIGHT,
     initialTab: 4,
     barHeight: 58.5,
     tabs: [
@@ -403,17 +422,9 @@ export const demos: Record<string, Demo> = {
   },
   'frosted-media': {
     render: () => <FrostedMedia />,
-    background: '#120f0d',
-    pattern: { kind: 'rays', color: '#1b1714', count: 28 },
+    background: MUSIC_DARK,
     initialTab: 2,
     barHeight: 58,
-    blobs: [
-      { dx: -95, dy: 0, r: 26, color: '#a3836a' },
-      { dx: -40, dy: 6, r: 24, color: '#5b6a7c' },
-      { dx: 20, dy: -6, r: 22, color: '#c28d6a' },
-      { dx: 80, dy: 4, r: 26, color: '#d8b8a4' },
-    ],
-    dark: true,
     tabs: [
       { label: 'Home', icon: FrostedMediaIcons.BlobIcon },
       { label: 'My Apps', icon: FrostedMediaIcons.DotsIcon },
@@ -422,11 +433,8 @@ export const demos: Record<string, Demo> = {
   },
   'glow-glass': {
     render: ({ onActionPress }) => <GlowGlassBar onActionPress={onActionPress} />,
-    background: '#1f1810',
-    pattern: { kind: 'wood', light: '#2a1d12', dark: '#1b130f' },
+    background: MUSIC_DARK,
     barHeight: 58.5,
-    blobs: [{ dx: 30, dy: 0, r: 20, color: '#2b3f9e' }],
-    dark: true,
     tabs: [
       { label: 'Home', icon: GlowGlassIcons.HomeIcon },
       { label: 'Markets', icon: GlowGlassIcons.MarketsIcon },
@@ -436,10 +444,8 @@ export const demos: Record<string, Demo> = {
   },
   'top-notch': {
     render: () => <TopNotch fontFamily="Outfit_800ExtraBold" />,
-    background: '#594adb',
-    pattern: { kind: 'rings', color: '#6152e1', gap: 34, stroke: 15 },
+    background: MUSIC_LIGHT,
     barHeight: 75,
-    dark: true,
     tabs: [
       { label: 'Today', icon: TopNotchIcons.TodayIcon },
       { label: 'Discover', icon: TopNotchIcons.DiscoverIcon },
@@ -450,8 +456,7 @@ export const demos: Record<string, Demo> = {
   },
   'solid-dark': {
     render: () => <SolidDark />,
-    background: '#e8e9ed',
-    pattern: { kind: 'plus', color: '#d2d3d8', gap: 12.2, size: 2.6, stroke: 0.7 },
+    background: MUSIC_DARK,
     barHeight: 45,
     tabs: [
       { label: 'Home', icon: SolidDarkIcons.HomeIcon },
@@ -463,12 +468,9 @@ export const demos: Record<string, Demo> = {
   },
   'outline-dark': {
     render: () => <OutlineDark />,
-    // Blank Spaces: flat black screens.
-    background: '#000000',
-    pattern: { kind: 'dots', color: '#141414', gap: 9.6, r: 0.55 },
+    background: FILES_DARK,
     initialTab: 1,
     barHeight: 80,
-    dark: true,
     tabs: [
       { label: 'Apps', icon: OutlineDarkIcons.AppsIcon },
       { label: 'Lock', icon: OutlineDarkIcons.LockIcon },
@@ -477,8 +479,7 @@ export const demos: Record<string, Demo> = {
   },
   'dark-capsule': {
     render: () => <DarkCapsule />,
-    background: '#ece7e1',
-    pattern: { kind: 'waveform', color: '#ddd6cc', gap: 4.6, width: 1.3 },
+    background: SOCIAL_DARK,
     initialTab: 3,
     barHeight: 62,
     tabs: [
@@ -491,10 +492,8 @@ export const demos: Record<string, Demo> = {
   },
   'light-icons': {
     render: () => <LightIcons />,
-    // Amble: the bar sits straight on the app's near-black screen.
-    background: '#0e0e0e',
+    background: MAPS_DARK,
     barHeight: 53,
-    dark: true,
     tabs: [
       { label: 'Route', icon: LightIconsIcons.RouteIcon },
       { label: 'Search', icon: LightIconsIcons.SearchIcon },
@@ -505,10 +504,8 @@ export const demos: Record<string, Demo> = {
   },
   'playful-tiles': {
     render: () => <PlayfulTiles />,
-    background: '#57cc02',
-    pattern: { kind: 'dots', color: '#4fbd00', gap: 26, r: 2.6, stagger: true },
+    background: SOCIAL_LIGHT,
     barHeight: 66,
-    dark: true,
     tabs: [
       { label: 'Home', icon: PlayfulTilesIcons.BirdhouseIcon },
       { label: 'Rewards', icon: PlayfulTilesIcons.ChestIcon },
@@ -520,9 +517,7 @@ export const demos: Record<string, Demo> = {
   },
   'sliding-capsule': {
     render: () => <SlidingCapsule />,
-    // Wise: the glass pill floats over white content.
-    background: '#ffffff',
-    pattern: { kind: 'plus', color: '#efefef', gap: 12, size: 3, stroke: 0.9 },
+    background: FINANCE_LIGHT,
     barHeight: 62.5,
     tabs: [
       { label: 'Home', icon: SlidingCapsuleIcons.HomeIcon },
@@ -533,13 +528,8 @@ export const demos: Record<string, Demo> = {
   },
   'labeled-plus': {
     render: ({ onActionPress }) => <LabeledPlus onActionPress={onActionPress} />,
-    // ElevenLabs: photo cards scroll under the glass bar.
-    background: '#fcfcfc',
+    background: SOCIAL_LIGHT,
     barHeight: 62,
-    blobs: [
-      { dx: -110, dy: -70, r: 60, color: '#c8dca0' },
-      { dx: 115, dy: -65, r: 60, color: '#b6d4bf' },
-    ],
     tabs: [
       { label: 'Home', icon: LabeledPlusIcons.HomeIcon },
       { label: 'Creator', icon: LabeledPlusIcons.CreatorIcon, badge: '' },
@@ -547,8 +537,7 @@ export const demos: Record<string, Demo> = {
   },
   'mono-type': {
     render: () => <MonoType />,
-    // CHANI: a warm light-grey page above the bar's black rule.
-    background: '#f4f2f3',
+    background: FINANCE_LIGHT,
     barHeight: 73,
     tabs: [
       { label: 'Home', icon: MonoTypeIcons.HouseIcon },
@@ -560,17 +549,9 @@ export const demos: Record<string, Demo> = {
   },
   'split-search': {
     render: () => <SplitSearch />,
-    // Apple Store: the bar floats over a #f2f2f7 grouped page; product photos scroll under the glass.
-    background: '#f2f2f7',
+    background: SHOP_LIGHT,
     initialTab: 1,
     barHeight: 62,
-    blobs: [
-      { dx: -120, dy: -60, r: 55, color: '#e7c3d9' },
-      { dx: 40, dy: -70, r: 45, color: '#d9dde6' },
-      { dx: 150, dy: -40, r: 40, color: '#c9d6c4' },
-    ],
-    // A list to scroll, so the bar can be seen minimizing.
-    extra: MinimizeList,
     tabs: [
       { label: 'For You', icon: SplitSearchIcons.ForYouIcon },
       { label: 'Products', icon: SplitSearchIcons.ProductsIcon },
@@ -581,8 +562,7 @@ export const demos: Record<string, Demo> = {
   },
   'material-pill': {
     render: () => <MaterialPill />,
-    // Google Home: a white screen with off-white cards above the flat #f0f4f9 bar.
-    background: '#ffffff',
+    background: FILES_LIGHT,
     barHeight: 64,
     tabs: [
       { label: 'Home', icon: MaterialPillIcons.HomeIcon },
@@ -596,7 +576,7 @@ export const demos: Record<string, Demo> = {
     ),
     // Google Drive on a tablet: the rail is the app's own #f0f4f9 chrome, with no divider
     // against the screens beside it. Phones get the same tabs as an 80 pt docked bar.
-    background: '#f0f4f9',
+    background: FILES_LIGHT,
     barHeight: 80,
     railWhenWide: true,
     tabs: [
@@ -607,23 +587,12 @@ export const demos: Record<string, Demo> = {
     ],
   },
   'search-dock': {
-    // Pinterest's search results ("Emerald eyeshadow"). The feed is a white page of photo pins,
-    // and photos scroll under the three white tiles and show in the gaps between them. Home
-    // is the active tab (filled house) and the field shows the live query.
+    // Pinterest's search results ("Emerald eyeshadow"): photos scroll under the three white
+    // tiles and show in the gaps between them. The field shows the live query.
     render: () => <SearchDock query="Emerald eyeshadow" />,
-    background: '#ffffff',
+    background: SOCIAL_LIGHT,
     initialTab: 0,
     barHeight: 55,
-    // Photo pins behind the dock: mint eyeshadow at the left, dark hair and a grey wall at
-    // the right.
-    blobs: [
-      { dx: -110, dy: -10, r: 70, color: '#a9c4a0' },
-      { dx: -30, dy: 20, r: 45, color: '#8fae88' },
-      { dx: 110, dy: -20, r: 60, color: '#2b2b2b' },
-      { dx: 160, dy: 30, r: 40, color: '#b9b9b6' },
-    ],
-    // A list to scroll, so the dock can be seen sliding away and back.
-    extra: MinimizeList,
     tabs: [
       { label: 'Home', icon: SearchDockIcons.HomeIcon },
       { label: 'Search', icon: SearchDockIcons.SearchIcon },
@@ -632,15 +601,9 @@ export const demos: Record<string, Demo> = {
   },
   'button-row': {
     render: () => <ButtonRow />,
-    // Uber Eats: a white store page; food photos scroll under the row and fade into white.
-    background: '#ffffff',
+    background: SHOP_LIGHT,
     initialTab: 0,
     barHeight: 49,
-    // Warm food-photo colours behind the row, so the white fade can be seen.
-    blobs: [
-      { dx: -105, dy: -75, r: 62, color: '#d9a35b' },
-      { dx: 125, dy: -70, r: 60, color: '#c4643a' },
-    ],
     tabs: [
       { label: 'Home', icon: ButtonRowIcons.HomeIcon },
       { label: 'Pickup', icon: ButtonRowIcons.MapIcon },
@@ -654,9 +617,9 @@ export const demos: Record<string, Demo> = {
     // Cash App: on the Pay tab (the second route) the whole screen and the bar are Cash green;
     // the other tabs fall back to white. The reference shows Pay active.
     render: ({ routes }) => <ColorFlood surfaces={{ [routes[1] ?? 't2']: colorFloodGreen }} />,
-    background: colorFloodGreen,
-    // Each screen is painted the colour the bar gives its tab: white, green, white.
-    backgrounds: ['#ffffff', colorFloodGreen, '#ffffff'],
+    background: FINANCE_LIGHT,
+    // The Pay screen is the money app flooded green with the bar; the others are it in white.
+    backgrounds: [undefined, colorFloodGreen, undefined],
     initialTab: 1,
     barHeight: 50,
     tabs: [
@@ -675,9 +638,7 @@ export const demos: Record<string, Demo> = {
         )}
       />
     ),
-    // Strava's dark screens: flat #141414 above the one-step-lighter #212220 bar.
-    background: '#141414',
-    dark: true,
+    background: MAPS_DARK,
     initialTab: 0,
     // 49 pt of tabs plus the hairline on top.
     barHeight: 49.5,
@@ -690,8 +651,7 @@ export const demos: Record<string, Demo> = {
   },
   'tile-plus': {
     render: ({ onActionPress }) => <TilePlus onActionPress={onActionPress} />,
-    // Threads: a white feed of posts that stops cleanly at the bar's top edge (no hairline).
-    background: '#ffffff',
+    background: SOCIAL_LIGHT,
     initialTab: 0,
     barHeight: 51,
     tabs: [
@@ -710,11 +670,9 @@ export const demos: Record<string, Demo> = {
         lightRoutes={[routes[2] ?? 't3', routes[3] ?? 't4']}
       />
     ),
-    // TikTok: the For You video (a dark, warm frame in the store shot) runs right down to the
-    // bar's hard top edge.
-    background: '#3c0e01',
-    backgrounds: [undefined, undefined, '#ffffff', '#ffffff'],
-    dark: true,
+    background: SOCIAL_DARK,
+    // Inbox and Profile are light screens, as the bar's light colours expect.
+    schemes: [undefined, undefined, 'light', 'light'],
     initialTab: 0,
     barHeight: 49,
     tabs: [
@@ -727,8 +685,7 @@ export const demos: Record<string, Demo> = {
   'tinted-icons': {
     // Snapchat's Spotlight tab (fifth) turns the bar dark grey, as in the app.
     render: ({ routes }) => <TintedIcons surfaces={{ [routes[4] ?? 't5']: tintedIconsDark }} />,
-    // Snapchat Stories: a white page of story cards right above the solid black bar.
-    background: '#ffffff',
+    background: SOCIAL_LIGHT,
     initialTab: 3,
     barHeight: 48,
     tabs: [
@@ -750,9 +707,7 @@ export const demos: Record<string, Demo> = {
         )}
       />
     ),
-    // Reddit (dark): the feed is the same #171717 as the bar, so the bar doesn't stand out.
-    background: '#171717',
-    dark: true,
+    background: CHAT_DARK,
     initialTab: 0,
     barHeight: 49,
     tabs: [
@@ -766,16 +721,10 @@ export const demos: Record<string, Demo> = {
     // The full row of the store shot: back disc, pill, purple cart disc with 2 items. "Add to
     // bag" on the screen raises the count.
     render: ({ onActionPress }) => <CartPillBar onActionPress={onActionPress} />,
-    extra: CartPillControls,
-    // Shop: a white product grid (shirts on light grey photo cards) scrolls under the frosted pill.
-    background: '#ffffff',
+    extra: CartPillActions,
+    background: SHOP_LIGHT,
     initialTab: 0,
     barHeight: 57,
-    blobs: [
-      { dx: -120, dy: -55, r: 55, color: '#c9aeb4' },
-      { dx: 10, dy: -60, r: 50, color: '#b8946f' },
-      { dx: 150, dy: -50, r: 45, color: '#3d4350' },
-    ],
     tabs: [
       { label: 'Home', icon: CartPillIcons.HomeIcon },
       { label: 'Search', icon: CartPillIcons.SearchIcon },
@@ -790,17 +739,9 @@ export const demos: Record<string, Demo> = {
         <GlassBadges onActionPress={onActionPress} />
       </ChatsBadge>
     ),
-    extra: GlassBadgesControls,
-    // Telegram: a white chat list scrolls under the glass bar; a yellow avatar sits behind the
-    // pill's left end.
-    background: '#ffffff',
+    background: CHAT_LIGHT,
     initialTab: 2,
     barHeight: 62,
-    blobs: [
-      { dx: -160, dy: -30, r: 30, color: '#f2e36c' },
-      { dx: 150, dy: -75, r: 28, color: '#8ab8f0' },
-      { dx: -20, dy: -80, r: 26, color: '#e9b7a4' },
-    ],
     tabs: [
       { label: 'Contacts', icon: GlassBadgesIcons.ContactsIcon },
       { label: 'Calls', icon: GlassBadgesIcons.CallsIcon, badge: 3 },
@@ -820,10 +761,8 @@ export const demos: Record<string, Demo> = {
         }}
       />
     ),
-    // A light topographic map stands in for the full-screen content behind the sheet.
-    background: '#e8eee4',
+    background: MAPS_LIGHT,
     fullScreen: true,
-    pattern: { kind: 'contours', color: '#cfd8c8' },
     initialTab: 0,
     barHeight: 76,
     tabs: [
@@ -835,8 +774,7 @@ export const demos: Record<string, Demo> = {
   'scrub-pill': {
     // Press and slide along the pill: the lens follows the finger, and lifting chooses.
     render: () => <ScrubPill />,
-    background: '#eef1f6',
-    pattern: { kind: 'grid', color: '#e2e7ef', gap: 24 },
+    background: FINANCE_LIGHT,
     initialTab: 0,
     barHeight: 62,
     tabs: [
@@ -859,7 +797,7 @@ export const demos: Record<string, Demo> = {
       </>
     ),
     screen: ComposerDockScreen,
-    background: '#f8f8f6',
+    background: COMPOSER_LIGHT,
     fullScreen: true,
     initialTab: 0,
     barHeight: 106,
@@ -874,8 +812,7 @@ export const demos: Record<string, Demo> = {
     // Tap the chip: the tabs fold into an account bar and the sheet rises. Tap the avatar for
     // the accounts and the status menu; the round button folds it back.
     render: () => <AccountDockDemoBar />,
-    background: '#f3f3f5',
-    pattern: { kind: 'grid', color: '#e7e7eb', gap: 24 },
+    background: CHAT_LIGHT,
     initialTab: 2,
     barHeight: 58,
     tabs: [
@@ -885,15 +822,12 @@ export const demos: Record<string, Demo> = {
     ],
   },
   'ambient-bar': {
-    // A dark list of holdings with saturated marks scrolls under the bar, which blurs them in
-    // place: each mark glows in the bar as it passes behind it.
+    // The holdings list scrolls under the bar, which blurs it in place: each company's mark
+    // glows in the bar as it passes behind it.
     render: () => <AmbientBar />,
-    extra: AmbientBarScreen,
-    background: '#000000',
-    // Black, then deep blue and violet, as the reference's sections are: the bar's slab, with
-    // its rounded top corners, shows against a coloured screen.
-    backgrounds: ['#000000', '#1b2a9e', '#000000', '#3d0f6b'],
-    dark: true,
+    background: FINANCE_DARK,
+    // Company marks in colour, so the bar has colour to carry.
+    vivid: true,
     initialTab: 1,
     barHeight: 60,
     tabs: [
@@ -909,8 +843,7 @@ export const demos: Record<string, Demo> = {
     // the bar by `useLiveTab` (LiveTabsFeed, declared once beside the navigator).
     render: () => <LiveTabs />,
     panel: ({ routes }) => <LiveTabsFeed timer={routes[1] ?? 't2'} download={routes[2] ?? 't3'} />,
-    extra: LiveTabsControls,
-    background: '#f6f5f3',
+    background: MUSIC_LIGHT,
     initialTab: 0,
     barHeight: 56,
     tabs: [
@@ -924,11 +857,9 @@ export const demos: Record<string, Demo> = {
     // Paired with Soft Pill: the strip peeks out above the pill; a chip grows into its sheet.
     render: () => <SoftPill />,
     panel: () => <FilterChipsPanel />,
-    extra: FilterChipsControls,
-    background: '#f1f1f3',
+    background: SHOP_DARK,
     // The open card blurs the screen behind it; a stack header above the tabs would stay sharp.
     fullScreen: true,
-    pattern: { kind: 'grid', color: '#e4e4e8', gap: 24 },
     initialTab: 0,
     barHeight: 58.5,
     tabs: [
@@ -943,9 +874,7 @@ export const demos: Record<string, Demo> = {
     // Paired with Soft Pill: the strip peeks out from behind the pill.
     render: () => <SoftPill />,
     panel: () => <MiniPlayerPanel />,
-    extra: MiniPlayerControls,
-    background: '#e5dfd4',
-    pattern: { kind: 'stripes', light: '#f4efe7', dark: '#e1dace', gap: 8 },
+    background: MUSIC_DARK,
     initialTab: 2,
     barHeight: 58.5,
     tabs: [
@@ -960,7 +889,7 @@ export const demos: Record<string, Demo> = {
     // Paired with Glass Expand. The Plan tab's screen puts the tray in the bar's place.
     render: () => <GlassExpand />,
     extra: ContextTrayExtra,
-    background: '#ebe9ff',
+    background: MAPS_LIGHT,
     barHeight: 82,
     tabs: [
       { label: 'Steps', icon: GlassExpandIcons.SneakerIcon },
@@ -973,13 +902,8 @@ export const demos: Record<string, Demo> = {
     // Paired with Labeled + Plus: tap + and the menu slides up from behind it.
     render: () => <QuickCreateBar />,
     panel: () => <QuickCreatePanel />,
-    extra: QuickCreateControls,
-    background: '#fcfcfc',
+    background: SOCIAL_LIGHT,
     barHeight: 62,
-    blobs: [
-      { dx: -110, dy: -70, r: 60, color: '#c8dca0' },
-      { dx: 115, dy: -65, r: 60, color: '#b6d4bf' },
-    ],
     tabs: [
       { label: 'Home', icon: LabeledPlusIcons.HomeIcon },
       { label: 'Creator', icon: LabeledPlusIcons.CreatorIcon },
@@ -990,10 +914,9 @@ export const demos: Record<string, Demo> = {
     // 60%; drag its header to full height, where the body scrolls.
     render: () => <SoftPill />,
     panel: () => <BarSheetPanel />,
-    extra: BarSheetControls,
-    background: '#e5dfd4',
+    extra: BarSheetActions,
+    background: SOCIAL_LIGHT,
     fullScreen: true,
-    pattern: { kind: 'stripes', light: '#f4efe7', dark: '#e1dace', gap: 8 },
     initialTab: 2,
     barHeight: 58.5,
     tabs: [
@@ -1010,16 +933,11 @@ export const demos: Record<string, Demo> = {
     // with useTabBarInset() clears both.
     render: () => <SplitSearch />,
     panel: () => <CompanionChipPanel />,
-    extra: CompanionChipExtra,
+    extra: CompanionChipActions,
     hideOnKeyboard: true,
-    background: '#f2f2f7',
+    background: SHOP_LIGHT,
     initialTab: 1,
     barHeight: 62,
-    blobs: [
-      { dx: -120, dy: -60, r: 55, color: '#e7c3d9' },
-      { dx: 40, dy: -70, r: 45, color: '#d9dde6' },
-      { dx: 150, dy: -40, r: 40, color: '#c9d6c4' },
-    ],
     tabs: [
       { label: 'For You', icon: SplitSearchIcons.ForYouIcon },
       { label: 'Products', icon: SplitSearchIcons.ProductsIcon },
@@ -1033,9 +951,7 @@ export const demos: Record<string, Demo> = {
     // action) and Albums, Artists and Songs slide up from behind it.
     render: () => <SubTabsBar />,
     panel: () => <SubTabsPanel />,
-    extra: SubTabsNote,
-    background: '#e5dfd4',
-    pattern: { kind: 'stripes', light: '#f4efe7', dark: '#e1dace', gap: 8 },
+    background: MUSIC_LIGHT,
     initialTab: 0,
     barHeight: 58.5,
     tabs: [

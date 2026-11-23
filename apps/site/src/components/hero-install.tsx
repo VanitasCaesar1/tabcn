@@ -22,7 +22,7 @@ export function HeroInstall({ id, title }: { id: string; title: string }) {
   const path = url.slice(host.length, url.length - file.length);
 
   return (
-    <div className="rise mt-6 w-[min(600px,100%)] text-left [--rise-delay:180ms] sm:mt-7">
+    <div className="rise mt-8 w-[min(560px,100%)] text-left [--rise-delay:180ms]">
       <div className="flex h-8 items-center justify-between gap-2 pl-1 pointer-coarse:h-10">
         <Link
           href={designPath(id)}
@@ -37,7 +37,7 @@ export function HeroInstall({ id, title }: { id: string; title: string }) {
       <figure
         aria-labelledby="hero-install-label"
         onCopy={keepOneLine}
-        className="cmd-card mt-1.5 grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-2 bg-surface py-3 pr-2 pl-3.5 font-mono text-[12px] leading-5 shadow-raised sm:pl-4 sm:text-[13px]"
+        className="cmd-card mt-1.5 grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-2 bg-card py-3 pr-2 pl-3.5 font-mono text-[12px] leading-5 shadow-[inset_0_0_0_1px_var(--card-border)] sm:pl-4 sm:text-[13px]"
       >
         <span aria-hidden className="select-none text-muted">
           $
