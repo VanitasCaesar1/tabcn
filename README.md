@@ -6,9 +6,9 @@
 
 Animated tab bars for React Native and Expo, in the style of shadcn/ui: install a small foundation package, then copy the design you want into your app and make it yours.
 
-**[Browse all 49 designs →](https://vanitascaesar1.github.io/tabcn/)** Each one opens in Expo Go from a QR code and plays on a phone in the page.
+**[Browse all 50 designs →](https://vanitascaesar1.github.io/tabcn/)** Each one opens in Expo Go from a QR code and plays on a phone in the page.
 
-> **Status: 0.x.** All 49 designs (41 tab bars and 8 panels) and the foundation are built. The foundation is on npm as [`react-native-tabcn`](https://www.npmjs.com/package/react-native-tabcn) (npm turned down the bare name `tabcn` as too close to `table`). Before 1.0, a minor release may change its API; the changelog says so when it does.
+> **Status: 0.x.** All 50 designs (41 tab bars and 9 panels) and the foundation are built. The foundation is on npm as [`react-native-tabcn`](https://www.npmjs.com/package/react-native-tabcn) (npm turned down the bare name `tabcn` as too close to `table`). Before 1.0, a minor release may change its API; the changelog says so when it does.
 
 ## How it works
 
@@ -61,7 +61,7 @@ The docs are on the site:
 - [Using with PanelUI](https://vanitascaesar1.github.io/tabcn/docs/panelui/): designs that follow a PanelUI theme
 - Guides: [Panels](https://vanitascaesar1.github.io/tabcn/docs/panels/) · [Sheets](https://vanitascaesar1.github.io/tabcn/docs/sheets/) · [Minimize on scroll](https://vanitascaesar1.github.io/tabcn/docs/minimize-on-scroll/) · [Companions](https://vanitascaesar1.github.io/tabcn/docs/companions/) · [Toasts](https://vanitascaesar1.github.io/tabcn/docs/toasts/) · [Sub-tabs](https://vanitascaesar1.github.io/tabcn/docs/sub-tabs/) · [Sheet navigation](https://vanitascaesar1.github.io/tabcn/docs/sheet-navigation/) · [Scrubbing](https://vanitascaesar1.github.io/tabcn/docs/scrubbing/) · [Live tabs](https://vanitascaesar1.github.io/tabcn/docs/live-tabs/)
 
-## The 49 designs
+## The 50 designs
 
 Every design animates: tap to see the active tab move. Click one to open its page, with the install command and a QR code for Expo Go.
 
@@ -93,13 +93,14 @@ Every design animates: tap to see the active tab move. Click one to open its pag
 
 ### Panels
 
-Each is shown with the tab bar it pairs with in the example app. Mini Player, Context Tray, Bar Sheet, Companion Chip, Filter Chips and Slider Sheet work with any tabcn bar; Quick Create needs a bar whose + button is marked with `usePanelAnchor('action')` (Labeled + Plus, Pill + Plus, Glow Glass, Segment + Search and Center CTA are), and Sub-Tabs a bar whose tab calls `useSubTabs(name)`.
+Each is shown with the tab bar it pairs with in the example app. Mini Player, Context Tray, Bar Sheet, Companion Chip, Filter Chips, Slider Sheet and Selection Toolbar work with any tabcn bar; Quick Create needs a bar whose + button is marked with `usePanelAnchor('action')` (Labeled + Plus, Pill + Plus, Glow Glass, Segment + Search and Center CTA are), and Sub-Tabs a bar whose tab calls `useSubTabs(name)`.
 
 <table>
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/mini-player/"><img src="assets/readme/mini-player.gif" width="260" alt="Mini Player panel"></a><br><b>Mini Player</b><br><sub> · with Soft Pill</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/context-tray/"><img src="assets/readme/context-tray.gif" width="400" alt="Context Tray panel"></a><br><b>Context Tray</b><br><sub> · with Glass Expand</sub></td></tr>
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/quick-create/"><img src="assets/readme/quick-create.gif" width="300" alt="Quick Create panel"></a><br><b>Quick Create</b><br><sub> · with Labeled + Plus</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/bar-sheet/"><img src="assets/readme/bar-sheet.gif" width="200" alt="Bar Sheet panel"></a><br><b>Bar Sheet</b><br><sub>with Soft Pill</sub></td></tr>
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/companion-chip/"><img src="assets/readme/companion-chip.gif" width="300" alt="Companion Chip panel"></a><br><b>Companion Chip</b><br><sub>with Split Search</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/sub-tabs/"><img src="assets/readme/sub-tabs.gif" width="300" alt="Sub-Tabs panel"></a><br><b>Sub-Tabs</b><br><sub>with a Soft Pill copy</sub></td></tr>
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/filter-chips/"><img src="assets/readme/filter-chips.gif" width="300" alt="Filter Chips panel"></a><br><b>Filter Chips</b><br><sub>with Soft Pill</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/slider-sheet/"><img src="assets/readme/slider-sheet.gif" width="300" alt="Slider Sheet panel"></a><br><b>Slider Sheet</b><br><sub>with Chip Rail</sub></td></tr>
+<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/selection-toolbar/"><img src="assets/readme/selection-toolbar.gif" width="300" alt="Selection Toolbar panel"></a><br><b>Selection Toolbar</b><br><sub>with Soft Pill</sub></td><td></td></tr>
 </table>
 
 ## Repository layout

@@ -37,8 +37,9 @@ export const guides: Record<string, Guide> = {
       <>
         <DocSection section={{ id: 'set-up', title: 'Set up' }}>
           <p>
-            <Design id="mini-player">Mini Player</Design> and{' '}
-            <Design id="context-tray">Context Tray</Design> work with any tabcn bar.{' '}
+            <Design id="mini-player">Mini Player</Design>,{' '}
+            <Design id="context-tray">Context Tray</Design> and{' '}
+            <Design id="selection-toolbar">Selection Toolbar</Design> work with any tabcn bar.{' '}
             <Design id="quick-create">Quick Create</Design> slides out of the bar&rsquo;s +
             button, so it needs a bar that marks that button with{' '}
             <Code>usePanelAnchor(&apos;action&apos;)</Code>: Center CTA, Glow Glass, Labeled + Plus,
@@ -101,6 +102,11 @@ function MyPlayer() {
             A screen can put its own controls in the bar&rsquo;s place while it is focused, with{' '}
             <Code>{'useTabBarOverride(<ContextTray … />)'}</Code> from{' '}
             <Code>react-native-tabcn/expo-router</Code>.
+          </p>
+          <p>
+            Pass <Code>null</Code> and the tabs come back, so an override can follow the
+            screen&rsquo;s state. <Design id="selection-toolbar">Selection Toolbar</Design> is set
+            only while the screen is selecting: <Code>{'useTabBarOverride(selecting ? <SelectionToolbar … /> : null)'}</Code>.
           </p>
         </DocSection>
         <DocSection section={{ id: 'a-bar-built-on-a-panel', title: 'A bar built on a panel' }}>

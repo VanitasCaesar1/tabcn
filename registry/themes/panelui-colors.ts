@@ -327,6 +327,14 @@ export const panelUIColorMaps = {
     foreground: 'popover-foreground',
     muted: 'muted-foreground',
   },
+  'selection-toolbar': {
+    surface: 'surface',
+    border: 'border',
+    foreground: 'foreground',
+    destructive: 'destructive',
+    control: 'secondary',
+    controlPressed: 'surface-tertiary',
+  },
   'side-rail': {
     background: 'surface',
     indicator: 'surface-tertiary',

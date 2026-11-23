@@ -1,6 +1,7 @@
 /**
  * The parts of the example app's demos that need hooks: panel demos (Mini Player, Context
- * Tray, Quick Create, Bar Sheet, Companion Chip, Sub-Tabs, Slider Sheet) and the feeds behind Section Sheet
+ * Tray, Quick Create, Bar Sheet, Companion Chip, Sub-Tabs, Slider Sheet, Selection Toolbar) and
+ * the feeds behind Section Sheet
  * and Live Tabs. Kept out of demos.tsx,
  * whose top-level object keys are read as design ids by scripts/check-registry.ts.
  *
@@ -33,6 +34,8 @@ import {
   QuickCreate as QuickCreateDesign,
   useQuickCreate,
 } from '@registry/quick-create/quick-create';
+import * as SelectionToolbarIcons from '@registry/selection-toolbar/icons';
+import { SelectionToolbar as SelectionToolbarDesign } from '@registry/selection-toolbar/selection-toolbar';
 import {
   SliderSheet as SliderSheetDesign,
   useSliderSheet,
@@ -67,7 +70,7 @@ import {
 import { useTabBarOverride as useExpoRouterOverride } from 'react-native-tabcn/expo-router';
 import { useTabBarOverride as useReactNavigationOverride } from 'react-native-tabcn/react-navigation';
 import { themed } from '@/panel-theme';
-import { SceneActionsProvider } from '@/scenes/kit';
+import { SceneActionsProvider, type SceneSelect } from '@/scenes/kit';
 
 // Each design in the PanelUI theme picked on the demo screen (src/panel-theme.tsx).
 const BarSheet = themed('bar-sheet', BarSheetDesign);
@@ -77,6 +80,7 @@ const LabeledPlus = themed('labeled-plus', LabeledPlusDesign);
 const MiniPlayer = themed('mini-player', MiniPlayerDesign);
 const QuickCreate = themed('quick-create', QuickCreateDesign);
 const SliderSheet = themed('slider-sheet', SliderSheetDesign);
+const SelectionToolbar = themed('selection-toolbar', SelectionToolbarDesign);
 const SubTabs = themed('sub-tabs', SubTabsDesign);
 
 /**
@@ -293,6 +297,72 @@ function PlanTray({ adapter, goToFirstTab }: DemoExtraProps) {
     <ExpoRouterOverride element={tray} />
   ) : (
     <ReactNavigationOverride element={tray} />
+  );
+}
+
+// Selection Toolbar (paired with Soft Pill) --------------------------------------------------
+
+const NONE: ReadonlySet<string> = new Set();
+
+/**
+ * Select mode on the files scene's list: Select, or a long-press on a file, turns it on and taps
+ * check files in and out, while the toolbar stands in the bar's place. Share and Move end
+ * selection; Delete also takes the files out of the list.
+ */
+export function SelectionToolbarExtra({ adapter, children }: DemoExtraProps) {
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState(NONE);
+  const [removed, setRemoved] = useState(NONE);
+  const end = () => {
+    setSelecting(false);
+    setSelected(NONE);
+  };
+  const select: SceneSelect = {
+    selecting,
+    selected,
+    removed,
+    setSelecting: (on) => (on ? setSelecting(true) : end()),
+    toggle: (name) =>
+      setSelected((current) => {
+        const next = new Set(current);
+        if (next.has(name)) next.delete(name);
+        else next.add(name);
+        return next;
+      }),
+    hold: (name) => {
+      setSelecting(true);
+      setSelected(new Set([name]));
+    },
+  };
+  const toolbar = selecting ? (
+    <SelectionToolbar
+      count={selected.size}
+      actions={[
+        { id: 'share', label: 'Share', icon: SelectionToolbarIcons.ShareIcon, onPress: end },
+        { id: 'move', label: 'Move', icon: SelectionToolbarIcons.MoveIcon, onPress: end },
+        {
+          id: 'delete',
+          label: 'Delete',
+          icon: SelectionToolbarIcons.DeleteIcon,
+          destructive: true,
+          onPress: () => {
+            setRemoved((current) => new Set([...current, ...selected]));
+            end();
+          },
+        },
+      ]}
+      onDone={end}
+    />
+  ) : null;
+  return (
+    <>
+      {adapter === 'expo-router' ? (
+        <ExpoRouterOverride element={toolbar} />
+      ) : (
+        <ReactNavigationOverride element={toolbar} />
+      )}
+      <SceneActionsProvider value={{ select }}>{children}</SceneActionsProvider>
+    </>
   );
 }
 

@@ -1,8 +1,20 @@
 /**
  * A cloud drive: search, recent files with thumbnails, folders, a file list and storage used.
  * File names and people are invented.
+ *
+ * Given a `select` action (Selection Toolbar's demo), the file list comes first on every tab and
+ * can be selected: its Select button, or a long-press on a file, turns select mode on, and taps
+ * then check files in and out.
  */
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  Easing,
+  ReduceMotion,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import {
   Avatar,
@@ -15,9 +27,11 @@ import {
   RoundButton,
   type SceneProps,
   SceneScroll,
+  type SceneSelect,
   SearchField,
   SectionHeader,
   scenePalette,
+  useSceneActions,
 } from './kit';
 import { AVATARS, FILES, POSTS } from './photos';
 
@@ -47,17 +61,24 @@ const LIST = [
 
 export function FilesScene(props: SceneProps) {
   const palette = scenePalette('files', props.scheme, props.themed);
+  const select = useSceneActions()?.select;
+  const search = <SearchField key="search" label="Search in Drive" palette={palette} />;
   return (
     <SceneScroll
       scene={props}
       palette={palette}
       gap={26}
       accessory={<Avatar source={AVATARS[1]} size={36} palette={palette} />}
-      lead={<SearchField label="Search in Drive" palette={palette} />}
+      // A list to select from stays first, so it is in view on every tab.
+      lead={
+        select
+          ? [search, <SelectableFiles key="files" palette={palette} select={select} />]
+          : search
+      }
       sections={[
         <Recent key="recent" palette={palette} />,
         <Folders key="folders" palette={palette} />,
-        <Files key="files" palette={palette} />,
+        ...(select ? [] : [<Files key="files" palette={palette} />]),
       ]}
       trail={<Storage palette={palette} />}
     />
@@ -139,6 +160,95 @@ function Files({ palette }: { palette: Palette }) {
   );
 }
 
+/**
+ * The file list in select mode's reach: Select (or a long-press on a file) turns it on, and each
+ * file then reads as a checkbox with a check at its end in place of its owner.
+ */
+function SelectableFiles({ palette, select }: { palette: Palette; select: SceneSelect }) {
+  const files = LIST.filter((file) => !select.removed.has(file.name));
+  return (
+    <View>
+      <View style={styles.selectHeader}>
+        <Text style={[styles.selectTitle, { color: palette.text }]}>All files</Text>
+        <Pressable
+          role="button"
+          hitSlop={10}
+          onPress={() => select.setSelecting(!select.selecting)}
+          style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+        >
+          <Text style={[styles.selectButton, { color: palette.accent }]}>
+            {select.selecting ? 'Done' : 'Select'}
+          </Text>
+        </Pressable>
+      </View>
+      <View style={[styles.card, { backgroundColor: palette.surface }]}>
+        {files.map((file, i) => {
+          const checked = select.selected.has(file.name);
+          return (
+            <View key={file.name}>
+              <Pressable
+                role={select.selecting ? 'checkbox' : 'button'}
+                accessibilityLabel={file.name}
+                accessibilityState={select.selecting ? { checked } : undefined}
+                accessibilityHint={select.selecting ? undefined : 'Hold to select'}
+                onPress={select.selecting ? () => select.toggle(file.name) : undefined}
+                onLongPress={select.selecting ? undefined : () => select.hold(file.name)}
+                delayLongPress={350}
+                style={({ pressed }) => [
+                  styles.fileRow,
+                  pressed && { backgroundColor: palette.background },
+                ]}
+              >
+                <View style={[styles.kind, { borderColor: palette.subtle }]}>
+                  <Text style={[styles.kindText, { color: palette.subtle }]}>{file.kind}</Text>
+                </View>
+                <View style={styles.flex}>
+                  <Text numberOfLines={1} style={[styles.name, { color: palette.text }]}>
+                    {file.name}
+                  </Text>
+                  <Text style={[styles.meta, num, { color: palette.subtle }]}>{file.meta}</Text>
+                </View>
+                {select.selecting ? (
+                  <Check checked={checked} palette={palette} />
+                ) : (
+                  <Avatar source={AVATARS[file.by]} size={24} palette={palette} />
+                )}
+              </Pressable>
+              {i < files.length - 1 ? <Hairline palette={palette} inset={64} /> : null}
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+/** A round check: an empty ring, or filled with a tick that pops in when it turns on. */
+function Check({ checked, palette }: { checked: boolean; palette: Palette }) {
+  const on = useSharedValue(checked ? 1 : 0);
+  useEffect(() => {
+    // Turning on answers with a small pop; turning off is quiet.
+    on.value = checked
+      ? withTiming(1, {
+          duration: 180,
+          easing: Easing.out(Easing.cubic),
+          reduceMotion: ReduceMotion.System,
+        })
+      : 0;
+  }, [checked, on]);
+  const fill = useAnimatedStyle(() => ({
+    opacity: on.value,
+    transform: [{ scale: 0.6 + 0.4 * on.value }],
+  }));
+  return (
+    <View style={[styles.check, { borderColor: palette.subtle }]}>
+      <Animated.View style={[styles.checkFill, { backgroundColor: palette.accent }, fill]}>
+        <Glyph d={ICONS.check} color={palette.surface} size={16} strokeWidth={2.4} />
+      </Animated.View>
+    </View>
+  );
+}
+
 function Storage({ palette }: { palette: Palette }) {
   return (
     <View style={[styles.card, styles.storage, { backgroundColor: palette.surface }]}>
@@ -198,4 +308,32 @@ const styles = StyleSheet.create({
   track: { height: 6, borderRadius: 3, overflow: 'hidden' },
   fill: { width: '38%', height: 6, borderRadius: 3 },
   storageRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // SectionHeader's look, with a button at its end.
+  selectHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  selectTitle: { fontSize: 20, fontWeight: '700', letterSpacing: 0.2 },
+  selectButton: { fontSize: 15, fontWeight: '600' },
+  check: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkFill: {
+    position: 'absolute',
+    top: -1.5,
+    left: -1.5,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

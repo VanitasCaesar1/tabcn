@@ -81,6 +81,7 @@ export const DESIGN_TAGS: Record<string, DesignTags> = {
   'quick-create': { style: 'minimal', scene: 'social', scheme: 'light' },
   'bar-sheet': { style: 'minimal', scene: 'social', scheme: 'light' },
   'filter-chips': { style: 'dark', scene: 'shop', scheme: 'dark' },
+  'selection-toolbar': { style: 'minimal', scene: 'files', scheme: 'light' },
   'companion-chip': { style: 'minimal', scene: 'shop', scheme: 'light' },
   'sub-tabs': { style: 'minimal', scene: 'music', scheme: 'light' },
   'slider-sheet': { style: 'dark', scene: 'finance', scheme: 'dark' },

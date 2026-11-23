@@ -45,6 +45,24 @@ export interface SceneActions {
   holding?: SceneAction;
   /** Shop and maps: the search field takes typing (`label` is its accessibility label). */
   search?: { label: string };
+  /** Files: the file list can be selected, from its Select button or a long-press on a file. */
+  select?: SceneSelect;
+}
+
+/** Select mode on the files scene's list, kept by the demo (Selection Toolbar). */
+export interface SceneSelect {
+  /** Select mode is on: a tap on a file adds it or takes it out. */
+  selecting: boolean;
+  /** Names of the selected files. */
+  selected: ReadonlySet<string>;
+  /** Files taken out of the list (the demo's Delete). */
+  removed: ReadonlySet<string>;
+  /** The list's Select and Done button. */
+  setSelecting: (on: boolean) => void;
+  /** Adds a file to the selection or takes it out. */
+  toggle: (name: string) => void;
+  /** A long-press on a file: select mode on, with that file selected. */
+  hold: (name: string) => void;
 }
 
 const SceneActionsContext = createContext<SceneActions | null>(null);
@@ -376,6 +394,7 @@ export const ICONS = {
   camera:
     'M4 8.5a2 2 0 0 1 2-2h2l1.5-2h5L16 6.5h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2ZM12 16.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z',
   arrowUp: 'M12 19V5M6 11l6-6 6 6',
+  check: 'M6.5 12.5l3.5 3.5 7.5-8',
   phone:
     'M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2Z',
   video:

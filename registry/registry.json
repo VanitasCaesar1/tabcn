@@ -957,6 +957,25 @@
       ]
     },
     {
+      "name": "selection-toolbar",
+      "type": "registry:item",
+      "title": "Selection Toolbar",
+      "description": "Panel: while a screen is selecting, the tab bar turns into an action bar for the selection, a rolling count, icon actions with short labels and a done button, and turns back when selection ends (useTabBarOverride). Needs a TabBarProvider.",
+      "dependencies": ["react-native-tabcn", "expo-haptics", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/selection-toolbar/selection-toolbar.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/selection-toolbar.tsx"
+        },
+        {
+          "path": "registry/designs/selection-toolbar/icons.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/selection-toolbar-icons.tsx"
+        }
+      ]
+    },
+    {
       "name": "companion-chip",
       "type": "registry:item",
       "title": "Companion Chip",

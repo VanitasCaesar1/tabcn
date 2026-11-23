@@ -154,6 +154,7 @@ const PANELS_WITH_TESTS = [
   'sub-tabs',
   'filter-chips',
   'slider-sheet',
+  'selection-toolbar',
 ];
 
 test('every panel has a smoke test', () => {
@@ -380,6 +381,101 @@ describe('panels', () => {
       await fireEvent.press(screen.getByRole('button', { name: 'Close' }));
     });
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+// Selection Toolbar ------------------------------------------------------------------------
+
+const selectionToolbar =
+  require('../../../../registry/designs/selection-toolbar/selection-toolbar') as {
+    SelectionToolbar: ComponentType<Record<string, unknown>>;
+  };
+
+/** A screen in select mode: the toolbar as its override, with three actions. */
+function Selecting({
+  count,
+  onMove = () => {},
+  onDone = () => {},
+}: {
+  count: number;
+  onMove?: () => void;
+  onDone?: () => void;
+}) {
+  const actions = [
+    { id: 'share', label: 'Share', icon: () => null, onPress: () => {} },
+    { id: 'move', label: 'Move', icon: () => null, onPress: onMove },
+    { id: 'delete', label: 'Delete', icon: () => null, onPress: () => {}, destructive: true },
+  ];
+  return (
+    <PanelApp bar={<TestBar placement="floating" />}>
+      <OverrideScreen
+        element={
+          <selectionToolbar.SelectionToolbar
+            count={count}
+            actions={actions}
+            onDone={onDone}
+            haptics={false}
+          />
+        }
+      />
+    </PanelApp>
+  );
+}
+
+describe('selection-toolbar', () => {
+  const press = (target: Parameters<typeof fireEvent.press>[0]) =>
+    act(async () => {
+      await fireEvent.press(target);
+    });
+
+  it('shows the count in the bar’s place; actions are off until something is selected', async () => {
+    const onMove = jest.fn();
+    const view = await render(<Selecting count={0} onMove={onMove} />);
+    expect(screen.getByLabelText('0 selected')).toBeTruthy();
+    const move = () => screen.getByRole('button', { name: 'Move' });
+    expect(move().props.accessibilityState).toEqual(expect.objectContaining({ disabled: true }));
+    await press(move());
+    expect(onMove).not.toHaveBeenCalled();
+
+    await view.rerender(<Selecting count={3} onMove={onMove} />);
+    expect(screen.getByLabelText('3 selected')).toBeTruthy();
+    expect(move().props.accessibilityState?.disabled).toBeFalsy();
+    await press(move());
+    expect(onMove).toHaveBeenCalledTimes(1);
+  });
+
+  it('ends selection from Done, the escape gesture and Android back', async () => {
+    const handlers: ((event: never) => boolean | null | undefined)[] = [];
+    const add = jest.spyOn(BackHandler, 'addEventListener').mockImplementation((_e, handler) => {
+      handlers.push(handler);
+      return {
+        remove: () => {
+          handlers.splice(handlers.indexOf(handler), 1);
+        },
+      };
+    });
+    const onDone = jest.fn();
+    await render(<Selecting count={2} onDone={onDone} />);
+    const done = screen.getByRole('button', { name: 'Done' });
+    await press(done);
+    expect(onDone).toHaveBeenCalledTimes(1);
+
+    // The screen-reader escape gesture reaches the toolbar from the element in focus.
+    let toolbar: ReturnType<typeof screen.getByRole> | null = done;
+    while (toolbar && !toolbar.props.onAccessibilityEscape) toolbar = toolbar.parent;
+    await act(async () => toolbar?.props.onAccessibilityEscape());
+    expect(onDone).toHaveBeenCalledTimes(2);
+
+    let consumed: boolean | null | undefined;
+    await act(async () => {
+      for (const handler of [...handlers].reverse()) {
+        consumed = handler(undefined as never);
+        if (consumed) return;
+      }
+    });
+    expect(consumed).toBe(true);
+    expect(onDone).toHaveBeenCalledTimes(3);
+    add.mockRestore();
   });
 });
 

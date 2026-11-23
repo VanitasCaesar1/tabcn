@@ -104,6 +104,21 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
     { tab: 0 },
     { wait: 1500 },
   ],
+  // Select turns the pill into the toolbar (actions dimmed at 0); three files roll the count
+  // 1, 2, 3; Move ends selection and the tabs come back.
+  'selection-toolbar': [
+    { wait: 600 },
+    { tap: 'Select' },
+    { wait: 1000 },
+    { tap: 'Lease agreement.pdf' },
+    { wait: 600 },
+    { tap: 'Budget 2027.xlsx' },
+    { wait: 600 },
+    { tap: 'Launch film v3.mov' },
+    { wait: 1200 },
+    { tap: 'Move' },
+    { wait: 1600 },
+  ],
   // The sheet's sections are its tabs.
   'section-sheet': [
     { wait: 800 },
