@@ -14,7 +14,7 @@
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import {
   I18nManager,
   type LayoutChangeEvent,
@@ -94,11 +94,11 @@ const PASS_WIDTH = 1.1;
 const PASS_FROM = 0.1;
 const PASS_TO = 0.86;
 
-const DRAW_MS = 340;
+const DRAW_MS = 460;
 const WIPE_MS = Math.round(DRAW_MS * 0.7);
 const draw = {
   duration: DRAW_MS,
-  easing: Easing.bezier(0.33, 1, 0.68, 1),
+  easing: Easing.bezier(0.25, 0.1, 0.25, 1),
   reduceMotion: ReduceMotion.System,
 };
 const wipe = {
@@ -182,7 +182,7 @@ function Tab({
       style={styles.tab}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      <View>
+      <View style={styles.labelBox}>
         <Animated.Text
           onLayout={onLabelLayout}
           numberOfLines={1}
@@ -198,7 +198,9 @@ function Tab({
             <Stroke width={width} seed={tab.index} color={colors.ink} ink={stroke} />
           ) : null}
         </View>
-        <Badge badge={tab.badge} color={colors.badge} fontFamily={fontFamily} />
+        {width > 0 ? (
+          <Badge badge={tab.badge} at={width} color={colors.badge} fontFamily={fontFamily} />
+        ) : null}
       </View>
     </TabButton>
   );
@@ -245,7 +247,7 @@ function dashOffset(ink: number, dash: number) {
   return ink >= 0 ? ink * dash : (2 + ink) * dash;
 }
 
-function Stroke({
+const Stroke = memo(function Stroke({
   width,
   seed,
   color,
@@ -292,7 +294,7 @@ function Stroke({
       />
     </Svg>
   );
-}
+});
 
 /** A repeatable value in -1..1 for a tab (`seed`) and a point along its stroke. */
 function wobble(seed: number, i: number) {
@@ -376,10 +378,13 @@ const badgeOut = FadeOut.duration(BADGE_FADE_MS)
  */
 function Badge({
   badge,
+  at,
   color,
   fontFamily,
 }: {
   badge: TabItem['badge'];
+  /** The label's width: the badge hangs just after it. */
+  at: number;
   color: string;
   fontFamily: string | undefined;
 }) {
@@ -392,7 +397,7 @@ function Badge({
       pointerEvents="none"
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
-      style={styles.badge}
+      style={[styles.badge, { start: at + 2 }]}
     >
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={[styles.superscript, text]} />
@@ -411,12 +416,14 @@ const styles = StyleSheet.create({
   hairline: { height: StyleSheet.hairlineWidth },
   bar: { height: BAR, paddingHorizontal: 8 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 4 },
+  // As wide as the label, so the stroke and the badge hang off the label, not the tab.
+  labelBox: { alignSelf: 'center' },
   label: { fontSize: LABEL_SIZE, lineHeight: 21, letterSpacing: 0.1, includeFontPadding: false },
   strokeBox: { height: STROKE_BOX, marginTop: 1 },
   // In the flow under the label, running OVERHANG past both ends.
   stroke: { marginHorizontal: -OVERHANG },
   // Hangs after the label's end so the label stays centred in its tab.
-  badge: { position: 'absolute', top: 1, start: '100%', marginStart: 2 },
+  badge: { position: 'absolute', top: 1 },
   superscript: { fontSize: 11, lineHeight: 13, fontVariant: ['tabular-nums'] },
   dot: { width: 5, height: 5, borderRadius: 2.5, marginTop: 3 },
 });

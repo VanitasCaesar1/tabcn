@@ -723,7 +723,10 @@ describe('ink-underline', () => {
     expect(screen.getByRole('tab', { name: 'Today, tab, 1 of 4' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Plan, 2, tab, 2 of 4' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'You, tab, 4 of 4' })).toBeTruthy();
-    // The count is drawn, hidden from screen readers: the tab's label already reads it.
+    // The count is drawn once the label has a width (it hangs just after the label), hidden
+    // from screen readers: the tab's label already reads it.
+    expect(screen.queryByText('2', { includeHiddenElements: true })).toBeNull();
+    await measured('Plan', 34);
     expect(screen.queryByText('2')).toBeNull();
     expect(screen.getByText('2', { includeHiddenElements: true })).toBeTruthy();
   });
