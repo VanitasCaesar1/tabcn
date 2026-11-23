@@ -8,7 +8,9 @@
  * It minimizes on scroll, as iOS 26 bars do: on a screen that uses `useMinimizeOnScroll()`
  * (under a `TabBarProvider`), scrolling down narrows the pill to a circle holding only the
  * active tab's icon, while the search circle stays; scrolling up, or tapping the minimized
- * circle (`useRestoreTabBar`, no tab change), brings the full pill back.
+ * circle (`useRestoreTabBar`, no tab change), brings the full pill back. The pill narrows by
+ * transforms only: its end slides toward its start under a fixed clip, so no frame lays it out,
+ * redraws its shadow or resizes its blur.
  *
  * The glass is Apple's Liquid Glass on iOS 26 and later, a frosted blur on older iOS and on
  * the web, and a translucent white tint on Android (no blur there). Force one with `material`.
@@ -176,12 +178,20 @@ export function SplitSearch({
   const bottom = Math.max(BOTTOM, Platform.OS === 'ios' ? insets.bottom - 13.5 : insets.bottom + 8);
   const shadow = { boxShadow: `0 3px 20px ${colors.shadow}` };
 
-  const pillStyle = useAnimatedStyle(() => ({
-    width: interpolate(minimized.value, [0, 1], [pillWidth, BAR]),
+  // The pill keeps its full width in layout and narrows toward its start edge (the left, or
+  // the right in RTL): its end travels `shrink` points, signed, and the minimized circle is
+  // centred `circleCenter` points from the pill's physical left.
+  const rtl = I18nManager.isRTL;
+  const shrink = (rtl ? 1 : -1) * (pillWidth - BAR);
+  const circleCenter = rtl ? pillWidth - BAR / 2 : BAR / 2;
+  // The tabs' clip moves with the pill's end edge.
+  const endStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: minimized.value * shrink }],
   }));
-  // The tabs keep their full-width places and slide, so the kept icon ends up centred.
+  // The tabs keep their full-width places and slide, so the kept icon ends up centred in the
+  // circle. They sit inside the moving clip, so its travel is taken back out.
   const rowStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: minimized.value * (BAR / 2 - keptCenter) }],
+    transform: [{ translateX: minimized.value * (circleCenter - keptCenter - shrink) }],
   }));
 
   return (
@@ -192,34 +202,53 @@ export function SplitSearch({
       style={styles.root}
     >
       <TabList style={styles.list}>
-        <Animated.View style={[styles.pill, shadow, pillStyle]}>
-          <Glass surface={surface} colors={colors} />
-          <View style={[StyleSheet.absoluteFill, styles.round, styles.clip]}>
-            <Animated.View style={[styles.row, PHYSICAL_LEFT, { width: pillWidth }, rowStyle]}>
-              <Capsule
-                kept={kept}
-                center={keptCenter}
-                pillWidth={pillWidth}
-                slot={slot}
-                // No pill tab is active while Search is, or while a hidden route is focused.
-                searchActive={(search?.focused ?? false) || activeIndex < 0}
-                minimized={minimized}
-                color={colors.capsule}
-                labelWidths={labelWidths}
-              />
-              {pillTabs.map((tab) => (
-                <PillTab
-                  key={tab.key}
-                  tab={tab}
-                  colors={colors}
-                  haptics={haptics}
-                  width={slot}
-                  kept={tab.index === kept}
-                  hidden={compact}
+        {/* While minimized, only the circle takes touches; the rest of the row passes them on. */}
+        <View
+          pointerEvents={compact ? 'box-none' : 'auto'}
+          style={[styles.pill, { width: pillWidth }]}
+        >
+          <PillSurface
+            surface={surface}
+            colors={colors}
+            width={pillWidth}
+            rtl={rtl}
+            shrink={shrink}
+            minimized={minimized}
+            shadow={shadow}
+          />
+          {/* Two clips keep the tabs inside the narrowing pill: this one holds the start edge
+              still, the one inside it moves with the end edge. */}
+          <View
+            pointerEvents={compact ? 'none' : 'auto'}
+            style={[StyleSheet.absoluteFill, styles.round, styles.clip]}
+          >
+            <Animated.View style={[StyleSheet.absoluteFill, styles.round, styles.clip, endStyle]}>
+              <Animated.View style={[styles.row, PHYSICAL_LEFT, { width: pillWidth }, rowStyle]}>
+                <Capsule
+                  kept={kept}
+                  center={keptCenter}
+                  pillWidth={pillWidth}
+                  slot={slot}
+                  // No pill tab is active while Search is, or while a hidden route is focused.
+                  searchActive={(search?.focused ?? false) || activeIndex < 0}
                   minimized={minimized}
+                  color={colors.capsule}
                   labelWidths={labelWidths}
                 />
-              ))}
+                {pillTabs.map((tab) => (
+                  <PillTab
+                    key={tab.key}
+                    tab={tab}
+                    colors={colors}
+                    haptics={haptics}
+                    width={slot}
+                    kept={tab.index === kept}
+                    hidden={compact}
+                    minimized={minimized}
+                    labelWidths={labelWidths}
+                  />
+                ))}
+              </Animated.View>
             </Animated.View>
           </View>
           {compact ? (
@@ -228,10 +257,10 @@ export function SplitSearch({
               accessibilityLabel={`${pillTabs[kept]?.label ?? 'Tabs'}, show all tabs`}
               onPress={restore}
               onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
-              style={[StyleSheet.absoluteFill, styles.round]}
+              style={styles.circle}
             />
           ) : null}
-        </Animated.View>
+        </View>
         {search ? (
           <SearchTab
             tab={search}
@@ -270,6 +299,68 @@ function Glass({ surface, colors }: { surface: Surface; colors: SplitSearchColor
       <View
         style={[StyleSheet.absoluteFill, styles.round, styles.rim, { borderColor: colors.rim }]}
       />
+    </View>
+  );
+}
+
+/**
+ * The pill's glass and shadow. Animating the pill's width laid it out, redrew its shadow and
+ * resized its blur on every frame, so it narrows by transforms only. Two fixed windows split it
+ * at the middle of the minimized circle: the start window shows the start of a short pill that
+ * never moves; the end window shows a full-width pill sliding toward the start beneath it. Each
+ * is a whole pill with its own rim and shadow, so both ends of the shape keep real edges, and
+ * where they meet both are plain straight-edged glass.
+ */
+function PillSurface({
+  surface,
+  colors,
+  width,
+  rtl,
+  shrink,
+  minimized,
+  shadow,
+}: {
+  surface: Surface;
+  colors: SplitSearchColors;
+  width: number;
+  rtl: boolean;
+  shrink: number;
+  minimized: SharedValue<number>;
+  shadow: { boxShadow: string };
+}) {
+  const slide = useAnimatedStyle(() => ({
+    transform: [{ translateX: minimized.value * shrink }],
+  }));
+  const half = BAR / 2;
+  const startWidth = Math.min(width, START_PILL);
+  // Physical frames (this layer is laid out left to right), in the pill's coordinates; each
+  // window runs SHADOW_ROOM past the pill's outer edges so the shadow shows there.
+  const startWindow = rtl
+    ? { left: width - half, width: half + SHADOW_ROOM }
+    : { left: -SHADOW_ROOM, width: SHADOW_ROOM + half };
+  const endWindow = rtl
+    ? { left: -SHADOW_ROOM, width: SHADOW_ROOM + width - half }
+    : { left: half, width: width - half + SHADOW_ROOM };
+  return (
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.ltr]}>
+      <View style={[styles.window, startWindow]}>
+        <View
+          style={[
+            styles.piece,
+            shadow,
+            { width: startWidth, left: rtl ? half - startWidth : SHADOW_ROOM },
+          ]}
+        >
+          <Glass surface={surface} colors={colors} />
+        </View>
+      </View>
+      <View style={[styles.window, endWindow]}>
+        <Animated.View
+          style={[styles.piece, shadow, { width, left: rtl ? SHADOW_ROOM : -half }, slide]}
+        >
+          <Glass surface={surface} colors={colors} />
+        </Animated.View>
+      </View>
     </View>
   );
 }
@@ -531,6 +622,13 @@ const STRIP = 100;
 
 /** The widest the tab pill grows, on a tablet or in landscape. */
 const MAX_PILL = 420;
+/** Room kept around the pill's pieces for their shadow (0 3px 20px reaches 23 pt below). */
+const SHADOW_ROOM = 24;
+/**
+ * Width of the pill held still at the start edge: long enough that where it meets the sliding
+ * pill, its glass and shadow are those of a straight edge, as the sliding pill's are.
+ */
+const START_PILL = BAR * 2;
 
 /** A colour as its opaque version and its alpha, read by React Native's own parser. */
 function splitAlpha(color: string): { color: string; alpha: number } {
@@ -555,6 +653,29 @@ const styles = StyleSheet.create({
     borderRadius: BAR / 2,
   },
   round: {
+    borderRadius: BAR / 2,
+  },
+  // One of the pill surface's two fixed clips; its frame's left and width are set in place.
+  window: {
+    position: 'absolute',
+    top: -SHADOW_ROOM,
+    height: BAR + SHADOW_ROOM * 2,
+    overflow: 'hidden',
+  },
+  // A whole pill (glass and shadow) inside a window; its left and width are set in place.
+  piece: {
+    position: 'absolute',
+    top: SHADOW_ROOM,
+    height: BAR,
+    borderRadius: BAR / 2,
+  },
+  // The minimized circle's button, at the pill's start edge.
+  circle: {
+    position: 'absolute',
+    top: 0,
+    start: 0,
+    width: BAR,
+    height: BAR,
     borderRadius: BAR / 2,
   },
   clip: {

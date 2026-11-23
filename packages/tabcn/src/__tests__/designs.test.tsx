@@ -7,7 +7,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ComponentType, ReactNode } from 'react';
-import { BackHandler, Text, View } from 'react-native';
+import { BackHandler, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import {
@@ -619,5 +619,78 @@ describe('filter-chips', () => {
     await press(screen.getByRole('button', { name: 'Apply' }));
     expect(onChange).not.toHaveBeenCalled();
     expect(controls.filters?.state).toBe('peek');
+  });
+});
+
+// Search Dock, Cart Pill ------------------------------------------------------------------
+
+const { SearchDock } = require('../../../../registry/designs/search-dock/search-dock') as {
+  SearchDock: ComponentType<Record<string, unknown>>;
+};
+const { CartPill } = require('../../../../registry/designs/cart-pill/cart-pill') as {
+  CartPill: ComponentType<Record<string, unknown>>;
+};
+
+function Bar({ children }: { children: ReactNode }) {
+  const { state } = makeState(3, 0, []);
+  return <TabBarStateProvider value={state}>{children}</TabBarStateProvider>;
+}
+
+describe('search-dock', () => {
+  // The Home tile: the first tab.
+  const tileShadow = () => {
+    const [home] = screen.getAllByRole('tab');
+    return StyleSheet.flatten(home?.props.style).boxShadow;
+  };
+
+  it('lifts its white tiles off a white page with a faint neutral shadow by default', async () => {
+    await render(
+      <Bar>
+        <SearchDock haptics={false} />
+      </Bar>,
+    );
+    expect(tileShadow()).toBe('0 1px 2px rgba(0, 0, 0, 0.1), 0 4px 16px rgba(0, 0, 0, 0.1)');
+  });
+
+  it('draws no shadow with `shadow: null` or a transparent one', async () => {
+    for (const shadow of [null, 'transparent']) {
+      await render(
+        <Bar>
+          <SearchDock haptics={false} colors={{ shadow }} />
+        </Bar>,
+      );
+      expect(tileShadow()).toBeUndefined();
+    }
+  });
+});
+
+describe('cart-pill', () => {
+  // expo-blur's native view, as the test renderer names it.
+  const blurs = () => {
+    let count = 0;
+    const walk = (node: ReturnType<typeof screen.toJSON>) => {
+      if (!node || typeof node === 'string') return;
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (/ExpoBlur/.test(node.type)) count += 1;
+      for (const child of node.children ?? []) walk(child as typeof node);
+    };
+    walk(screen.toJSON());
+    return count;
+  };
+
+  it('blurs the screen edge with one masked blur, not a stack of them', async () => {
+    // A solid pill, so the only blur is the edge's.
+    await render(
+      <Bar>
+        <CartPill material="tint" haptics={false} />
+      </Bar>,
+    );
+    expect(blurs()).toBe(1);
+    await render(
+      <Bar>
+        <CartPill material="tint" edgeBlur={false} haptics={false} />
+      </Bar>,
+    );
+    expect(blurs()).toBe(0);
   });
 });

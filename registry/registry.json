@@ -645,6 +645,7 @@
       "description": "Shop's frosted pill of four filled icons with a sliding white capsule, centred between an optional frosted back button and a purple cart button with the item count cut out of the basket, over a soft bottom-edge blur (Liquid Glass, blur fallback).",
       "dependencies": [
         "react-native-tabcn",
+        "@react-native-masked-view/masked-view",
         "expo-blur",
         "expo-glass-effect",
         "expo-haptics",
