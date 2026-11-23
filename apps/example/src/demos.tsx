@@ -132,6 +132,7 @@ const CHAT_LIGHT = '#ffffff';
 const CHAT_DARK = '#000000';
 const FILES_LIGHT = '#f6f6f7';
 const FILES_DARK = '#0b0b0c';
+const HEALTH_LIGHT = '#f5f5f3';
 // Composer Dock draws its own warm off-white chat app (composer-dock-demo.tsx).
 const COMPOSER_LIGHT = '#f8f8f6';
 
@@ -367,7 +368,7 @@ export const demos: Record<string, Demo> = {
     render: ({ onActionPress }) => (
       <CenterCta onActionPress={onActionPress} fontFamily="PatrickHand_400Regular" />
     ),
-    background: MUSIC_DARK,
+    background: MAPS_DARK,
     barHeight: 69,
     tabs: [
       { label: 'City', icon: CenterCtaIcons.BuildingIcon },
@@ -376,7 +377,7 @@ export const demos: Record<string, Demo> = {
   },
   'glass-expand': {
     render: () => <GlassExpand />,
-    background: SOCIAL_LIGHT,
+    background: HEALTH_LIGHT,
     barHeight: 82,
     tabs: [
       { label: 'Steps', icon: GlassExpandIcons.SneakerIcon },
@@ -433,7 +434,7 @@ export const demos: Record<string, Demo> = {
   },
   'glow-glass': {
     render: ({ onActionPress }) => <GlowGlassBar onActionPress={onActionPress} />,
-    background: MUSIC_DARK,
+    background: FINANCE_DARK,
     barHeight: 58.5,
     tabs: [
       { label: 'Home', icon: GlowGlassIcons.HomeIcon },
@@ -456,7 +457,7 @@ export const demos: Record<string, Demo> = {
   },
   'solid-dark': {
     render: () => <SolidDark />,
-    background: MUSIC_DARK,
+    background: SOCIAL_DARK,
     barHeight: 45,
     tabs: [
       { label: 'Home', icon: SolidDarkIcons.HomeIcon },
@@ -537,7 +538,7 @@ export const demos: Record<string, Demo> = {
   },
   'mono-type': {
     render: () => <MonoType />,
-    background: FINANCE_LIGHT,
+    background: HEALTH_LIGHT,
     barHeight: 73,
     tabs: [
       { label: 'Home', icon: MonoTypeIcons.HouseIcon },
@@ -889,7 +890,7 @@ export const demos: Record<string, Demo> = {
     // Paired with Glass Expand. The Plan tab's screen puts the tray in the bar's place.
     render: () => <GlassExpand />,
     extra: ContextTrayExtra,
-    background: MAPS_LIGHT,
+    background: HEALTH_LIGHT,
     barHeight: 82,
     tabs: [
       { label: 'Steps', icon: GlassExpandIcons.SneakerIcon },

@@ -16,7 +16,15 @@ export const STYLES: { id: DesignStyle; label: string; note: string }[] = [
 ];
 
 /** The app-like screen a design is shown in, and whether it uses the scene's light or dark palette. */
-export type SceneName = 'social' | 'music' | 'shop' | 'maps' | 'finance' | 'chat' | 'files';
+export type SceneName =
+  | 'social'
+  | 'music'
+  | 'shop'
+  | 'maps'
+  | 'finance'
+  | 'chat'
+  | 'files'
+  | 'health';
 export type SceneScheme = 'light' | 'dark';
 
 export interface DesignTags {
@@ -27,16 +35,16 @@ export interface DesignTags {
 
 /** Every design in catalog.ts has an entry (the registry check fails otherwise). */
 export const DESIGN_TAGS: Record<string, DesignTags> = {
-  'glass-expand': { style: 'glass', scene: 'social', scheme: 'light' },
+  'glass-expand': { style: 'glass', scene: 'health', scheme: 'light' },
   'top-notch': { style: 'minimal', scene: 'music', scheme: 'light' },
   'chip-rail': { style: 'dark', scene: 'finance', scheme: 'dark' },
   'sticker-tiles': { style: 'playful', scene: 'social', scheme: 'light' },
   'segment-search': { style: 'minimal', scene: 'maps', scheme: 'light' },
   'pill-plus': { style: 'minimal', scene: 'maps', scheme: 'light' },
-  'solid-dark': { style: 'dark', scene: 'music', scheme: 'dark' },
+  'solid-dark': { style: 'dark', scene: 'social', scheme: 'dark' },
   'outline-dark': { style: 'dark', scene: 'files', scheme: 'dark' },
   orbs: { style: 'glass', scene: 'maps', scheme: 'light' },
-  'center-cta': { style: 'dark', scene: 'music', scheme: 'dark' },
+  'center-cta': { style: 'dark', scene: 'maps', scheme: 'dark' },
   'soft-pill': { style: 'minimal', scene: 'social', scheme: 'light' },
   'dark-capsule': { style: 'dark', scene: 'social', scheme: 'dark' },
   'gradient-stickers': { style: 'playful', scene: 'social', scheme: 'light' },
@@ -45,8 +53,8 @@ export const DESIGN_TAGS: Record<string, DesignTags> = {
   'sliding-capsule': { style: 'glass', scene: 'finance', scheme: 'light' },
   'labeled-plus': { style: 'glass', scene: 'social', scheme: 'light' },
   'frosted-media': { style: 'glass', scene: 'music', scheme: 'dark' },
-  'glow-glass': { style: 'glass', scene: 'music', scheme: 'dark' },
-  'mono-type': { style: 'minimal', scene: 'finance', scheme: 'light' },
+  'glow-glass': { style: 'glass', scene: 'finance', scheme: 'dark' },
+  'mono-type': { style: 'minimal', scene: 'health', scheme: 'light' },
   'split-search': { style: 'glass', scene: 'shop', scheme: 'light' },
   'material-pill': { style: 'material', scene: 'files', scheme: 'light' },
   'side-rail': { style: 'material', scene: 'files', scheme: 'light' },
@@ -67,7 +75,7 @@ export const DESIGN_TAGS: Record<string, DesignTags> = {
   'account-dock': { style: 'glass', scene: 'chat', scheme: 'light' },
   'ambient-bar': { style: 'glass', scene: 'finance', scheme: 'dark' },
   'mini-player': { style: 'glass', scene: 'music', scheme: 'dark' },
-  'context-tray': { style: 'glass', scene: 'maps', scheme: 'light' },
+  'context-tray': { style: 'glass', scene: 'health', scheme: 'light' },
   'quick-create': { style: 'minimal', scene: 'social', scheme: 'light' },
   'bar-sheet': { style: 'minimal', scene: 'social', scheme: 'light' },
   'filter-chips': { style: 'dark', scene: 'shop', scheme: 'dark' },
