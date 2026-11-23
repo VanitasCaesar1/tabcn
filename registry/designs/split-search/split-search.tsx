@@ -23,6 +23,7 @@ import {
   I18nManager,
   Platform,
   Pressable,
+  processColor,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -335,8 +336,11 @@ function Capsule({
 
   // Two round caps and a stretched middle strip, moved by transforms only: animating `width`
   // laid the capsule out again on every frame.
+  // The capsule's colour is translucent: drawn in it, the caps and strip darkened where they
+  // overlap. They are drawn opaque and the alpha is applied once, to the whole capsule.
+  const { color: solid, alpha } = splitAlpha(color);
   const box = useAnimatedStyle(() => ({
-    opacity: ready.value ? shown.value * (1 - minimized.value) : 0,
+    opacity: ready.value ? alpha * shown.value * (1 - minimized.value) : 0,
   }));
   const startCap = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   const endCap = useAnimatedStyle(() => ({
@@ -350,9 +354,9 @@ function Capsule({
   }));
   return (
     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.ltr, box]}>
-      <Animated.View style={[styles.capsuleStrip, { backgroundColor: color }, strip]} />
-      <Animated.View style={[styles.capsule, { backgroundColor: color }, startCap]} />
-      <Animated.View style={[styles.capsule, { backgroundColor: color }, endCap]} />
+      <Animated.View style={[styles.capsuleStrip, { backgroundColor: solid }, strip]} />
+      <Animated.View style={[styles.capsule, { backgroundColor: solid }, startCap]} />
+      <Animated.View style={[styles.capsule, { backgroundColor: solid }, endCap]} />
     </Animated.View>
   );
 }
@@ -523,6 +527,14 @@ const STRIP = 100;
 
 /** The widest the tab pill grows, on a tablet or in landscape. */
 const MAX_PILL = 420;
+
+/** A colour as its opaque version and its alpha, read by React Native's own parser. */
+function splitAlpha(color: string): { color: string; alpha: number } {
+  const value = processColor(color);
+  if (typeof value !== 'number') return { color, alpha: 1 };
+  const alpha = ((value >>> 24) & 255) / 255;
+  return { color: `rgb(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255})`, alpha };
+}
 
 const styles = StyleSheet.create({
   // A text badge stays on one line and stops growing at this width, ending in an ellipsis.

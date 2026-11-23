@@ -66,7 +66,9 @@ export function BadgeCount({
     <View
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
-      style={[{ flexDirection: 'row', alignItems: 'center' }, style]}
+      // Left to right in every layout: a count reads "99+" in right-to-left apps too (it
+      // read "+99").
+      style={[{ flexDirection: 'row', alignItems: 'center', direction: 'ltr' }, style]}
     >
       {slots.map(({ char, slot }) => (
         <Digit

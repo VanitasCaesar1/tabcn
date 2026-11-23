@@ -24,7 +24,15 @@
  */
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
-import { ScrollView, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import {
+  processColor,
+  ScrollView,
+  type StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -439,7 +447,10 @@ function GrowingPill({
   color: string;
   opacity: SharedValue<number>;
 }) {
-  const box = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  // Drawn opaque with the alpha applied once: in a translucent colour (a theme's), the caps
+  // and strip would darken where they overlap.
+  const { color: solid, alpha } = splitAlpha(color);
+  const box = useAnimatedStyle(() => ({ opacity: alpha * opacity.value }));
   const cap = (side: -1 | 1) => () => {
     'worklet';
     const w = Math.max(0, width.value);
@@ -462,7 +473,7 @@ function GrowingPill({
     width: height,
     height,
     borderRadius: height / 2,
-    backgroundColor: color,
+    backgroundColor: solid,
   };
   return (
     <Animated.View
@@ -477,7 +488,7 @@ function GrowingPill({
             left: 0,
             width: maxWidth,
             height,
-            backgroundColor: color,
+            backgroundColor: solid,
           },
           strip,
         ]}
@@ -486,6 +497,14 @@ function GrowingPill({
       <Animated.View style={[capStyle, end]} />
     </Animated.View>
   );
+}
+
+/** A colour as its opaque version and its alpha, read by React Native's own parser. */
+function splitAlpha(color: string): { color: string; alpha: number } {
+  const value = processColor(color);
+  if (typeof value !== 'number') return { color, alpha: 1 };
+  const alpha = ((value >>> 24) & 255) / 255;
+  return { color: `rgb(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255})`, alpha };
 }
 
 const styles = StyleSheet.create({

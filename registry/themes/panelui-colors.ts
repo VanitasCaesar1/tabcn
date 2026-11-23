@@ -333,7 +333,7 @@ export const panelUIColorMaps = {
   },
   'sliding-capsule': {
     background: 'surface',
-    glassTint: ['surface', 0.55],
+    glassTint: ['surface', 0.85],
     capsule: 'surface-tertiary',
     foreground: 'foreground',
     rim: 'border',

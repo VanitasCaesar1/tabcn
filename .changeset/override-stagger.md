@@ -15,3 +15,4 @@ Fixes:
 - The indicator appears in place, instead of springing from a stale spot, after a hidden route was focused.
 - React Navigation adapter: `tabBarRepeatedPressBehavior` is passed on with `tabPress`, as React Navigation's own bar does.
 - A badge given as a numeric string ("12") arrives as a number, so designs draw it as a count; a number that isn't a count (NaN, negative) is dropped.
+- `BadgeCount` lays its digits out left to right in right-to-left apps too, so a capped count reads "99+", not "+99".

@@ -54,7 +54,7 @@ const defaultColors = {
    * Tint of the Liquid Glass (iOS 26+), so the bar reads near-white as the app's does: untinted,
    * the glass took on strong colour from the content under it, with a hard seam at its edges.
    */
-  glassTint: 'rgba(255, 255, 255, 0.55)',
+  glassTint: 'rgba(255, 255, 255, 0.85)',
   /** The bright 1 px edge of the bar (Liquid Glass draws its own). */
   rim: 'rgba(255, 255, 255, 0.95)',
   /** A faint, diffuse shadow around the bar. */
