@@ -329,16 +329,16 @@ scheme follows the bar: a dark bar sits on the dark palette, a light or glass ba
 batch checks the assignment against the design's reference before recording; a change is a one-line edit
 in `demos.tsx`.
 
-| Scene                             | Light palette                                                                                                                           | Dark palette                          |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| `social` (feed, photos, creators) | sticker-tiles, soft-pill, gradient-stickers, playful-tiles, labeled-plus, search-dock, tile-plus, tinted-icons, quick-create, bar-sheet | solid-dark, dark-capsule, offset-plus |
-| `music` (listen, video)           | top-notch, live-tabs, sub-tabs                                                                                                          | frosted-media, mini-player            |
-| `shop`                            | split-search, button-row, cart-pill, companion-chip                                                                                     | filter-chips                          |
-| `maps`                            | segment-search, pill-plus, orbs, section-sheet                                                                                          | center-cta, light-icons, accent-dark  |
-| `finance`                         | sliding-capsule, color-flood, scrub-pill                                                                                                | chip-rail, glow-glass, ambient-bar    |
-| `chat`                            | glass-badges, composer-dock, account-dock                                                                                               | badge-dock                            |
-| `files`                           | material-pill, side-rail                                                                                                                | outline-dark                          |
-| `health` (rings, plan, sessions)  | glass-expand, mono-type, context-tray                                                                                                   |                                       |
+| Scene                             | Light palette                                                                                                                           | Dark palette                                     |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `social` (feed, photos, creators) | sticker-tiles, soft-pill, gradient-stickers, playful-tiles, labeled-plus, search-dock, tile-plus, tinted-icons, quick-create, bar-sheet | solid-dark, dark-capsule, offset-plus            |
+| `music` (listen, video)           | top-notch, live-tabs, sub-tabs                                                                                                          | frosted-media, mini-player                       |
+| `shop`                            | split-search, button-row, cart-pill, companion-chip                                                                                     | filter-chips                                     |
+| `maps`                            | segment-search, pill-plus, orbs, section-sheet                                                                                          | center-cta, light-icons, accent-dark             |
+| `finance`                         | sliding-capsule, color-flood, scrub-pill                                                                                                | chip-rail, glow-glass, ambient-bar, slider-sheet |
+| `chat`                            | glass-badges, composer-dock, account-dock                                                                                               | badge-dock                                       |
+| `files`                           | material-pill, side-rail                                                                                                                | outline-dark                                     |
+| `health` (rings, plan, sessions)  | glass-expand, mono-type, context-tray                                                                                                   |                                                  |
 
 ### Target Files to Create/Modify
 

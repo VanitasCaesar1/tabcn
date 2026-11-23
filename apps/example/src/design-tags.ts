@@ -81,4 +81,5 @@ export const DESIGN_TAGS: Record<string, DesignTags> = {
   'filter-chips': { style: 'dark', scene: 'shop', scheme: 'dark' },
   'companion-chip': { style: 'minimal', scene: 'shop', scheme: 'light' },
   'sub-tabs': { style: 'minimal', scene: 'music', scheme: 'light' },
+  'slider-sheet': { style: 'dark', scene: 'finance', scheme: 'dark' },
 };

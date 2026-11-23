@@ -10,6 +10,8 @@
  * - `wait` holds for that many milliseconds so the motion can finish on camera.
  * - `tapAt` taps a point, in points on the recording phone (iPhone 17 Pro, 402 x 874), for a
  *   control screen readers can't reach at that moment (an open panel is modal on iOS).
+ * - `pan` drags a finger from [x, y] by [dx, dy] over that many milliseconds, in the same points,
+ *   for a control that is dragged (a slider). The step lasts as long as the drag.
  *
  * Plain tab bars have no entry: the recorder switches their tabs.
  */
@@ -18,7 +20,8 @@ export type DemoStep =
   | { longPress: string }
   | { tab: number }
   | { wait: number }
-  | { tapAt: [number, number] };
+  | { tapAt: [number, number] }
+  | { pan: [number, number, number, number, number] };
 
 export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
   // Tap the strip to open the player, skip a track, close it with its own chevron.
@@ -97,6 +100,19 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
     { wait: 1800 },
     { tab: 0 },
     { wait: 1500 },
+  ],
+  // The first holding opens the sheet; the chip is dragged from 25% to 75% (it turns into the
+  // knob, with the percentage bubble over it), then back to 50%; the button confirms and closes
+  // it. The drags start on the chip where it rests on iPhone 17 Pro.
+  'slider-sheet': [
+    { tap: 'Northwind Air' },
+    { wait: 800 },
+    { pan: [120, 634, 170, 0, 1200] },
+    { wait: 500 },
+    { pan: [263, 634, -85, 0, 900] },
+    { wait: 500 },
+    { tap: 'Reduce position' },
+    { wait: 1300 },
   ],
   // The chip folds the tabs into an account bar; pick another workspace, then fold back with the
   // round button (by position: the open sheet hides it from accessibility).

@@ -44,7 +44,8 @@ for id in "$@"; do
   $=A record start --scope device "$OUT/$id.mp4" >/dev/null 2>&1
   sleep 1.2
   if [ "$steps" != "null" ]; then
-    # One step per line: tap <label> | longPress <label> | tab <index from 0> | wait <ms> | tapAt <x> <y>.
+    # One step per line: tap <label> | longPress <label> | tab <index from 0> | wait <ms> | tapAt <x> <y>
+    # | pan <x> <y> <dx> <dy> <ms>.
     # The steps carry their own waits, so taps don't sleep after themselves.
     python3 -c "
 import json,sys
@@ -56,6 +57,7 @@ for s in json.loads(sys.argv[1]):
         tab) tab $(( arg + 1 )) ;;
         wait) sleep $(( arg / 1000.0 )) ;;
         tapAt) $=A press $=arg >/dev/null 2>&1 ;;
+        pan) $=A gesture pan $=arg >/dev/null 2>&1 ;;
       esac
     done
   else

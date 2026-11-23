@@ -5,5 +5,9 @@
   "filter-chips": 4.5,
   "mini-player": 3.0,
   "quick-create": 4.0,
+  "slider-sheet": {
+    "at": 5.0,
+    "top": 1380
+  },
   "sub-tabs": 4.0
 }

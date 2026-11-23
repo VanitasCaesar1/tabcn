@@ -947,6 +947,24 @@
       ]
     },
     {
+      "name": "slider-sheet",
+      "type": "registry:item",
+      "title": "Slider Sheet",
+      "description": "Panel: a dark card that rises above the tab bar with a large amount and a stepped slider; its chip turns into a knob with a live percentage bubble while dragging and snaps to the nearest step on release. Needs a TabBarProvider and a GestureHandlerRootView.",
+      "dependencies": [
+        "react-native-tabcn@>=0.4.0",
+        "react-native-gesture-handler",
+        "expo-haptics"
+      ],
+      "files": [
+        {
+          "path": "registry/designs/slider-sheet/slider-sheet.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/slider-sheet.tsx"
+        }
+      ]
+    },
+    {
       "name": "panelui-colors",
       "type": "registry:item",
       "title": "PanelUI Colors",

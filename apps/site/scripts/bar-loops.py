@@ -45,9 +45,12 @@ POSTER_AT = '0.6'
 # Panels: the bottom of the screen with the panel open above the bar, 804 x 460 out.
 PANEL_BOX = (0, 1882, 1206, 2572)
 PANEL_SIZE = (804, 460)
-# When each panel is open in its recording (seconds); read off <dir>/_panels.png.
+# When each panel is open in its recording (seconds); read off <dir>/_panels.png. A panel taller
+# than the box gives {"at": seconds, "top": y}: the box starts at y instead (same height).
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'panel-open-at.json')) as f:
-    PANEL_POSTER_AT = {k: str(v) for k, v in json.load(f).items()}
+    _OPEN = json.load(f)
+PANEL_POSTER_AT = {k: str(v['at'] if isinstance(v, dict) else v) for k, v in _OPEN.items()}
+PANEL_TOP = {k: v['top'] for k, v in _OPEN.items() if isinstance(v, dict) and 'top' in v}
 THUMB_SIZE = (138, 48)
 THUMB_QUALITY = 72
 STILLS = os.path.join(SITE, 'public', 'stills')
@@ -71,7 +74,7 @@ def width(recording):
 def crop_filter(id_, panel=False):
     x0, y0, x1, y1 = PANEL_BOX if panel else BAR_BOX
     w, h = PANEL_SIZE if panel else SIZE
-    top = y0 if panel else CROP_Y.get(id_, y0)
+    top = PANEL_TOP.get(id_, y0) if panel else CROP_Y.get(id_, y0)
     return f'crop={x1 - x0}:{y1 - y0}:{x0}:{top},scale={w}:{h}:flags=lanczos'
 
 

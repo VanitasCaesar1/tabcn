@@ -62,6 +62,7 @@ export const DEMO_CONTROLS: Record<string, DemoControls> = {
   'section-sheet': { maxTabs: 3 },
   'segment-search': { maxTabs: 2 },
   'side-rail': { maxTabs: 4 },
+  'slider-sheet': { maxTabs: 5 },
   'sliding-capsule': { maxTabs: 4 },
   'soft-pill': { maxTabs: 5 },
   'solid-dark': { accent: 'colors.active', maxTabs: 5 },
