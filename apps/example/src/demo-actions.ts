@@ -138,19 +138,19 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
     { tapAt: [45, 800] },
     { wait: 1800 },
   ],
-  // A tap on the corner button opens the fan and leaves it open; tap Saved. Then hold the button
-  // (by its label, which names the new tab): the fan opens under the finger and, lifted without
-  // a slide, stays open; tap Guides.
+  // Press the corner button and slide up-left: the fan opens under the finger, Saved grows as the
+  // finger reaches it, and lifting there chooses it. A tap opens the fan and leaves it open; tap
+  // Guides. Then slide left from the button to Explore. Points are on iPhone 17 Pro.
   'thumb-arc': [
-    { wait: 800 },
-    { tapAt: [352, 798] },
-    { wait: 1400 },
-    { tap: 'Saved' },
-    { wait: 1500 },
-    { longPress: 'Tabs, Saved selected, new' },
-    { wait: 1400 },
+    { wait: 500 },
+    { pan: [350, 793, -105, -105, 1000] },
+    { wait: 700 },
+    { tapAt: [350, 793] },
+    { wait: 1100 },
     { tap: 'Guides' },
-    { wait: 1800 },
+    { wait: 700 },
+    { pan: [350, 793, -149, 0, 900] },
+    { wait: 1000 },
   ],
   // Hold Projects for its recent items, then open the attachment menu.
   'composer-dock': [

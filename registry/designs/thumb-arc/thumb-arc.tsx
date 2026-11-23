@@ -586,9 +586,18 @@ function ButtonIcon({ tab, color }: { tab: TabItem | undefined; color: string })
   if (!tab?.renderIcon) return null;
   return (
     <Animated.View key={tab.key} entering={iconIn} exiting={iconOut} style={styles.buttonIcon}>
-      {tab.renderIcon({ focused: true, color, size: BUTTON_ICON })}
+      <ActiveIcon tab={tab} color={color} />
     </Animated.View>
   );
+}
+
+/**
+ * The tab's icon in a component of its own, under the keyed view above: an icon that uses hooks
+ * (or is compiled by React Compiler) then keeps its own state per tab instead of sharing the
+ * button's, which breaks when the button switches from one tab's icon to another's.
+ */
+function ActiveIcon({ tab, color }: { tab: TabItem; color: string }) {
+  return <>{tab.renderIcon?.({ focused: true, color, size: BUTTON_ICON })}</>;
 }
 
 /** The wash over the whole window behind the open fan; a tap on it closes the fan. */
