@@ -26,6 +26,7 @@ import * as Haptics from 'expo-haptics';
 import type { ComponentType, ReactElement } from 'react';
 import { Platform, StyleSheet, useWindowDimensions, View, type ViewProps } from 'react-native';
 import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
+import Svg, { Defs, FeGaussianBlur, Filter, LinearGradient, Path, Stop } from 'react-native-svg';
 import {
   TabBarRoot,
   TabButton,
@@ -79,6 +80,10 @@ export interface AmbientBarProps {
 const ROW = 62;
 /** Points below the bar's top edge by which the blur is fully in. */
 const RAMP = 14;
+/** How far the slab's top corners curve down at the screen's sides, like the phone's corners. */
+const CORNER = 64;
+/** How much the slab's curved edge is softened (Gaussian standard deviation, points). */
+const SOFTEN = 6;
 const ICON = 25;
 const LENS_W = 74;
 const LENS_H = 42;
@@ -99,25 +104,25 @@ export function AmbientBar({ reach = 12, colors: custom, haptics = true }: Ambie
   // The bar's area, from `reach` above the row down past the home indicator.
   const height = reach + ROW + insets.bottom;
   const frame = { top: -reach, bottom: -insets.bottom, left: -insets.left, right: -insets.right };
+  const areaWidth = width;
 
   return (
     // Floating, edge to edge and flush with the safe area, so the screen runs under the bar;
     // the bar still reports its height for screens to pad by.
     <TabBarRoot placement="floating" offset={0}>
       <View pointerEvents="none" style={[styles.fill, frame]}>
-        {BLUR ? (
-          // One strong blur, faded in from the top of the area by a gradient mask, so the
-          // content melts into it with no edge.
-          <MaskedView
-            style={StyleSheet.absoluteFill}
-            maskElement={
-              <View style={[StyleSheet.absoluteFill, maskStyle((reach + RAMP) / height)]} />
-            }
-          >
+        {/* The blur and the dark overlay share one soft shape: a fade from the top of the area
+            whose top corners curve down at the screen's sides, like the phone's own corners,
+            so the bar reads as a slab set into the bottom of the screen. */}
+        <MaskedView
+          style={StyleSheet.absoluteFill}
+          maskElement={<SlabMask width={areaWidth} height={height} fullAt={reach + RAMP} />}
+        >
+          {BLUR ? (
             <BlurView intensity={BLUR_INTENSITY} tint={TINT} style={StyleSheet.absoluteFill} />
-          </MaskedView>
-        ) : null}
-        <View style={[StyleSheet.absoluteFill, shadeStyle(colors.shade)]} />
+          ) : null}
+          <View style={[StyleSheet.absoluteFill, shadeStyle(colors.shade)]} />
+        </MaskedView>
       </View>
       <TabList style={[styles.row, { width: width - insets.left - insets.right }]}>
         <TabIndicator style={styles.lensSlot}>
@@ -194,13 +199,48 @@ function Tab({
   );
 }
 
-/** The blur's mask: clear at the top of the area, fully in at `fullAt` (a share of its height). */
-function maskStyle(fullAt: number) {
-  const pct = (t: number) => `${Math.round(t * 1000) / 10}%`;
-  const image = `linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.5) ${pct(fullAt * 0.55)}, rgba(0, 0, 0, 1) ${pct(fullAt)}, rgba(0, 0, 0, 1) 100%)`;
-  return Platform.OS === 'web'
-    ? ({ backgroundImage: image } as object)
-    : { experimental_backgroundImage: image };
+/**
+ * The mask the blur and overlay share, in points: clear at the top, fully in `fullAt` points
+ * down, with the top corners curving down to the screen's sides over `CORNER` points. The
+ * curve is softened with a Gaussian blur; the shape runs past the sides, so the screen's edges
+ * below the curve stay fully in.
+ */
+function SlabMask({ width, height, fullAt }: { width: number; height: number; fullAt: number }) {
+  const r = CORNER;
+  const out = 40;
+  const d = [
+    `M ${-out} ${height + out}`,
+    `L ${-out} ${r}`,
+    `L 0 ${r}`,
+    `Q 0 0 ${r} 0`,
+    `L ${width - r} 0`,
+    `Q ${width} 0 ${width} ${r}`,
+    `L ${width + out} ${r}`,
+    `L ${width + out} ${height + out}`,
+    'Z',
+  ].join(' ');
+  return (
+    <Svg width={width} height={height}>
+      <Defs>
+        <LinearGradient
+          id="ambient-bar-fade"
+          x1="0"
+          y1="0"
+          x2="0"
+          y2={fullAt}
+          gradientUnits="userSpaceOnUse"
+        >
+          <Stop offset="0" stopColor="#000" stopOpacity={0} />
+          <Stop offset="0.55" stopColor="#000" stopOpacity={0.5} />
+          <Stop offset="1" stopColor="#000" stopOpacity={1} />
+        </LinearGradient>
+        <Filter id="ambient-bar-soft" x="-20%" y="-20%" width="140%" height="140%">
+          <FeGaussianBlur stdDeviation={SOFTEN} />
+        </Filter>
+      </Defs>
+      <Path d={d} fill="url(#ambient-bar-fade)" filter="url(#ambient-bar-soft)" />
+    </Svg>
+  );
 }
 
 /**
@@ -211,9 +251,9 @@ function shadeStyle(shade: string) {
   const strength = BLUR ? 1 : 1.25;
   const stops = [
     [0.5, 0],
-    [0.45, 45],
-    [0.2, 75],
-    [0, 100],
+    [0.42, 45],
+    [0.3, 80],
+    [0.22, 100],
   ]
     .map(([alpha, at]) => `${withAlpha(shade, Math.min(1, (alpha as number) * strength))} ${at}%`)
     .join(', ');

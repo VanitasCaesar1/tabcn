@@ -882,6 +882,9 @@ export const demos: Record<string, Demo> = {
     render: () => <AmbientBar />,
     extra: AmbientBarScreen,
     background: '#000000',
+    // Black, then deep blue and violet, as the reference's sections are: the bar's slab, with
+    // its rounded top corners, shows against a coloured screen.
+    backgrounds: ['#000000', '#1b2a9e', '#000000', '#3d0f6b'],
     dark: true,
     initialTab: 1,
     barHeight: 60,
