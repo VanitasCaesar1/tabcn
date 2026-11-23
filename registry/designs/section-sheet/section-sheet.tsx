@@ -64,6 +64,7 @@ import 'react-native-gesture-handler';
 import {
   type AccessibilityActionEvent,
   AccessibilityInfo,
+  Platform,
   StyleSheet,
   Text,
   View,
@@ -231,6 +232,9 @@ export function useSectionSheet(): TabPanelControls {
 function useScreenReader(): boolean {
   const [on, setOn] = useState(false);
   useEffect(() => {
+    // react-native-web always reports a screen reader as on; there is no reliable way to tell
+    // there, so assume off (as tabcn's own panel layer does).
+    if (Platform.OS === 'web') return;
     let live = true;
     AccessibilityInfo.isScreenReaderEnabled()
       .then((enabled) => {
