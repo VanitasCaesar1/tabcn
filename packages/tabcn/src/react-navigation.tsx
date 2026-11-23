@@ -3,12 +3,12 @@ import {
   type BottomTabBarProps,
 } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
-import { type ReactElement, type ReactNode, use, useCallback, useMemo, useState } from 'react';
+import { type ReactElement, type ReactNode, use, useCallback, useState } from 'react';
 
 import { SafeAreaFrameContext } from 'react-native-safe-area-context';
 
 import { useAdapterBridge } from './adapter-bridge';
-import { buildTabBarState, type TabOptionsLike } from './build-state';
+import { type TabOptionsLike, useTabBarStateValue } from './build-state';
 import { useOverrideSlot } from './override';
 import { ScreenFrameContext } from './screen-frame';
 import { TabBarStateProvider } from './state';
@@ -19,46 +19,43 @@ function ReactNavigationTabBar({ nav, children }: { nav: BottomTabBarProps; chil
   const onHeightChange = use(BottomTabBarHeightCallbackContext);
   const { state, descriptors, navigation, insets } = nav;
 
-  const value = useMemo(
-    () =>
-      buildTabBarState({
-        routes: state.routes,
-        focusedIndex: state.index,
-        getOptions: (route) => (descriptors[route.key]?.options ?? {}) as TabOptionsLike,
-        insets,
-        reportHeight: onHeightChange ?? noop,
-        emitPress: (route) => {
-          // As React Navigation's own bar does: a press on the focused tab says whether it
-          // scrolls to top and pops to top (`tabBarRepeatedPressBehavior`).
-          const focused = state.routes[state.index]?.key === route.key;
-          const repeat = (
-            descriptors[route.key]?.options as {
-              tabBarRepeatedPressBehavior?: { scrollToTop?: boolean; popToTop?: boolean };
-            }
-          )?.tabBarRepeatedPressBehavior;
-          const event = navigation.emit({
-            type: 'tabPress',
-            target: route.key,
-            canPreventDefault: true,
-            data: {
-              behavior: {
-                scrollToTop: focused && repeat?.scrollToTop !== false,
-                popToTop: focused && repeat?.popToTop !== false,
-              },
-            },
-          } as never) as unknown as { defaultPrevented: boolean };
-          return event.defaultPrevented;
+  // Kept the same object across navigator renders that change nothing it reads.
+  const value = useTabBarStateValue({
+    routes: state.routes,
+    focusedIndex: state.index,
+    getOptions: (route) => (descriptors[route.key]?.options ?? {}) as TabOptionsLike,
+    insets,
+    reportHeight: onHeightChange ?? noop,
+    emitPress: (route) => {
+      // As React Navigation's own bar does: a press on the focused tab says whether it
+      // scrolls to top and pops to top (`tabBarRepeatedPressBehavior`).
+      const focused = state.routes[state.index]?.key === route.key;
+      const repeat = (
+        descriptors[route.key]?.options as {
+          tabBarRepeatedPressBehavior?: { scrollToTop?: boolean; popToTop?: boolean };
+        }
+      )?.tabBarRepeatedPressBehavior;
+      const event = navigation.emit({
+        type: 'tabPress',
+        target: route.key,
+        canPreventDefault: true,
+        data: {
+          behavior: {
+            scrollToTop: focused && repeat?.scrollToTop !== false,
+            popToTop: focused && repeat?.popToTop !== false,
+          },
         },
-        emitLongPress: (route) => {
-          navigation.emit({ type: 'tabLongPress', target: route.key });
-        },
-        navigate: (route) => {
-          const full = state.routes.find((r) => r.key === route.key);
-          navigation.navigate({ name: route.name, params: full?.params, merge: true } as never);
-        },
-      }),
-    [state, descriptors, navigation, insets, onHeightChange],
-  );
+      } as never) as unknown as { defaultPrevented: boolean };
+      return event.defaultPrevented;
+    },
+    emitLongPress: (route) => {
+      navigation.emit({ type: 'tabLongPress', target: route.key });
+    },
+    navigate: (route) => {
+      const full = state.routes.find((r) => r.key === route.key);
+      navigation.navigate({ name: route.name, params: full?.params, merge: true } as never);
+    },
+  });
 
   const isFocused = useCallback(() => navigation.isFocused(), [navigation]);
   // The helpers carry the parent screen's `addListener`, which emits its focus and blur.
