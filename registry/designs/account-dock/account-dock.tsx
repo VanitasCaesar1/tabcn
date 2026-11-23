@@ -339,7 +339,9 @@ export function AccountDock({
     setList('workspaces');
     setMenu(false);
     const timer = setTimeout(() => {
-      if (chipRef.current) AccessibilityInfo.sendAccessibilityEvent(chipRef.current, 'focus');
+      // Not on the web: react-native-web has no sendAccessibilityEvent.
+      if (chipRef.current && typeof AccessibilityInfo.sendAccessibilityEvent === 'function')
+        AccessibilityInfo.sendAccessibilityEvent(chipRef.current, 'focus');
     }, 400);
     return () => clearTimeout(timer);
   }, [open]);
@@ -1004,7 +1006,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: AccountDock
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -1492,6 +1498,8 @@ function StatusMenu({
 const shadow = '0 10px 28px rgba(40, 40, 60, 0.14)';
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   row: { flexDirection: 'row', alignItems: 'center', maxWidth: '100%' },
   rest: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: GAP },
   pillBox: { flex: 1 },

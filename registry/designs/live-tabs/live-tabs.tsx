@@ -37,7 +37,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { processColor, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
@@ -269,7 +269,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: LiveTabsCol
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -278,24 +282,29 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: LiveTabsCol
 }
 
 /**
+ * A colour's red, green, blue (0-255) and alpha (0-1), read by React Native's own parser, so
+ * named colours, hsl() and every hex form work; null for what it can't read (PlatformColor).
+ */
+function channels(color: string): [number, number, number, number] | null {
+  const value = processColor(color);
+  if (typeof value !== 'number') return null;
+  return [(value >>> 16) & 255, (value >>> 8) & 255, value & 255, ((value >>> 24) & 255) / 255];
+}
+
+/**
  * A translucent colour as its opaque colour and its alpha. An icon drawn in a translucent
  * colour darkens wherever its strokes and fills overlap; drawn opaque under an opacity of the
  * same alpha, it reads evenly.
  */
 function splitAlpha(color: string): { color: string; alpha: number } {
-  const parts = /^rgba\(([^)]+)\)$/i
-    .exec(color)?.[1]
-    ?.split(/[\s,/]+/)
-    .filter(Boolean);
-  if (parts?.length === 4 && !parts.some((p) => p.endsWith('%'))) {
-    return { color: `rgb(${parts.slice(0, 3).join(', ')})`, alpha: Number(parts[3]) };
-  }
-  const hex = /^#([0-9a-f]{8})$/i.exec(color)?.[1];
-  if (hex) return { color: `#${hex.slice(0, 6)}`, alpha: Number.parseInt(hex.slice(6), 16) / 255 };
-  return { color, alpha: 1 };
+  const c = channels(color);
+  if (!c) return { color, alpha: 1 };
+  return { color: `rgb(${c[0]}, ${c[1]}, ${c[2]})`, alpha: c[3] };
 }
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   bar: {
     borderTopWidth: StyleSheet.hairlineWidth,
   },

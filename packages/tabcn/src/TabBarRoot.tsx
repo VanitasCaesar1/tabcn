@@ -72,6 +72,9 @@ function useKeyboardVisible(enabled: boolean): boolean {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     if (!enabled) return;
+    // Start from where the keyboard is now: while not listening (another tab, or a rail), it
+    // may have opened or closed, and a stale value left the bar hidden and untouchable.
+    setVisible(Keyboard.isVisible());
     const show = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hide = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const subs = [

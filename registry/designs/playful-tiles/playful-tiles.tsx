@@ -4,7 +4,7 @@
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
 import {
   TabBarRoot,
@@ -59,10 +59,14 @@ export function PlayfulTiles({
   return (
     <TabBarRoot placement="docked" style={[styles.dock, { backgroundColor: colors.background }]}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
-        <TabIndicator
-          inset={{ x: 9, y: 11 }}
-          style={[styles.tile, { backgroundColor: colors.tile, borderColor: colors.tileBorder }]}
-        />
+        {/* The tile is its measured size (a tab less 9 pt a side, on a 402 pt phone with six
+            tabs), centred on the tab and narrower only where the tab is: sized from the tab,
+            it became a slab with two tabs or on an iPad, and narrower than the icon with seven. */}
+        <TabIndicator inset={{ x: 0, y: 11 }} style={styles.tileSlot}>
+          <View
+            style={[styles.tile, { backgroundColor: colors.tile, borderColor: colors.tileBorder }]}
+          />
+        </TabIndicator>
         {tabs.map((tab) => (
           <Tab
             key={tab.key}
@@ -117,6 +121,9 @@ const badgeOut = FadeOut.duration(BADGE_FADE_MS)
   .easing(BADGE_EASING)
   .reduceMotion(ReduceMotion.System);
 
+/** The tile's width, as measured. */
+const TILE = 44;
+
 const styles = StyleSheet.create({
   // Docked like the app it comes from: full width and flush with the bottom edge, with the
   // background running under the home indicator. Side padding keeps the reference's tab spacing.
@@ -127,7 +134,15 @@ const styles = StyleSheet.create({
   bar: {
     height: 66,
   },
-  tile: { borderRadius: 12, borderCurve: 'continuous', borderWidth: 2.5 },
+  tileSlot: { alignItems: 'center' },
+  tile: {
+    width: TILE,
+    maxWidth: '100%',
+    height: '100%',
+    borderRadius: 12,
+    borderCurve: 'continuous',
+    borderWidth: 2.5,
+  },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: 16, right: '24%', width: 10, height: 10, borderRadius: 5 },
 });

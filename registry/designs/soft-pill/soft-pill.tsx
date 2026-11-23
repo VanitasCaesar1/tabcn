@@ -113,7 +113,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SoftPillCol
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -125,7 +129,8 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SoftPillCol
 const ICON = 18;
 const TAB_WIDTH = 63;
 /** On a narrow screen the tabs shrink to fit, down to this width. */
-const MIN_TAB_WIDTH = 50;
+/** Tabs shrink to fit down to this; low enough that seven fit a 320 pt screen. */
+const MIN_TAB_WIDTH = 32;
 /**
  * The active capsule is wider than its tab and overlaps its neighbours' padding:
  * a negative x inset grows the indicator past the tab's frame (63 + 2 * 3.75 = 70.5 pt).
@@ -134,6 +139,8 @@ const CAPSULE_OVERHANG = 3.75;
 const CAPSULE_INSET = { x: -CAPSULE_OVERHANG, y: 0 };
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   badgeOnly: { position: 'absolute', top: 4, right: 10 },
   pill: {
     // Fits the screen when the tabs' full width doesn't: they shrink instead.

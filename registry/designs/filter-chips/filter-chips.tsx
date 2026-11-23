@@ -407,7 +407,9 @@ function Filters({
     // Back to the chip that opened the sheet, for screen-reader users.
     const timer = setTimeout(() => {
       const node = chipRefs.current.get(view);
-      if (node) AccessibilityInfo.sendAccessibilityEvent(node, 'focus');
+      // Not on the web: react-native-web has no sendAccessibilityEvent.
+      if (node && typeof AccessibilityInfo.sendAccessibilityEvent === 'function')
+        AccessibilityInfo.sendAccessibilityEvent(node, 'focus');
     }, 400);
     return () => clearTimeout(timer);
   }, [open]);

@@ -19,7 +19,15 @@ import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { Fragment, useEffect, useRef } from 'react';
-import { I18nManager, Platform, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  I18nManager,
+  Platform,
+  processColor,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import Animated, {
   interpolate,
   type SharedValue,
@@ -378,7 +386,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: GlassExpand
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -401,11 +413,25 @@ const PHYSICAL_LEFT =
     ? { right: 0 }
     : { left: 0 };
 
+/**
+ * A colour's red, green, blue (0-255) and alpha (0-1), read by React Native's own parser, so
+ * named colours, hsl() and every hex form work; null for what it can't read (PlatformColor).
+ */
+function channels(color: string): [number, number, number, number] | null {
+  const value = processColor(color);
+  if (typeof value !== 'number') return null;
+  return [(value >>> 16) & 255, (value >>> 8) & 255, value & 255, ((value >>> 24) & 255) / 255];
+}
+
 /** The bar's colour without its translucency, for the badge's ring (red would show through). */
-const opaque = (color: string) =>
-  color.replace(/^rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)$/i, 'rgb($1,$2,$3)');
+function opaque(color: string): string {
+  const c = channels(color);
+  return c ? `rgb(${c[0]}, ${c[1]}, ${c[2]})` : color;
+}
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   pill: { borderRadius: 999, paddingVertical: INSET },
   clip: { borderRadius: 999, overflow: 'hidden' },
   rim: {

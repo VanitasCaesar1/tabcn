@@ -230,7 +230,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: MaterialPil
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} max={999} textStyle={textStyle} />
       ) : (
-        <Text maxFontSizeMultiplier={1.3} numberOfLines={1} style={textStyle}>
+        <Text
+          maxFontSizeMultiplier={1.3}
+          numberOfLines={1}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -314,6 +318,8 @@ function GrowingPill({
 }
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   bar: {
     height: BAR,
   },

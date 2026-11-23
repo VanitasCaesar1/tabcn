@@ -10,7 +10,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, View } from 'react-native';
+import { processColor, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -130,23 +130,28 @@ function Tab({
       style={styles.tab}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      {colors.activeForeground === undefined ? (
-        icon(colors.icon)
-      ) : (
-        <View>
-          <Animated.View style={outgoing}>{icon(colors.icon)}</Animated.View>
-          <Animated.View style={[StyleSheet.absoluteFill, incoming]}>
-            {icon(colors.activeForeground)}
-          </Animated.View>
-        </View>
-      )}
-      {tab.badge != null ? (
-        <Animated.View
-          entering={badgeIn}
-          exiting={badgeOut}
-          style={[styles.badge, { backgroundColor: colors.badge }]}
-        />
-      ) : null}
+      {/* The icon's own box: the badge is pinned to it, not to the tab, so it stays on the
+          sticker however wide the tabs are (a share of the tab's width floated it off with
+          two or three tabs). */}
+      <View style={styles.iconBox}>
+        {colors.activeForeground === undefined ? (
+          icon(colors.icon)
+        ) : (
+          <View>
+            <Animated.View style={outgoing}>{icon(colors.icon)}</Animated.View>
+            <Animated.View style={[StyleSheet.absoluteFill, incoming]}>
+              {icon(colors.activeForeground)}
+            </Animated.View>
+          </View>
+        )}
+        {tab.badge != null ? (
+          <Animated.View
+            entering={badgeIn}
+            exiting={badgeOut}
+            style={[styles.badge, { backgroundColor: colors.badge }]}
+          />
+        ) : null}
+      </View>
     </TabButton>
   );
 }
@@ -162,19 +167,19 @@ function glowLocations(count: number): readonly [number, number, ...number[]] {
 }
 
 /**
- * `color` with zero alpha, so the glow fades into the fill without a grey midpoint. Handles
- * #rgb, #rgba, #rrggbb, #rrggbbaa, rgb() and rgba(); anything else fades through 'transparent'.
+ * A colour's red, green, blue (0-255) and alpha (0-1), read by React Native's own parser, so
+ * named colours, hsl() and every hex form work; null for what it can't read (PlatformColor).
  */
+function channels(color: string): [number, number, number, number] | null {
+  const value = processColor(color);
+  if (typeof value !== 'number') return null;
+  return [(value >>> 16) & 255, (value >>> 8) & 255, value & 255, ((value >>> 24) & 255) / 255];
+}
+
+/** `color` with zero alpha, so the glow fades into the fill without a grey midpoint. */
 function transparent(color: string): string {
-  const hex = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(color.trim())?.[1];
-  if (hex) {
-    const full =
-      hex.length <= 4 ? [...hex.slice(0, 3)].map((c) => c + c).join('') : hex.slice(0, 6);
-    return `#${full}00`;
-  }
-  const rgb = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i.exec(color.trim());
-  if (rgb) return `rgba(${rgb[1]}, ${rgb[2]}, ${rgb[3]}, 0)`;
-  return 'transparent';
+  const c = channels(color);
+  return c ? `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0)` : 'transparent';
 }
 
 // Motion: only the capsule moves, sliding and resizing on the foundation's default tabcnSpring
@@ -208,5 +213,7 @@ const styles = StyleSheet.create({
   list: { alignItems: 'stretch' },
   capsule: { borderRadius: 999 },
   tab: { flex: 1, height: 50.5, alignItems: 'center', justifyContent: 'center' },
-  badge: { position: 'absolute', top: 12, right: '22%', width: 10, height: 10, borderRadius: 5 },
+  iconBox: { width: ICON, height: ICON, alignItems: 'center', justifyContent: 'center' },
+  // Where the reference has it on a 4-tab bar: just inside the sticker's top right.
+  badge: { position: 'absolute', top: 4.5, right: 4.5, width: 10, height: 10, borderRadius: 5 },
 });

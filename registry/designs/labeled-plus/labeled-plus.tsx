@@ -21,7 +21,7 @@
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, processColor, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -257,9 +257,21 @@ function Tab({
   );
 }
 
+/**
+ * A colour's red, green, blue (0-255) and alpha (0-1), read by React Native's own parser, so
+ * named colours, hsl() and every hex form work; null for what it can't read (PlatformColor).
+ */
+function channels(color: string): [number, number, number, number] | null {
+  const value = processColor(color);
+  if (typeof value !== 'number') return null;
+  return [(value >>> 16) & 255, (value >>> 8) & 255, value & 255, ((value >>> 24) & 255) / 255];
+}
+
 /** The bar's colour without its translucency, for the badge's ring (red would show through). */
-const opaque = (color: string) =>
-  color.replace(/^rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)$/i, 'rgb($1,$2,$3)');
+function opaque(color: string): string {
+  const c = channels(color);
+  return c ? `rgb(${c[0]}, ${c[1]}, ${c[2]})` : color;
+}
 
 const styles = StyleSheet.create({
   row: {

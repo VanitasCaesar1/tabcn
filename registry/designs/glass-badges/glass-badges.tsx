@@ -363,7 +363,11 @@ function Badge({
       {empty ? null : typeof tab.badge === 'number' ? (
         <BadgeCount value={tab.badge} textStyle={[styles.badgeText, text]} />
       ) : (
-        <Text maxFontSizeMultiplier={1.3} style={[styles.badgeText, text]}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[styles.badgeText, text, styles.badgeTextCap]}
+        >
           {tab.badge}
         </Text>
       )}
@@ -425,6 +429,8 @@ function useCoverage(
 }
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   row: {
     alignSelf: 'stretch',
     flexDirection: 'row',

@@ -375,12 +375,19 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SideRailCol
     <Animated.View
       entering={badgeIn}
       exiting={badgeOut}
+      // The tab's label already reads the badge; on its own it was an extra stop on Android.
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
       style={[styles.count, { backgroundColor: colors.badge }]}
     >
       {/^\d+$/.test(text) ? (
         <BadgeCount value={Number(text)} max={999} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -482,6 +489,8 @@ function GrowingPill({
 }
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   railScroll: { flexShrink: 1 },
   rail: {
     alignItems: 'center',

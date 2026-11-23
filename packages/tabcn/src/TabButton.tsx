@@ -38,11 +38,19 @@ export function TabButton({
   accessibilityActions,
   onAccessibilityAction,
   scale = 1,
+  ref: passedRef,
   ...rest
 }: TabButtonProps) {
   const { tabs } = useTabBar();
   const { listRef, frames } = useTabListContext('TabButton');
   const ref = useRef<ComponentRef<typeof Pressable>>(null);
+  // A ref the design passes (such as `usePanelAnchor`'s) is set too, not swapped in for ours:
+  // ours measures the tab, and without it the indicator never found this tab.
+  const setRef = (node: ComponentRef<typeof Pressable> | null) => {
+    ref.current = node;
+    if (typeof passedRef === 'function') passedRef(node);
+    else if (passedRef) passedRef.current = node;
+  };
 
   const measure = () => {
     const node = ref.current;
@@ -84,7 +92,7 @@ export function TabButton({
 
   return (
     <PressableScale
-      ref={ref}
+      ref={setRef}
       role="tab"
       accessibilityState={{ ...accessibilityState, selected: tab.focused }}
       aria-selected={tab.focused}

@@ -391,7 +391,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: OffsetPlusC
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -400,6 +404,8 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: OffsetPlusC
 }
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   // Five equal slots across the full width; no side padding.
   bar: {
     height: BAR,

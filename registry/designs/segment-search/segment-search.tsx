@@ -84,9 +84,9 @@ export function SegmentSearch({
   const room = window.width - insets.left - insets.right - EDGE * 2;
   const fixed = LIST_PADDING * 2 + HEIGHT;
   const gap = Math.max(MIN_GAP, Math.min(GAP, room - fixed - TAB * count));
-  // The measured minimum holds while it fits; past that (many tabs) the tabs share what's left.
   const fit = (room - fixed - gap) / count;
-  const tabWidth = Math.min(TAB, fit >= MIN_TAB ? fit : Math.max(40, fit));
+  // Never wider than what fits: a floor here pushed the row off narrow screens with many tabs.
+  const tabWidth = Math.min(TAB, fit);
   return (
     <TabBarRoot placement="floating" style={[styles.row, { gap }]}>
       <View style={[styles.well, wellShadow(colors.shadow)]}>
@@ -169,9 +169,8 @@ function Magnifier({ color }: { color: string }) {
 }
 
 const HEIGHT = 58;
-/** Each tab's measured width, and the least it narrows to on a small screen. */
+/** Each tab's measured width; with many tabs on a small screen they share what fits. */
 const TAB = 86;
-const MIN_TAB = 64;
 /** The measured gap between the pill and the round button, and the least it narrows to. */
 const GAP = 89;
 const MIN_GAP = 12;

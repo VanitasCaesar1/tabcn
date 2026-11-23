@@ -139,7 +139,11 @@ export function SplitSearch({
   // With a single visible tab there is no Search circle, and that tab sits in the pill.
   const pillTabs = search ? tabs.slice(0, -1) : tabs;
   const count = Math.max(1, pillTabs.length);
-  const pillWidth = Math.max(BAR, window.width - insets.left - insets.right - SIDE * 2 - GAP - BAR);
+  // The screen's width less the margins, up to MAX_PILL: on an iPad it was about 900 pt wide.
+  const pillWidth = Math.max(
+    BAR,
+    Math.min(MAX_PILL, window.width - insets.left - insets.right - SIDE * 2 - GAP - BAR),
+  );
   const slot = (pillWidth - INSET * 2) / count;
 
   // The pill tab the capsule marks: the active one, or the last one while Search is active.
@@ -490,7 +494,11 @@ function Badge({ tab, colors }: { tab: TabItem; colors: SplitSearchColors }) {
       {typeof tab.badge === 'number' ? (
         <BadgeCount value={tab.badge} textStyle={[styles.badgeText, text]} />
       ) : (
-        <Text maxFontSizeMultiplier={1.3} style={[styles.badgeText, text]}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[styles.badgeText, text, styles.badgeTextCap]}
+        >
           {tab.badge}
         </Text>
       )}
@@ -513,7 +521,12 @@ const CAP = BAR - INSET * 2;
 /** Width of the capsule's middle strip before it is scaled. */
 const STRIP = 100;
 
+/** The widest the tab pill grows, on a tablet or in landscape. */
+const MAX_PILL = 420;
+
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   root: {
     alignSelf: 'stretch',
     marginHorizontal: SIDE,

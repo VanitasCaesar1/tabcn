@@ -179,7 +179,15 @@ export function Composer({
                     style={[StyleSheet.absoluteFill, styles.chipGlass]}
                   />
                 ) : null}
-                <Text style={[styles.chipText, { color: colors.foreground }]}>{model}</Text>
+                {/* One line, capped: the chip is a fixed 28 pt tall, and a long name pushed
+                    the dictate and send buttons along. */}
+                <Text
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={1.3}
+                  style={[styles.chipText, styles.chipTextCap, { color: colors.foreground }]}
+                >
+                  {model}
+                </Text>
                 <GaugeGlyph color={colors.foreground} />
               </Pressable>
             ) : null}
@@ -336,6 +344,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     borderRadius: 14,
   },
+  chipTextCap: { maxWidth: 140, flexShrink: 1 },
   chipText: { fontSize: 13, fontWeight: '500' },
   chipGlass: { borderRadius: 14 },
 });

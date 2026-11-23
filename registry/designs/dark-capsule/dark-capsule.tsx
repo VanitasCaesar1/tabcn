@@ -70,18 +70,21 @@ export function DarkCapsule({ colors: custom, haptics = true }: DarkCapsuleProps
 /** The capsule and the tabs, under `TabList`, sharing one indicator: the icons' colour follows it. */
 function Row({ colors, haptics }: { colors: DarkCapsuleColors; haptics: boolean }) {
   const { tabs, activeIndex } = useTabBar();
-  const indicator = useTabIndicator({ inset: { x: 11, y: 12.5 } });
+  // The capsule is its measured size (a tab less 11 pt a side, on a 402 pt phone with five
+  // tabs), centred on the tab and narrower only where the tab is: sized from the tab, it became a
+  // slab with two tabs or on an iPad, and narrower than the icon with seven.
+  const indicator = useTabIndicator({ inset: { x: 0, y: 12.5 } });
   const previous = useMovingBetween(activeIndex);
   return (
     <>
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          indicator.style,
-          styles.capsule,
-          { backgroundColor: colors.capsule, borderColor: colors.capsuleBorder },
-        ]}
-      />
+      <Animated.View pointerEvents="none" style={[indicator.style, styles.capsuleSlot]}>
+        <View
+          style={[
+            styles.capsule,
+            { backgroundColor: colors.capsule, borderColor: colors.capsuleBorder },
+          ]}
+        />
+      </Animated.View>
       {tabs.map((tab) => (
         <Tab
           key={tab.key}
@@ -212,6 +215,9 @@ function useCoverage(
   return { coverage, onLayout };
 }
 
+/** The capsule's width, as measured. */
+const CAPSULE = 52;
+
 const styles = StyleSheet.create({
   // Docked like the app it comes from: full width and flush with the bottom edge, with the
   // background running under the home indicator. Side padding keeps the reference's tab spacing.
@@ -219,7 +225,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   bar: { height: 62 },
-  capsule: { borderRadius: 999, borderWidth: 1 },
+  capsuleSlot: { alignItems: 'center' },
+  capsule: { width: CAPSULE, maxWidth: '100%', height: '100%', borderRadius: 999, borderWidth: 1 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   iconBox: { width: 30, height: 30 },
   center: { alignItems: 'center', justifyContent: 'center' },

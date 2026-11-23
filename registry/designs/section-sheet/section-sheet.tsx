@@ -405,7 +405,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SectionShee
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -453,6 +457,8 @@ function Body({
 }
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   emptyBar: {
     // The sheet stands in for the bar: the bar itself takes no room.
     height: 0,

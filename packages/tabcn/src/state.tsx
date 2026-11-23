@@ -28,7 +28,7 @@ export interface TabItem {
   accessibilityLabel?: string;
   /** `tabBarButtonTestID` from the screen options. */
   testID?: string;
-  /** `tabBarBadge` from the screen options. */
+  /** `tabBarBadge` from the screen options; a count written as a string ("12") arrives as a number. */
   badge?: string | number;
   /** `tabBarIcon` from the screen options. */
   renderIcon?: (props: TabIconProps) => ReactNode;

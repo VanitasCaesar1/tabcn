@@ -98,10 +98,12 @@ export const tintedIconsDark: TintedIconsSurface = {
 export interface TintedIconsProps {
   colors?: Partial<TintedIconsColors>;
   /**
-   * Each tab's colour, by position: the first entry is the first tab's. With more tabs than
-   * colours, the list starts over. Default `tintedIconsTints`.
+   * Each tab's colour: a list by position (the first entry is the first tab's; with more tabs
+   * than colours it starts over), or a map keyed by route name, which follows a tab when tabs
+   * are added, hidden or reordered (tabs without an entry use the list's colour for their
+   * position). Default `tintedIconsTints`.
    */
-  tints?: readonly string[];
+  tints?: readonly string[] | Readonly<Record<string, string>>;
   /**
    * A surface for the bar while a tab is active, keyed by the tab's route name (as Colour
    * Flood's `surfaces` is). Tabs not listed use `colors.background` and `colors.inactive`.
@@ -140,7 +142,14 @@ export function TintedIcons({
   const surface = surfaces[tabs[activeIndex]?.routeName ?? ''];
   const background = surface?.background ?? colors.background;
   const inactive = surface?.inactive ?? colors.inactive;
-  const tintAt = (index: number) => tints[index % tints.length] ?? colors.inactive;
+  const tintAt = (index: number) => {
+    if (!Array.isArray(tints)) {
+      const own = (tints as Readonly<Record<string, string>>)[tabs[index]?.routeName ?? ''];
+      if (own) return own;
+      return tintedIconsTints[index % tintedIconsTints.length] ?? colors.inactive;
+    }
+    return tints[index % tints.length] ?? colors.inactive;
+  };
   const activeTint = activeIndex >= 0 ? tintAt(activeIndex) : colors.inactive;
 
   // The bar's colour runs from the old surface to the new one (a crossfade, no movement).
@@ -349,7 +358,11 @@ function Badge({ tab, colors }: { tab: TabItem; colors: TintedIconsColors }) {
       {typeof tab.badge === 'number' ? (
         <BadgeCount value={tab.badge} textStyle={textStyle} />
       ) : (
-        <Text maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -376,6 +389,8 @@ const PHYSICAL_LEFT =
     : { left: 0 };
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   // Docked full width with square corners and no top line; five equal slots edge to edge.
   bar: { height: BAR },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },

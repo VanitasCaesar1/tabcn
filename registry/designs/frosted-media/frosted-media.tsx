@@ -227,7 +227,11 @@ function Badge({
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -243,6 +247,8 @@ const LIST_PADDING = 5.2;
 const PILL_BORDER = 1;
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   pill: {
     // Fits the screen when the tabs' full width doesn't: they shrink instead.
     maxWidth: '100%',

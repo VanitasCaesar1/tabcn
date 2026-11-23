@@ -97,8 +97,6 @@ const LARGE = 74;
 const SPACING = 103;
 /** Room kept on each side of the row on a screen too narrow for it. */
 const MARGIN = 12;
-/** The row never scales below this, so the orbs stay tappable. */
-const MIN_SCALE = 0.5;
 
 function resolveMaterial(material: OrbsMaterial): Exclude<OrbsMaterial, 'auto'> {
   if (material !== 'auto') return material;
@@ -116,7 +114,8 @@ export function Orbs({ colors: custom, material = 'auto', haptics = true }: Orbs
   const window = useWindowDimensions();
   const natural = tabs.length * LARGE + Math.max(0, tabs.length - 1) * (SPACING - LARGE);
   const room = window.width - insets.left - insets.right - MARGIN * 2;
-  const scale = natural > room ? Math.max(MIN_SCALE, room / natural) : 1;
+  // Scaled to fit, however many orbs: a floor here pushed the row off narrow screens.
+  const scale = natural > room ? room / natural : 1;
   // The app's centre orb is always the large one; it doesn't follow the active tab. With an
   // even count there's no centre, so every orb is small.
   const middle = tabs.length % 2 === 1 ? Math.floor(tabs.length / 2) : -1;
