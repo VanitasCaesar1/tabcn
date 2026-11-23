@@ -6,7 +6,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -14,6 +14,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import {
+  BadgeCount,
   TabBarRoot,
   TabButton,
   type TabItem,
@@ -30,8 +31,10 @@ const defaultColors = {
   active: '#ffffff',
   /** The other tabs' icons. */
   inactive: 'rgba(255, 255, 255, 0.55)',
-  /** The badge dot; it is ringed in `background`. */
+  /** The badge dot or count; it is ringed in `background`. */
   badge: '#ff453a',
+  /** A count badge's number. */
+  badgeText: '#ffffff',
 };
 
 export type SolidDarkColors = typeof defaultColors;
@@ -84,6 +87,7 @@ function Tab({
     badgeOpacity.value = withTiming(hasBadge ? 1 : 0, tabcnTiming);
   }, [hasBadge, badgeOpacity]);
   const badge = useAnimatedStyle(() => ({ opacity: badgeOpacity.value }));
+  const count = tab.badge == null ? '' : String(tab.badge).trim();
 
   return (
     <TabButton
@@ -101,11 +105,27 @@ function Tab({
         <Animated.View
           pointerEvents="none"
           style={[
-            styles.badge,
+            count === '' ? styles.badge : styles.count,
             { backgroundColor: colors.badge, borderColor: colors.background },
             badge,
           ]}
-        />
+        >
+          {/* A number or text shows as a count; an empty badge stays a dot. */}
+          {count === '' ? null : typeof tab.badge === 'number' ? (
+            <BadgeCount
+              value={tab.badge}
+              textStyle={[styles.countText, { color: colors.badgeText }]}
+            />
+          ) : (
+            <Text
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.3}
+              style={[styles.countText, { color: colors.badgeText }]}
+            >
+              {count}
+            </Text>
+          )}
+        </Animated.View>
       </View>
     </TabButton>
   );
@@ -143,4 +163,17 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 2,
   },
+  count: {
+    position: 'absolute',
+    top: -6,
+    left: 15,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countText: { fontSize: 10, lineHeight: 12, fontWeight: '700' },
 });

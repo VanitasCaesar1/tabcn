@@ -23,8 +23,8 @@
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-import type { ReactNode } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { type ReactNode, useRef } from 'react';
+import { type LayoutChangeEvent, Platform, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -34,6 +34,7 @@ import Animated, {
   ReduceMotion,
   type SharedValue,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -43,13 +44,13 @@ import {
   PressableScale,
   TabBarRoot,
   TabButton,
-  TabIndicator,
   type TabItem,
   TabList,
   tabcnTiming,
   useFocusProgress,
   usePanelAnchor,
   useTabBar,
+  useTabIndicator,
 } from 'react-native-tabcn';
 
 const defaultColors = {
@@ -151,7 +152,7 @@ export function GlassBadges({
 }: GlassBadgesProps) {
   const colors = { ...defaultColors, ...custom };
   const surface = resolveMaterial(material);
-  const { tabs, insets } = useTabBar();
+  const { insets } = useTabBar();
   const anchor = usePanelAnchor('action');
   const shadow = { boxShadow: `0 3px 14px ${colors.shadow}` };
   // The magnifier dims at once on touch (as a UIButton highlight does) and fades back on release.
@@ -171,13 +172,7 @@ export function GlassBadges({
       <View style={[styles.pill, shadow]}>
         <Glass surface={surface} colors={colors} />
         <TabList style={styles.list}>
-          <TabIndicator
-            inset={{ x: -CAPSULE_OVERHANG, y: INSET }}
-            style={[styles.capsule, { backgroundColor: colors.capsule }]}
-          />
-          {tabs.map((tab) => (
-            <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
-          ))}
+          <Row colors={colors} haptics={haptics} />
         </TabList>
       </View>
       <PressableScale
@@ -252,17 +247,50 @@ function Magnifier({ color }: { color: string }) {
   );
 }
 
+/** The capsule and the tabs, under `TabList`, sharing one indicator: the tabs' colour follows it. */
+function Row({ colors, haptics }: { colors: GlassBadgesColors; haptics: boolean }) {
+  const { tabs, activeIndex } = useTabBar();
+  const indicator = useTabIndicator({ inset: { x: -CAPSULE_OVERHANG, y: INSET } });
+  const previous = useMovingBetween(activeIndex);
+  return (
+    <>
+      <Animated.View
+        pointerEvents="none"
+        style={[indicator.style, styles.capsule, { backgroundColor: colors.capsule }]}
+      />
+      {tabs.map((tab) => (
+        <Tab
+          key={tab.key}
+          tab={tab}
+          colors={colors}
+          haptics={haptics}
+          indicator={indicator}
+          moving={tab.index === activeIndex || tab.index === previous}
+          activeIndex={activeIndex}
+        />
+      ))}
+    </>
+  );
+}
+
 function Tab({
   tab,
   colors,
   haptics,
+  indicator,
+  moving,
+  activeIndex,
 }: {
   tab: TabItem;
   colors: GlassBadgesColors;
   haptics: boolean;
+  indicator: IndicatorFrame;
+  moving: boolean;
+  activeIndex: number;
 }) {
-  // Grey to blue crossfade; nothing moves or changes size.
-  const progress = useFocusProgress(tab);
+  // Grey to blue crossfade, following the capsule; nothing moves or changes size.
+  const focus = useFocusProgress(tab);
+  const { coverage: progress, onLayout } = useCoverage(indicator, moving, activeIndex, focus);
   const activeIcon = useAnimatedStyle(() => ({ opacity: progress.value }));
   // The grey copy stays opaque under the blue one until the last stretch (no dip in ink),
   // then drops out so the active glyph rests alone with no grey fringe round it.
@@ -277,6 +305,7 @@ function Tab({
     <TabButton
       tab={tab}
       style={styles.tab}
+      onLayout={onLayout}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <View style={styles.icon}>
@@ -344,6 +373,56 @@ function Badge({
 
 const BADGE_OUTER = BADGE + BADGE_RING * 2;
 const DOT_OUTER = 10 + BADGE_RING * 2;
+
+/** The indicator's animated frame, as `useTabIndicator` returns it. */
+interface IndicatorFrame {
+  x: SharedValue<number>;
+  width: SharedValue<number>;
+  ready: SharedValue<boolean>;
+}
+
+/**
+ * The active tab and the one it was before: the two tabs a change of tab moves between. Only
+ * these take colour from the indicator, so tabs it passes over on a long move stay unlit.
+ */
+function useMovingBetween(activeIndex: number) {
+  const last = useRef(activeIndex);
+  const previous = useRef(activeIndex);
+  if (last.current !== activeIndex) {
+    previous.current = last.current;
+    last.current = activeIndex;
+  }
+  return previous.current;
+}
+
+/**
+ * How much the indicator is on this tab, 0 to 1: 1 when it is centred on the tab, falling to 0
+ * as its centre moves a tab's width away. The tab's colour follows it, so the colour arrives
+ * with the indicator instead of ahead of it (a timed fade finished while the spring was still
+ * on its way). Until the tab and indicator are measured, and while no tab is active, it falls
+ * back to the tab's focus progress.
+ */
+function useCoverage(
+  indicator: IndicatorFrame,
+  moving: boolean,
+  activeIndex: number,
+  fallback: SharedValue<number>,
+) {
+  const frame = useSharedValue({ x: 0, width: 0 });
+  const onLayout = (event: LayoutChangeEvent) => {
+    const { x, width } = event.nativeEvent.layout;
+    frame.value = { x, width };
+  };
+  const coverage = useDerivedValue(() => {
+    const f = frame.value;
+    if (!indicator.ready.value || f.width === 0 || activeIndex < 0) return fallback.value;
+    if (!moving) return 0;
+    const centre = indicator.x.value + indicator.width.value / 2;
+    const distance = Math.abs(centre - (f.x + f.width / 2));
+    return Math.min(1, Math.max(0, 1 - distance / f.width));
+  });
+  return { coverage, onLayout };
+}
 
 const styles = StyleSheet.create({
   row: {

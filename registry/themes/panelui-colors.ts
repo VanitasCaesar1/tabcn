@@ -333,6 +333,7 @@ export const panelUIColorMaps = {
   },
   'sliding-capsule': {
     background: 'surface',
+    glassTint: ['surface', 0.55],
     capsule: 'surface-tertiary',
     foreground: 'foreground',
     rim: 'border',
@@ -347,7 +348,7 @@ export const panelUIColorMaps = {
     background: 'background',
     active: 'foreground',
     inactive: 'muted-foreground',
-    badge: 'destructive',
+    ...badge,
   },
   'split-search': {
     background: ['card', 0.86],

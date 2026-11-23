@@ -32,7 +32,9 @@ import Animated, {
   interpolate,
   interpolateColor,
   ReduceMotion,
+  type SharedValue,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -302,10 +304,10 @@ function Tab({
   // The pill grows out of its centre: scaleX from PILL_FROM to 1 as it fades in (and back as
   // it fades out). A transform only, so the layout never changes; it is drawn inside the tab's
   // own slot, so it lines up in right-to-left layouts too.
-  const pill = useAnimatedStyle(() => ({
-    opacity: progress.value,
-    transform: [{ scaleX: interpolate(progress.value, [0, 1], [PILL_FROM, 1]) }],
-  }));
+  // By transforms only, with round ends at every width (scaleX squashed them into ovals).
+  const pillW = useDerivedValue(
+    () => pillWidth * interpolate(progress.value, [0, 1], [PILL_FROM, 1]),
+  );
   const outlined = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
   const filled = useAnimatedStyle(() => ({ opacity: progress.value }));
   const label = useAnimatedStyle(() => ({
@@ -321,14 +323,12 @@ function Tab({
       {({ pressed }) => (
         <>
           <View style={[styles.slot, { width: pillWidth }]}>
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                StyleSheet.absoluteFill,
-                styles.round,
-                { backgroundColor: colors.indicator },
-                pill,
-              ]}
+            <GrowingPill
+              width={pillW}
+              maxWidth={pillWidth}
+              height={PILL_HEIGHT}
+              color={colors.indicator}
+              opacity={progress}
             />
             <StateLayer pressed={pressed} color={colors.pressed} shape={styles.round} />
             <View style={styles.icon}>
@@ -411,6 +411,73 @@ function StateLayer({
       pointerEvents="none"
       style={[StyleSheet.absoluteFill, shape, { backgroundColor: color }, style]}
     />
+  );
+}
+
+/**
+ * A fully round pill drawn from two end caps and a middle strip, so it changes width by
+ * transforms only (no layout per frame) and its ends stay round at every width. Narrower than
+ * it is tall, it is a circle of that width. Centred in a `maxWidth` x `height` box.
+ */
+function GrowingPill({
+  width,
+  maxWidth,
+  height,
+  color,
+  opacity,
+}: {
+  width: SharedValue<number>;
+  maxWidth: number;
+  height: number;
+  color: string;
+  opacity: SharedValue<number>;
+}) {
+  const box = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const cap = (side: -1 | 1) => () => {
+    'worklet';
+    const w = Math.max(0, width.value);
+    return {
+      transform: [
+        { translateX: side * (Math.max(w, height) / 2 - height / 2) },
+        { scale: Math.max(0.001, Math.min(1, w / height)) },
+      ],
+    };
+  };
+  const start = useAnimatedStyle(cap(-1));
+  const end = useAnimatedStyle(cap(1));
+  const strip = useAnimatedStyle(() => ({
+    transform: [{ scaleX: Math.max(0.001, width.value - height) / maxWidth }],
+  }));
+  const capStyle = {
+    position: 'absolute' as const,
+    top: 0,
+    left: (maxWidth - height) / 2,
+    width: height,
+    height,
+    borderRadius: height / 2,
+    backgroundColor: color,
+  };
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[{ position: 'absolute', top: 0, width: maxWidth, height }, box]}
+    >
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: maxWidth,
+            height,
+            backgroundColor: color,
+          },
+          strip,
+        ]}
+      />
+      <Animated.View style={[capStyle, start]} />
+      <Animated.View style={[capStyle, end]} />
+    </Animated.View>
   );
 }
 

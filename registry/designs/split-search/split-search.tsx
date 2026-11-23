@@ -329,16 +329,27 @@ function Capsule({
     // re-runs when `kept`, `center` or `pillWidth` (captured above) change.
   );
 
-  const style = useAnimatedStyle(() => ({
-    width: width.value,
+  // Two round caps and a stretched middle strip, moved by transforms only: animating `width`
+  // laid the capsule out again on every frame.
+  const box = useAnimatedStyle(() => ({
     opacity: ready.value ? shown.value * (1 - minimized.value) : 0,
-    transform: [{ translateX: x.value }],
+  }));
+  const startCap = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+  const endCap = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.value + Math.max(width.value, CAP) - CAP }],
+  }));
+  const strip = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: x.value + Math.max(width.value, CAP) / 2 - STRIP / 2 },
+      { scaleX: (Math.max(0, width.value - CAP) + 1) / STRIP },
+    ],
   }));
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={[styles.capsule, PHYSICAL_LEFT, { backgroundColor: color }, style]}
-    />
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.ltr, box]}>
+      <Animated.View style={[styles.capsuleStrip, { backgroundColor: color }, strip]} />
+      <Animated.View style={[styles.capsule, { backgroundColor: color }, startCap]} />
+      <Animated.View style={[styles.capsule, { backgroundColor: color }, endCap]} />
+    </Animated.View>
   );
 }
 
@@ -497,6 +508,11 @@ const PHYSICAL_LEFT =
     ? { right: 0 }
     : { left: 0 };
 
+/** The capsule's height, and so its caps' size. */
+const CAP = BAR - INSET * 2;
+/** Width of the capsule's middle strip before it is scaled. */
+const STRIP = 100;
+
 const styles = StyleSheet.create({
   root: {
     alignSelf: 'stretch',
@@ -525,12 +541,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: INSET,
   },
+  // A round cap of the capsule (CAP x CAP), and its middle strip (STRIP wide, scaled).
   capsule: {
     position: 'absolute',
+    left: 0,
     top: INSET,
-    height: BAR - INSET * 2,
-    borderRadius: (BAR - INSET * 2) / 2,
+    width: CAP,
+    height: CAP,
+    borderRadius: CAP / 2,
   },
+  capsuleStrip: {
+    position: 'absolute',
+    left: 0,
+    top: INSET,
+    width: STRIP,
+    height: CAP,
+  },
+  // The capsule's frame is physical (from the left edge) in either layout direction.
+  ltr: { direction: 'ltr' },
   tab: {
     height: BAR,
     alignItems: 'center',

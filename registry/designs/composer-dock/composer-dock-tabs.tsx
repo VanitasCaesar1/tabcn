@@ -150,9 +150,11 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
   },
   heldGlass: { borderRadius: 24 },
+  // Just above the tab row, overlapping the composer's bottom edge by a few points: it floats
+  // over it (with a shadow) rather than sitting on it.
   labelTrack: {
     position: 'absolute',
-    top: -20,
+    top: -16,
     width: 0,
     alignItems: 'center',
     overflow: 'visible',
@@ -163,6 +165,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.18)',
   },
   labelText: { fontSize: 12, fontWeight: '600' },
 });
