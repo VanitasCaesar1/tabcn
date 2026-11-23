@@ -74,7 +74,7 @@ export default async function DesignPage({ params }: Props) {
       <main
         id="content"
         tabIndex={-1}
-        className="mx-auto flex w-full max-w-[1040px] flex-1 flex-col px-4 pt-8 pb-4 outline-hidden sm:px-6 sm:pt-12"
+        className="mx-auto flex w-full max-w-[1040px] flex-1 flex-col px-4 pt-8 pb-4 outline-hidden sm:px-6 sm:pt-12 xl:pt-8"
       >
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
           <div className="min-w-0 max-w-[720px]">
@@ -107,7 +107,7 @@ export default async function DesignPage({ params }: Props) {
           </a>
         </div>
 
-        <div className="mt-8">
+        <div className="mt-6">
           <DesignWorkbench
             usage={usageDesign(design)}
             media={design}

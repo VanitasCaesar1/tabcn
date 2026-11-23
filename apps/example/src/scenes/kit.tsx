@@ -61,6 +61,11 @@ export interface SceneColors {
   surface?: string;
   muted?: string;
   accent?: string;
+  /**
+   * A tab flooded in one colour (Colour Flood's Pay): everything is drawn in the one ink, since
+   * colour cues such as green and red changes would vanish into the flood.
+   */
+  flood?: boolean;
 }
 
 export interface SceneProps {
@@ -90,6 +95,8 @@ export interface SceneProps {
 
 export interface Palette extends ScenePalette {
   dark: boolean;
+  /** See SceneColors.flood. */
+  flood: boolean;
 }
 
 /** The scene's palette, or the replacement colours mapped onto it. */
@@ -99,7 +106,7 @@ export function scenePalette(
   themed: SceneColors | undefined,
 ): Palette {
   const own = SCENES[name][scheme];
-  if (!themed) return { ...own, dark: scheme === 'dark' };
+  if (!themed) return { ...own, dark: scheme === 'dark', flood: false };
   return {
     background: themed.background,
     surface: themed.surface ?? themed.chip,
@@ -107,6 +114,7 @@ export function scenePalette(
     subtle: themed.muted ?? themed.text,
     accent: themed.accent ?? themed.text,
     dark: isLight(themed.text) ?? scheme === 'dark',
+    flood: themed.flood ?? false,
   };
 }
 
@@ -122,6 +130,7 @@ export function floodColors(flood: string): SceneColors {
     surface: wash,
     muted: light ? 'rgba(0, 0, 0, 0.6)' : 'rgba(255, 255, 255, 0.75)',
     accent: ink,
+    flood: true,
   };
 }
 

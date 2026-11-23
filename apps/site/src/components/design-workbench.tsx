@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { registryUrl } from '@/lib/site';
 import { aiPromptFor, type UsageDesign, type UsageSettings, usageFor } from '@/lib/usage';
@@ -14,10 +14,31 @@ import { RUNNERS, useRunner } from './use-runner';
 type Tab = 'preview' | 'code';
 
 /**
- * 380 px wide on desktop, as long as the whole phone still fits the window under the header when
- * the stage is scrolled to; 260 px on phones.
+ * On desktop, as wide as lets the whole phone (2.088 times as tall as wide) fit in the window on
+ * load, under everything above the stage (`--stage-top`, measured) and the stage's padding: up to
+ * 380 px, and no less than 220 px on a very short window. 260 px on phones, which scroll to it.
  */
-const PHONE_WIDTH = 'w-[260px] md:w-[clamp(260px,calc((100dvh_-_136px)_/_2.088),380px)]';
+const PHONE_WIDTH =
+  'w-[260px] md:w-[clamp(220px,calc((100dvh_-_var(--stage-top,300px)_-_56px)_/_2.088),380px)]';
+
+/** Keeps `--stage-top` on the stage: how far down the page it starts. */
+function useStageTop() {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      el.style.setProperty('--stage-top', `${Math.round(top)}px`);
+    };
+    measure();
+    // The header wraps differently as the window narrows; the window's height alone changes nothing above.
+    const observer = new ResizeObserver(measure);
+    observer.observe(document.body);
+    return () => observer.disconnect();
+  }, []);
+  return ref;
+}
 
 // The top of a design's page: Preview / Code tabs and "Copy for AI" over a stage, the Customize
 // panel under it, then the install box and the usage snippet. Everything under the tabs follows
@@ -55,6 +76,7 @@ export function DesignWorkbench({
   const [tab, setTab] = useState<Tab>('preview');
   const [file, setFile] = useState(0);
   const runner = useRunner();
+  const stageRef = useStageTop();
 
   const chosen = { ...settings, rtl };
   const snippet = usageFor(usage, chosen);
@@ -64,64 +86,66 @@ export function DesignWorkbench({
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div
-          role="tablist"
-          aria-label="View"
-          className="relative grid h-9 w-[176px] grid-cols-2 rounded-[10px] bg-card p-0.5 shadow-[inset_0_0_0_1px_var(--card-border)]"
-          style={
-            {
-              '--g': tab === 'preview' ? 0 : 1,
-              '--n': 2,
-              '--pad': '2px',
-              '--capsule-r': '8px',
-            } as React.CSSProperties
-          }
-        >
-          <span aria-hidden className="dock-capsule" />
-          {(['preview', 'code'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              role="tab"
-              id={`${id}-${t}-tab`}
-              aria-selected={tab === t}
-              aria-controls={`${id}-${t}`}
-              tabIndex={tab === t ? 0 : -1}
-              onClick={() => setTab(t)}
-              onKeyDown={(e) => {
-                if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-                e.preventDefault();
-                const next = t === 'preview' ? 'code' : 'preview';
-                setTab(next);
-                document.getElementById(`${id}-${next}-tab`)?.focus();
-              }}
-              className={cn(
-                'seg relative flex touch-manipulation items-center justify-center gap-1.5 rounded-lg font-medium text-[13px] outline-hidden focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:-outline-offset-2',
-                tab === t ? 'text-foreground' : 'text-muted hover:text-foreground',
-              )}
-            >
-              {t === 'preview' ? <EyeIcon /> : <CodeIcon />}
-              {t === 'preview' ? 'Preview' : 'Code'}
-            </button>
-          ))}
-        </div>
-        <CopyButton value={prompt} label="Copy for AI">
-          Copy for AI
-        </CopyButton>
-      </div>
-
       {/* One stage for both tabs: the code lies over the phone, so the live preview keeps running
           (and keeps its state) while the code is shown. */}
-      <div className="relative mt-3 overflow-hidden rounded-2xl border border-card-border bg-card-stage">
+      <div className="relative overflow-hidden rounded-2xl border border-card-border bg-card-stage">
+        {/* The tabs and "Copy for AI": a row at the top of the stage, and in its top corners once the
+            stage is wide enough that they clear the phone, so the phone starts higher. */}
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 p-3 xl:pointer-events-none xl:absolute xl:inset-x-0 xl:top-0 xl:[&>*]:pointer-events-auto">
+          <div
+            role="tablist"
+            aria-label="View"
+            className="relative grid h-9 w-[176px] grid-cols-2 rounded-[10px] bg-card p-0.5 shadow-[inset_0_0_0_1px_var(--card-border)]"
+            style={
+              {
+                '--g': tab === 'preview' ? 0 : 1,
+                '--n': 2,
+                '--pad': '2px',
+                '--capsule-r': '8px',
+              } as React.CSSProperties
+            }
+          >
+            <span aria-hidden className="dock-capsule" />
+            {(['preview', 'code'] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                id={`${id}-${t}-tab`}
+                aria-selected={tab === t}
+                aria-controls={`${id}-${t}`}
+                tabIndex={tab === t ? 0 : -1}
+                onClick={() => setTab(t)}
+                onKeyDown={(e) => {
+                  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+                  e.preventDefault();
+                  const next = t === 'preview' ? 'code' : 'preview';
+                  setTab(next);
+                  document.getElementById(`${id}-${next}-tab`)?.focus();
+                }}
+                className={cn(
+                  'seg relative flex touch-manipulation items-center justify-center gap-1.5 rounded-lg font-medium text-[13px] outline-hidden focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-solid focus-visible:-outline-offset-2',
+                  tab === t ? 'text-foreground' : 'text-muted hover:text-foreground',
+                )}
+              >
+                {t === 'preview' ? <EyeIcon /> : <CodeIcon />}
+                {t === 'preview' ? 'Preview' : 'Code'}
+              </button>
+            ))}
+          </div>
+          <CopyButton value={prompt} label="Copy for AI">
+            Copy for AI
+          </CopyButton>
+        </div>
         <div
+          ref={stageRef}
           id={`${id}-preview`}
           role="tabpanel"
           aria-labelledby={`${id}-preview-tab`}
           aria-hidden={tab !== 'preview'}
           inert={tab !== 'preview'}
           className={cn(
-            'relative flex justify-center overflow-x-clip px-4 py-8',
+            'relative flex justify-center overflow-x-clip px-4 pb-6 xl:pt-6',
             tab !== 'preview' && 'invisible',
           )}
         >
@@ -146,7 +170,7 @@ export function DesignWorkbench({
             id={`${id}-code`}
             role="tabpanel"
             aria-labelledby={`${id}-code-tab`}
-            className="absolute inset-0 p-2"
+            className="absolute inset-x-0 top-[60px] bottom-0 px-2 pb-2"
           >
             {shownFile && (
               <CodeBlock

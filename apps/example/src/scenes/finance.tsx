@@ -53,6 +53,12 @@ const SERIES = [72, 70, 74, 66, 68, 61, 63, 58, 60, 52, 55, 49, 51, 44, 47, 40, 
 const UP = { text: '#2f9e6a', chip: '#14b85a' };
 const DOWN = { text: '#d0483f', chip: '#e0284a' };
 
+/** A change's colour: green or red, or the screen's ink on a flooded tab (Colour Flood's Pay). */
+function changeColor(palette: Palette, up: boolean) {
+  if (palette.flood) return palette.text;
+  return up ? UP.text : DOWN.text;
+}
+
 export function FinanceScene(props: SceneProps) {
   const palette = scenePalette('finance', props.scheme, props.themed);
   const vivid = props.vivid ?? false;
@@ -92,7 +98,9 @@ function Summary({ palette, range }: { palette: Palette; range: number }) {
     <View style={styles.pad}>
       <Text style={[styles.label, { color: palette.subtle }]}>Total balance</Text>
       <Text style={[styles.balance, num, { color: palette.text }]}>$48,215.62</Text>
-      <Text style={[styles.change, num, { color: UP.text }]}>+$1,204.18 (2.56%) today</Text>
+      <Text style={[styles.change, num, { color: changeColor(palette, true) }]}>
+        +$1,204.18 (2.56%) today
+      </Text>
       <Svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} style={styles.chart}>
         <Defs>
           <LinearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
@@ -163,7 +171,9 @@ function Holdings({
                     <Text style={[styles.chipText, num]}>{row.change}</Text>
                   </View>
                 ) : (
-                  <Text style={[styles.sub, num, { color: tone.text }]}>{row.change}</Text>
+                  <Text style={[styles.sub, num, { color: changeColor(palette, up) }]}>
+                    {row.change}
+                  </Text>
                 )}
               </View>
             </View>
@@ -190,7 +200,7 @@ function Watchlist({ palette }: { palette: Palette }) {
                   <Text style={[styles.sub, { color: palette.subtle }]}>{row.name}</Text>
                 </View>
                 <Text style={[styles.value, num, { color: palette.text }]}>{row.price}</Text>
-                <Text style={[styles.watchChange, num, { color: up ? UP.text : DOWN.text }]}>
+                <Text style={[styles.watchChange, num, { color: changeColor(palette, up) }]}>
                   {row.change}
                 </Text>
               </View>

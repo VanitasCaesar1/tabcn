@@ -617,8 +617,8 @@ export const demos: Record<string, Demo> = {
     // Cash App: on the Pay tab (the second route) the whole screen and the bar are Cash green;
     // the other tabs fall back to white. The reference shows Pay active.
     render: ({ routes }) => <ColorFlood surfaces={{ [routes[1] ?? 't2']: colorFloodGreen }} />,
-    background: SOCIAL_LIGHT,
-    // The Pay screen is flooded green with the bar; the others are the white feed.
+    background: FINANCE_LIGHT,
+    // The Pay screen is the money app flooded green with the bar; the others are it in white.
     backgrounds: [undefined, colorFloodGreen, undefined],
     initialTab: 1,
     barHeight: 50,

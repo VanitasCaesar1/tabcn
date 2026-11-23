@@ -52,7 +52,7 @@ export const DESIGN_TAGS: Record<string, DesignTags> = {
   'side-rail': { style: 'material', scene: 'files', scheme: 'light' },
   'search-dock': { style: 'minimal', scene: 'social', scheme: 'light' },
   'button-row': { style: 'minimal', scene: 'shop', scheme: 'light' },
-  'color-flood': { style: 'playful', scene: 'social', scheme: 'light' },
+  'color-flood': { style: 'playful', scene: 'finance', scheme: 'light' },
   'accent-dark': { style: 'dark', scene: 'maps', scheme: 'dark' },
   'tile-plus': { style: 'minimal', scene: 'social', scheme: 'light' },
   'offset-plus': { style: 'dark', scene: 'social', scheme: 'dark' },

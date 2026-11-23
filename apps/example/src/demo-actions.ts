@@ -8,10 +8,17 @@
  *   match a tab's label as the start of the element's label.
  * - `tab` switches to the tab at that index (0 is the first), however the recorder does that.
  * - `wait` holds for that many milliseconds so the motion can finish on camera.
+ * - `tapAt` taps a point, in points on the recording phone (iPhone 17 Pro, 402 x 874), for a
+ *   control screen readers can't reach at that moment (an open panel is modal on iOS).
  *
  * Plain tab bars have no entry: the recorder switches their tabs.
  */
-export type DemoStep = { tap: string } | { longPress: string } | { tab: number } | { wait: number };
+export type DemoStep =
+  | { tap: string }
+  | { longPress: string }
+  | { tab: number }
+  | { wait: number }
+  | { tapAt: [number, number] };
 
 export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
   // Tap the strip to open the player, skip a track, close it with its own chevron.
@@ -91,13 +98,16 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
     { tab: 0 },
     { wait: 1500 },
   ],
-  // The chip folds the tabs into an account bar; pick another workspace. It stays open: the
-  // design's round button, which folds it back, has no accessibility label to tap it by.
+  // The chip folds the tabs into an account bar; pick another workspace, then fold back with the
+  // round button (by position: the open sheet hides it from accessibility).
   'account-dock': [
     { tap: 'Account and workspace, Northwind Studio, Sam Rivera, Online' },
     { wait: 1800 },
     { tap: 'Field Notes, 1,212 members' },
-    { wait: 2500 },
+    { wait: 1600 },
+    // The round button at the start of the dock: back to the tabs, now on Field Notes.
+    { tapAt: [45, 800] },
+    { wait: 1800 },
   ],
   // Hold Projects for its recent items, then open the attachment menu.
   'composer-dock': [
