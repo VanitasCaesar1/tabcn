@@ -19,6 +19,12 @@ import {
   type CompanionChipIconProps,
 } from '@registry/companion-chip/companion-chip';
 import { ContextTray as ContextTrayDesign } from '@registry/context-tray/context-tray';
+import {
+  FilterChips as FilterChipsDesign,
+  type FilterGroup,
+  type FilterValue,
+} from '@registry/filter-chips/filter-chips';
+import * as FilterChipsIcons from '@registry/filter-chips/filter-chips-icons';
 import { LabeledPlus as LabeledPlusDesign } from '@registry/labeled-plus/labeled-plus';
 import { MiniPlayer as MiniPlayerDesign } from '@registry/mini-player/mini-player';
 import * as QuickCreateIcons from '@registry/quick-create/icons';
@@ -215,6 +221,96 @@ export function MiniPlayerControls({ text, chip }: DemoExtraProps) {
         <DemoButton label="Peek" onPress={player.peek} text={text} chip={chip} />
         <DemoButton label="Open" onPress={player.open} text={text} chip={chip} />
         <DemoButton label="Hide" onPress={player.hide} text={text} chip={chip} />
+      </View>
+    </View>
+  );
+}
+
+// Filter Chips (paired with Soft Pill) -------------------------------------------------------
+
+const FilterChips = themed('filter-chips', FilterChipsDesign);
+const FILTERS = 'filters';
+
+const FILTER_GROUPS: FilterGroup[] = [
+  {
+    id: 'sort',
+    label: 'Sort',
+    icon: FilterChipsIcons.SortIcon,
+    options: [
+      { id: 'recommended', label: 'Recommended' },
+      { id: 'price-low', label: 'Lowest price' },
+      { id: 'price-high', label: 'Highest price' },
+      { id: 'rated', label: 'Top rated' },
+      { id: 'newest', label: 'Newest' },
+      { id: 'discount', label: 'Biggest discount' },
+    ],
+  },
+  {
+    id: 'delivery',
+    label: 'Delivery',
+    icon: FilterChipsIcons.TruckIcon,
+    multiple: true,
+    options: [
+      { id: 'today', label: 'Ships today' },
+      { id: 'free', label: 'Free delivery' },
+      { id: 'pickup', label: 'Store pickup' },
+    ],
+  },
+  {
+    id: 'arrives',
+    label: 'Arrives by',
+    icon: FilterChipsIcons.CalendarIcon,
+    options: [
+      { id: 'tomorrow', label: 'Tomorrow' },
+      { id: 'week', label: 'This week' },
+      { id: 'month', label: 'This month' },
+    ],
+  },
+  {
+    id: 'category',
+    label: 'Category',
+    icon: FilterChipsIcons.GridIcon,
+    multiple: true,
+    options: [
+      { id: 'phones', label: 'Phones' },
+      { id: 'laptops', label: 'Laptops' },
+      { id: 'audio', label: 'Audio' },
+      { id: 'watches', label: 'Watches' },
+      { id: 'cameras', label: 'Cameras' },
+    ],
+  },
+];
+
+const filterValue = demoStore<FilterValue>({});
+
+/** The strip, on every tab, with what is applied kept in a store the screens read too. */
+export function FilterChipsPanel() {
+  const value = filterValue.useValue();
+  return (
+    <FilterChips id={FILTERS} groups={FILTER_GROUPS} value={value} onChange={filterValue.set} />
+  );
+}
+
+/** What is applied, and Show / Hide for the strip. */
+export function FilterChipsControls({ text, chip }: DemoExtraProps) {
+  const strip = useTabPanel(FILTERS);
+  const value = filterValue.useValue();
+  const applied = FILTER_GROUPS.flatMap((group) =>
+    group.options.filter((o) => value[group.id]?.includes(o.id)).map((o) => o.label),
+  );
+  return (
+    <View style={styles.block}>
+      <Note
+        text={text}
+        message={
+          applied.length > 0
+            ? `Applied: ${applied.join(', ')}.`
+            : 'Nothing applied. Tap a chip above the bar.'
+        }
+      />
+      <View style={styles.row}>
+        <DemoButton label="Show strip" onPress={strip.peek} text={text} chip={chip} />
+        <DemoButton label="Hide strip" onPress={strip.hide} text={text} chip={chip} />
       </View>
     </View>
   );

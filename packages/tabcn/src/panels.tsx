@@ -55,6 +55,19 @@ export interface TabPanelProps {
    * a development warning. Without snap points, open is the content's own height, as before.
    */
   snapPoints?: readonly SnapPoint[];
+  /**
+   * While the panel is open, the bar slides away and the panel moves down into its place, on
+   * `tabcnSpring`, by transforms only. The bar's reported height doesn't change. Floating bars
+   * only: under a docked bar it is ignored, with a development warning. Default false.
+   */
+  coversBar?: boolean;
+  /**
+   * Drawn over the whole screen, behind the panel, while it is open: a dim `View`, or a blur
+   * from your own dependencies. It fades with the panel's slide (drags included), takes
+   * touches only while the panel is open, and a tap returns the panel to rest. Hidden from
+   * screen readers: back and the escape gesture already close the panel.
+   */
+  backdrop?: ReactNode;
   children?: ReactNode;
 }
 
@@ -76,6 +89,8 @@ export function TabPanel({
   peekHeight = 0,
   initialState = 'hidden',
   snapPoints = NO_SNAP_POINTS,
+  coversBar = false,
+  backdrop = null,
   children,
 }: TabPanelProps) {
   const store = useTabBarProvider()?.store;
@@ -95,7 +110,7 @@ export function TabPanel({
     store?.upsertPanel(
       id,
       owner,
-      { content: children, anchor, peekHeight, snapPoints: sheetPoints },
+      { content: children, anchor, peekHeight, snapPoints: sheetPoints, coversBar, backdrop },
       initialState,
     );
   });

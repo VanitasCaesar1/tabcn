@@ -45,6 +45,10 @@ export interface PanelRecord {
   peekHeight: number;
   /** Heights the panel rests at while open, lowest first; empty for a plain panel. */
   snapPoints: readonly SnapPoint[];
+  /** While open, the bar slides away and the panel moves into its place (floating bars). */
+  coversBar: boolean;
+  /** Drawn over the whole screen behind the panel while it is open; null for none. */
+  backdrop: ReactNode;
   state: PanelState;
   /** Index into `snapPoints` while open; -1 otherwise, and always -1 without snap points. */
   snap: number;
@@ -157,6 +161,8 @@ interface PanelOptions {
   anchor: PanelAnchor;
   peekHeight: number;
   snapPoints: readonly SnapPoint[];
+  coversBar: boolean;
+  backdrop: ReactNode;
 }
 
 /**

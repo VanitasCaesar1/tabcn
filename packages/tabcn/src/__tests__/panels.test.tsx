@@ -856,3 +856,68 @@ describe('react-native-tabcn/gestures', () => {
     expect(controls.player?.state).toBe('open');
   });
 });
+
+/** A panel that covers the bar, peeking, over a floating (or docked) test bar. */
+function CardApp({
+  placement = 'floating',
+  backdrop,
+}: {
+  placement?: 'floating' | 'docked';
+  backdrop?: ReactNode;
+}) {
+  return (
+    <App state={makeTabState()} bar={<TestBar placement={placement} />}>
+      <TabPanel id="card" coversBar backdrop={backdrop} peekHeight={40} initialState="peek">
+        <Text>card content</Text>
+      </TabPanel>
+      <Controls id="card" />
+    </App>
+  );
+}
+
+describe('panels that take the bar’s place', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(controls)) delete controls[key];
+  });
+
+  /** Whether the tabs sit inside a view that takes no touches (the slid-away bar box). */
+  const barCovered = () =>
+    closest(
+      screen.getAllByRole('tab', { includeHiddenElements: true })[0] ?? null,
+      (props) => props.pointerEvents === 'none',
+    ) !== null;
+
+  it('coversBar: the floating bar box stops taking touches while the panel is open', async () => {
+    await render(<CardApp />);
+    expect(barCovered()).toBe(false);
+    await act(async () => controls.card?.open());
+    expect(barCovered()).toBe(true);
+    await act(async () => controls.card?.toggle());
+    expect(controls.card?.state).toBe('peek');
+    expect(barCovered()).toBe(false);
+  });
+
+  it('coversBar: ignored under a docked bar, with a warning', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await render(<CardApp placement="docked" />);
+    expect(warn.mock.calls.some(([message]) => String(message).includes('coversBar'))).toBe(true);
+    warn.mockRestore();
+  });
+
+  it('backdrop: takes touches only while open, and a tap returns the panel to rest', async () => {
+    await render(<CardApp backdrop={<View testID="backdrop" />} />);
+    const layer = () =>
+      closest(
+        screen.getByTestId('backdrop', { includeHiddenElements: true }),
+        (props) => props.accessibilityElementsHidden === true,
+      );
+    expect(layer()?.props.pointerEvents).toBe('none');
+    await act(async () => controls.card?.open());
+    expect(layer()?.props.pointerEvents).toBe('auto');
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('backdrop', { includeHiddenElements: true }));
+    });
+    expect(controls.card?.state).toBe('peek');
+    expect(layer()?.props.pointerEvents).toBe('none');
+  });
+});

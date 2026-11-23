@@ -143,6 +143,7 @@ const PANELS_WITH_TESTS = [
   'bar-sheet',
   'companion-chip',
   'sub-tabs',
+  'filter-chips',
 ];
 
 test('every panel has a smoke test', () => {
@@ -487,5 +488,136 @@ describe('account-dock', () => {
     await openDock();
     expect(shows('Workspaces')).toBe(true);
     expect(shows('Field Notes')).toBe(true);
+  });
+});
+
+// Filter Chips -----------------------------------------------------------------------------
+
+const filterChips = require('../../../../registry/designs/filter-chips/filter-chips') as {
+  FilterChips: ComponentType<Record<string, unknown>>;
+};
+
+const FILTER_GROUPS = [
+  {
+    id: 'sort',
+    label: 'Sort',
+    options: [
+      { id: 'recommended', label: 'Recommended' },
+      { id: 'rated', label: 'Top rated' },
+    ],
+  },
+  {
+    id: 'delivery',
+    label: 'Delivery',
+    multiple: true,
+    options: [
+      { id: 'today', label: 'Ships today' },
+      { id: 'free', label: 'Free delivery' },
+      { id: 'pickup', label: 'Store pickup' },
+    ],
+  },
+];
+
+function Filters(props: Record<string, unknown>) {
+  return (
+    <PanelApp bar={<TestBar placement="floating" />}>
+      <filterChips.FilterChips groups={FILTER_GROUPS} value={{}} onChange={jest.fn()} {...props} />
+      <Controls id="filters" />
+    </PanelApp>
+  );
+}
+
+describe('filter-chips', () => {
+  const press = (target: Parameters<typeof fireEvent.press>[0]) =>
+    act(async () => {
+      await fireEvent.press(target);
+    });
+
+  beforeEach(() => {
+    for (const key of Object.keys(controls)) delete controls[key];
+  });
+
+  it('peeks as the strip; a chip opens its group, and Apply hands over the draft', async () => {
+    const onChange = jest.fn();
+    await render(<Filters onChange={onChange} />);
+    expect(controls.filters?.state).toBe('peek');
+    const sort = screen.getByLabelText('Sort, Any');
+    expect(sort.props.accessibilityState).toEqual({ expanded: false });
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    await press(sort);
+    expect(controls.filters?.state).toBe('open');
+    expect(screen.getAllByRole('radio')).toHaveLength(2);
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+    await press(screen.getByRole('radio', { name: 'Top rated' }));
+    expect(screen.getByRole('radio', { name: 'Top rated' }).props.accessibilityState).toEqual({
+      checked: true,
+    });
+    expect(onChange).not.toHaveBeenCalled();
+    await press(screen.getByRole('button', { name: 'Apply' }));
+    expect(onChange).toHaveBeenCalledWith({ sort: ['rated'] });
+    expect(controls.filters?.state).toBe('peek');
+  });
+
+  it('Android back folds the sheet and drops the draft', async () => {
+    const handlers: ((event: never) => boolean | null | undefined)[] = [];
+    const add = jest.spyOn(BackHandler, 'addEventListener').mockImplementation((_e, handler) => {
+      handlers.push(handler);
+      return {
+        remove: () => {
+          handlers.splice(handlers.indexOf(handler), 1);
+        },
+      };
+    });
+    const onChange = jest.fn();
+    await render(<Filters onChange={onChange} />);
+    await press(screen.getByLabelText('Delivery, Any'));
+    await press(screen.getByRole('checkbox', { name: 'Ships today' }));
+    await act(async () => {
+      for (const handler of [...handlers].reverse()) if (handler(undefined as never)) return;
+    });
+    expect(controls.filters?.state).toBe('peek');
+    expect(onChange).not.toHaveBeenCalled();
+    // Opening again starts from what is applied, not the dropped draft.
+    await press(screen.getByLabelText('Delivery, Any'));
+    expect(screen.getByRole('checkbox', { name: 'Ships today' }).props.accessibilityState).toEqual({
+      checked: false,
+    });
+    add.mockRestore();
+  });
+
+  it('names the choice on its chip; Clear empties the draft and clear-all applies at once', async () => {
+    const onChange = jest.fn();
+    await render(
+      <Filters onChange={onChange} value={{ sort: ['rated'], delivery: ['free', 'today'] }} />,
+    );
+    expect(screen.getByLabelText('Sort, Top rated')).toBeTruthy();
+    // Several choices: the first in the group's order, and how many more.
+    expect(screen.getByLabelText('Delivery, Ships today +1')).toBeTruthy();
+    const all = screen.getByLabelText('All filters, 2 applied');
+    await press(all);
+    expect(screen.getAllByRole('radio')).toHaveLength(2);
+    expect(screen.getAllByRole('checkbox')).toHaveLength(3);
+    await press(screen.getByRole('button', { name: 'Clear' }));
+    expect(
+      screen.getAllByRole('checkbox').filter((c) => c.props.accessibilityState?.checked),
+    ).toHaveLength(0);
+    expect(onChange).not.toHaveBeenCalled();
+    await press(screen.getByRole('button', { name: 'Apply' }));
+    expect(onChange).toHaveBeenCalledWith({});
+    onChange.mockClear();
+    await press(screen.getByRole('button', { name: 'Clear all filters' }));
+    expect(onChange).toHaveBeenCalledWith({});
+  });
+
+  it('Apply with nothing changed just folds back', async () => {
+    const onChange = jest.fn();
+    await render(<Filters onChange={onChange} />);
+    await press(screen.getByLabelText('All filters'));
+    expect(screen.getByRole('button', { name: 'Clear' }).props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+    await press(screen.getByRole('button', { name: 'Apply' }));
+    expect(onChange).not.toHaveBeenCalled();
+    expect(controls.filters?.state).toBe('peek');
   });
 });

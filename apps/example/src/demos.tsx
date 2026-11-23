@@ -91,6 +91,8 @@ import {
   CompanionChipPanel,
   ContextTrayExtra,
   type DemoExtraProps,
+  FilterChipsControls,
+  FilterChipsPanel,
   GlassBadgesControls,
   LibraryIcon,
   LiveTabsControls,
@@ -885,6 +887,25 @@ export const demos: Record<string, Demo> = {
       { label: 'Timer', icon: LiveTabsIcons.TimerIcon },
       { label: 'Downloads', icon: LiveTabsIcons.DownloadIcon },
       { label: 'Profile', icon: LiveTabsIcons.ProfileIcon },
+    ],
+  },
+  'filter-chips': {
+    // Paired with Soft Pill: the strip peeks out above the pill; a chip grows into its sheet.
+    render: () => <SoftPill />,
+    panel: () => <FilterChipsPanel />,
+    extra: FilterChipsControls,
+    background: '#f1f1f3',
+    // The open card blurs the screen behind it; a stack header above the tabs would stay sharp.
+    fullScreen: true,
+    pattern: { kind: 'grid', color: '#e4e4e8', gap: 24 },
+    initialTab: 0,
+    barHeight: 58.5,
+    tabs: [
+      { label: 'Home', icon: SoftPillIcons.HomeIcon },
+      { label: 'Ideas', icon: SoftPillIcons.IdeasIcon },
+      { label: 'Explore', icon: SoftPillIcons.ExploreIcon },
+      { label: 'History', icon: SoftPillIcons.HistoryIcon },
+      { label: 'Trends', icon: SoftPillIcons.TrendsIcon },
     ],
   },
   'mini-player': {

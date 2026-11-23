@@ -229,6 +229,26 @@ const PANEL_USAGE: Record<
         '      </BarSheet>',
       ],
     },
+    'filter-chips': {
+      bar: 'SoftPill',
+      barId: 'soft-pill',
+      imports: [
+        "import { FilterChips } from '@/components/tabcn/filter-chips';",
+        "import { SortIcon, TruckIcon } from '@/components/tabcn/filter-chips-icons';",
+      ],
+      lines: [
+        '      {/* Declared once beside <Tabs>, or on the screen that filters (hide it on blur',
+        "          with useTabPanel('filters').hide). Only Apply calls onChange. */}",
+        '      <FilterChips',
+        '        groups={[',
+        "          { id: 'sort', label: 'Sort', icon: SortIcon, options: sortOptions },",
+        "          { id: 'delivery', label: 'Delivery', icon: TruckIcon, multiple: true, options: deliveryOptions },",
+        '        ]}',
+        '        value={filters}',
+        '        onChange={setFilters}',
+        '      />',
+      ],
+    },
     'companion-chip': {
       bar: 'SplitSearch',
       barId: 'split-search',

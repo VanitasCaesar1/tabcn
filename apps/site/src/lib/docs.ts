@@ -101,6 +101,7 @@ const GUIDE_FOR: Record<string, string> = {
   'quick-create': '/docs/panels/',
   'account-dock': '/docs/panels/',
   'bar-sheet': '/docs/sheets/',
+  'filter-chips': '/docs/panels/',
   'split-search': '/docs/minimize-on-scroll/',
   'side-rail': '/docs/minimize-on-scroll/',
   'companion-chip': '/docs/companions/',

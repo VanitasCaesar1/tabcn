@@ -38,6 +38,12 @@ const designItems = registry.items.filter((item) => !isTheme(item));
 // Always available to a design: React, React Native, Reanimated (a tabcn peer) and tabcn itself.
 const ALWAYS = new Set(['react', 'react-native', 'react-native-reanimated', 'react-native-tabcn']);
 
+/** A registry dependency's package name: `react-native-tabcn@>=0.4.0` → `react-native-tabcn`. */
+const packageName = (dep: string) => {
+  const at = dep.indexOf('@', 1);
+  return at === -1 ? dep : dep.slice(0, at);
+};
+
 const errors: string[] = [];
 const fail = (msg: string) => errors.push(msg);
 
@@ -92,7 +98,7 @@ const allNames = registry.items.map((i) => i.name);
 if (new Set(allNames).size !== allNames.length) fail('registry.json has duplicate names');
 
 for (const item of registry.items) {
-  const allowed = new Set([...ALWAYS, ...(item.dependencies ?? [])]);
+  const allowed = new Set([...ALWAYS, ...(item.dependencies ?? []).map(packageName)]);
   const main = `registry/designs/${item.name}/${item.name}.tsx`;
   if (!isTheme(item) && !item.files.some((f) => f.path === main)) {
     fail(`${item.name}: files must include ${main}`);
@@ -169,7 +175,7 @@ for (const item of registry.items) {
       }
     }
   }
-  for (const dep of item.dependencies ?? []) {
+  for (const dep of (item.dependencies ?? []).map(packageName)) {
     const used = item.files.some((f) => {
       if (!existsSync(join(root, f.path))) return false;
       const source = read(f.path);
