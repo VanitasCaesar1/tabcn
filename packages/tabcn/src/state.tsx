@@ -17,6 +17,7 @@ export interface TabIconProps {
 
 /** One visible tab, built from a route and its screen options. */
 export interface TabItem {
+  /** Stable for the tab's lifetime (the route's name), for React keys and remembering tabs. */
   key: string;
   routeName: string;
   /** Position among the visible tabs. */

@@ -65,7 +65,10 @@ export function buildTabBarState(input: BuildInput): TabBarState {
     if (focused) activeIndex = index;
     const icon = options.tabBarIcon;
     tabs.push({
-      key: route.key,
+      // The route's name, not its key: Expo Router gives a tab's route a new key the first time
+      // the tab is visited, and a design keyed on that remounts the tab, so its focus animation
+      // jumps to the end. Names are unique within a tab navigator and never change.
+      key: route.name,
       routeName: route.name,
       index,
       focused,

@@ -50,6 +50,34 @@ describe('badges from the navigator', () => {
   });
 });
 
+describe('tab keys', () => {
+  function keysFor(routes: { key: string; name: string }[]) {
+    return buildTabBarState({
+      routes,
+      focusedIndex: 0,
+      getOptions: () => ({}),
+      insets: { top: 0, right: 0, bottom: 0, left: 0 },
+      reportHeight: () => {},
+      emitPress: () => false,
+      emitLongPress: () => {},
+      navigate: () => {},
+    }).tabs.map((tab) => tab.key);
+  }
+
+  it('stays the same when the navigator gives a route a new key on its first visit', () => {
+    // Expo Router: an unvisited tab's route is keyed "t4", then "t4:0-1-1" once visited.
+    const before = keysFor([
+      { key: 'index:0-1-0', name: 'index' },
+      { key: 't4', name: 't4' },
+    ]);
+    const after = keysFor([
+      { key: 'index:0-1-0', name: 'index' },
+      { key: 't4:0-1-1', name: 't4' },
+    ]);
+    expect(after).toEqual(before);
+  });
+});
+
 /** A bar whose first tab gets `first` as its ref and the others `rest`. */
 function Bar({
   first,
