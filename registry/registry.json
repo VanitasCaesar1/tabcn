@@ -809,6 +809,7 @@
         "react-native-tabcn",
         "@react-native-masked-view/masked-view",
         "expo-blur",
+        "expo-glass-effect",
         "expo-haptics",
         "react-native-svg"
       ],

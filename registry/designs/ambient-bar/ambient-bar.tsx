@@ -3,8 +3,9 @@
  * dark blur of whatever is scrolling behind: a red logo passing under a tab glows red there,
  * green figures on the right glow green, and over a black list the bar is black. The blur builds
  * up from above the bar to the bottom edge, so content melts into it instead of meeting an edge.
- * Icons only (each tab's label is still read by screen readers). The active tab sits on a lens,
- * a blur of its own lifted with a faint white: grey over black, lit red over red.
+ * Icons only (each tab's label is still read by screen readers). The active tab sits on a lens:
+ * Liquid Glass where iOS has it (26 and later), which refracts and saturates what passes under
+ * it, so it lights up in a logo's colour; elsewhere a blur of its own lifted with a faint white.
  *
  * ```tsx
  * <Tabs tabBar={tabBar(<AmbientBar />)} />
@@ -20,6 +21,7 @@
  */
 import MaskedViewClass from '@react-native-masked-view/masked-view';
 import { BlurView } from 'expo-blur';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import type { ComponentType, ReactElement } from 'react';
 import { Platform, StyleSheet, useWindowDimensions, View, type ViewProps } from 'react-native';
@@ -41,6 +43,11 @@ const MaskedView = MaskedViewClass as unknown as ComponentType<
 
 /** Whether the bar blurs: iOS and the web. Android gets the dark fade alone. */
 const BLUR = Platform.OS !== 'android';
+/**
+ * The lens is Liquid Glass where the system has it (iOS 26): it refracts and saturates what is
+ * under it, so a logo passing under the active tab lights the lens in its colour.
+ */
+const GLASS = isLiquidGlassAvailable();
 
 const defaultColors = {
   /** Idle icons. */
@@ -69,8 +76,11 @@ const ICON = 23;
 const LENS_W = 62;
 const LENS_H = 38;
 /** How strong the blur is (expo-blur intensity, 0-100) where it is fully in. */
-const BLUR_INTENSITY = 45;
-/** The default material at a moderate radius keeps a mark's colour together, so it glows. */
+const BLUR_INTENSITY = 32;
+/**
+ * The default material at a light radius keeps a mark's colour together, so it glows; the dark
+ * materials grey it, and a stronger blur spreads it too thin.
+ */
 const TINT = 'default' as const;
 /** The lens's own blur, a little stronger than the bar's. */
 const LENS_INTENSITY = 60;
@@ -104,12 +114,20 @@ export function AmbientBar({ reach = 56, colors: custom, haptics = true }: Ambie
         <TabIndicator style={styles.lensSlot}>
           {/* A lens: a blur of its own over the active tab picks up the colour under it, and a
               faint white lifts it, so it reads grey over black and lit red over red. */}
-          <View style={styles.lens}>
-            {BLUR ? (
-              <BlurView intensity={LENS_INTENSITY} tint="default" style={StyleSheet.absoluteFill} />
-            ) : null}
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.lens }]} />
-          </View>
+          {GLASS ? (
+            <GlassView glassEffectStyle="clear" colorScheme="dark" style={styles.lens} />
+          ) : (
+            <View style={styles.lens}>
+              {BLUR ? (
+                <BlurView
+                  intensity={LENS_INTENSITY}
+                  tint="default"
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : null}
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.lens }]} />
+            </View>
+          )}
         </TabIndicator>
         {tabs.map((tab) => (
           <Tab
@@ -179,9 +197,9 @@ function maskStyle(fadeShare: number) {
 function shadeStyle(shade: string) {
   const strength = BLUR ? 1 : 1.25;
   const stops = [
-    [0.3, 0],
-    [0.18, 35],
-    [0.05, 70],
+    [0.18, 0],
+    [0.1, 35],
+    [0.03, 70],
     [0, 100],
   ]
     .map(([alpha, at]) => `${withAlpha(shade, Math.min(1, (alpha as number) * strength))} ${at}%`)
