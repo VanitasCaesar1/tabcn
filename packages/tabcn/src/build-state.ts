@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { createElement, type ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
 
 import type { Insets, TabBarState, TabIconProps, TabItem } from './state';
@@ -76,7 +76,12 @@ export function buildTabBarState(input: BuildInput): TabBarState {
       accessibilityLabel: options.tabBarAccessibilityLabel,
       testID: options.tabBarButtonTestID,
       badge: normalizeBadge(options.tabBarBadge),
-      renderIcon: icon ? (props: TabIconProps) => icon(props) : undefined,
+      // In a component of its own, keyed by tab: an icon that uses hooks (any icon compiled by
+      // React Compiler does) then keeps its own state wherever a design draws it, even in one
+      // slot that shows whichever tab is active.
+      renderIcon: icon
+        ? (props: TabIconProps) => createElement(TabIcon, { key: route.name, icon, props })
+        : undefined,
       press: () => {
         const prevented = input.emitPress(route);
         if (!focused && !prevented) input.navigate(route);
@@ -104,4 +109,15 @@ function normalizeBadge(badge: string | number | undefined): string | number | u
   if (typeof badge === 'number') return Number.isFinite(badge) && badge >= 0 ? badge : undefined;
   if (typeof badge === 'string' && /^\s*\d+\s*$/.test(badge)) return Number(badge);
   return badge;
+}
+
+/** Draws a tab's icon from its screen options, as its own component. */
+function TabIcon({
+  icon,
+  props,
+}: {
+  icon: (props: TabIconProps) => ReactNode;
+  props: TabIconProps;
+}) {
+  return icon(props);
 }
