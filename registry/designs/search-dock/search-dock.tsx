@@ -153,6 +153,17 @@ export function SearchDock({
       if (next !== previous) runOnJS(setHidden)(next);
     },
   );
+  // Once the row is fully out of view, its box takes no height, so the bar stops reporting the
+  // row's height (`useTabBarInset()`, toasts). The row is held to the box's bottom edge, which
+  // doesn't move, so it stays exactly where the slide left it; the box grows back as soon as
+  // the row starts to return.
+  const [collapsed, setCollapsed] = useState(false);
+  useAnimatedReaction(
+    () => hideOnScroll && minimized.value === 1,
+    (next, previous) => {
+      if (next !== previous) runOnJS(setCollapsed)(next);
+    },
+  );
   // The row slides straight down by its height plus its distance from the screen's edge.
   const distance = TILE + bottom + HIDE_EXTRA;
   const slide = useAnimatedStyle(() => ({
@@ -171,7 +182,7 @@ export function SearchDock({
         pointerEvents={hidden ? 'none' : 'auto'}
         accessibilityElementsHidden={hidden}
         importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}
-        style={slide}
+        style={[styles.row, collapsed && styles.collapsed, slide]}
       >
         <TabList style={styles.list}>
           {tabs.map((tab) =>
@@ -486,6 +497,13 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     // The root already sits inside the side safe areas, so only the design's own margin is added.
     marginHorizontal: SIDE,
+  },
+  // The row sits at the bottom of its box, so the box can collapse without moving it.
+  row: {
+    justifyContent: 'flex-end',
+  },
+  collapsed: {
+    height: 0,
   },
   list: {
     gap: GAP,
