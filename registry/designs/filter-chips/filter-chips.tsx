@@ -1,9 +1,9 @@
 /**
  * Filter Chips: a dark strip of filter chips that peeks out from behind the tab bar: a round
  * "all filters" button, a capsule of chips that scrolls sideways (Sort, Delivery…), and a
- * round clear-all button once something is applied. Tapping a chip grows the capsule into a
- * card of that group's options, with Clear and Apply; the chip's label rises into the card's
- * title. Apply folds the card back into the capsule, and the chip now names the choice in the
+ * round clear-all button once something is applied. Tapping a chip widens the capsule to the
+ * bar's width, then grows it into a card of that group's options, with Clear and Apply. Apply
+ * folds it back the same way, and the chip now names the choice in the
  * accent colour ("Top rated", or "Ships today +1" for several). The round button opens every
  * group in one card. Picks are a draft: Android back, Escape on the web or the screen-reader
  * escape gesture fold the card back and drop them, and only Apply calls `onChange`.
@@ -21,13 +21,13 @@
  * Open, it takes the bar's place: the bar slides away, the card settles where the bar was, and
  * the screen behind blurs (iOS, web) and dims; a tap there folds it back, like back. These are
  * the panel's `coversBar` and `backdrop`, so it needs react-native-tabcn 0.4.0 or later, and a
- * floating bar for the bar to slide away. The card grows up out of the strip, its bottom edge
- * held on the strip's line while the panel rises. Its content rides the card's top edge and is cut off at that
- * line, so the card pushes it up out of the strip. The card is the strip's colour, drawn as two
- * stretched bands and four corner circles; everything moves by transforms and opacity on the
- * UI thread, on `tabcnSpring` in step with the panel's own slide, so nothing is laid out per
- * frame. With "reduce motion" on, it is all instant. `colors.surface` must be opaque: the
- * card's pieces overlap. Not drawn as a rail: on a tablet rail, panels aren't drawn.
+ * floating bar for the bar to slide away. The card's bottom edge stays on the strip's line while
+ * the panel rises; its content rides its top edge, fades in where it sits, and is cut off at
+ * that line. The card is the strip's colour, drawn as two stretched bands and four corner
+ * circles; everything moves by transforms and opacity on the UI thread, on `tabcnSpring` in
+ * step with the panel's own slide, so nothing is laid out per frame. With "reduce motion" on,
+ * it is all instant. `colors.surface` must be opaque: the card's pieces overlap. Not drawn as
+ * a rail: on a tablet rail, panels aren't drawn.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
@@ -90,18 +90,22 @@ const defaultColors = {
   surface: '#17171b',
   /** Clear's fill. */
   control: '#2a2a31',
-  /** Lines between chips, and around options not chosen. */
+  /** Lines between chips. */
   divider: 'rgba(255, 255, 255, 0.14)',
   /** Labels and glyphs. */
   foreground: '#f5f5f7',
   /** Group titles in the all-filters sheet, and Clear while there is nothing to clear. */
   muted: 'rgba(245, 245, 247, 0.5)',
-  /** A chip with a choice, chosen options, the round button's dot, and Apply. */
+  /** A chip with a choice, chosen options' outline, the round button's dot, and Apply. */
   accent: '#5cb2ff',
   /** Apply's label. */
   onAccent: '#08131f',
-  /** Behind a chosen option's accent label. */
-  chosen: 'rgba(92, 178, 255, 0.16)',
+  /** Behind a chosen option, inside its accent outline. */
+  chosen: 'rgba(92, 178, 255, 0.14)',
+  /** Around options not chosen. */
+  optionBorder: 'rgba(255, 255, 255, 0.16)',
+  /** The card's hairline edge. */
+  rim: 'rgba(255, 255, 255, 0.08)',
   /** Over the screen behind the open card, on top of the blur. */
   backdrop: 'rgba(12, 12, 16, 0.22)',
 };
@@ -177,7 +181,9 @@ export interface FilterChipsProps {
 /** Whether the backdrop blurs: iOS and the web (CSS backdrop-filter); Android dims only. */
 const BLUR = Platform.OS !== 'android';
 /** The strip's height. */
-const STRIP_H = 44;
+const STRIP_H = 48;
+/** Lifts the strip off the screen it floats over. */
+const STRIP_SHADOW = '0 4px 14px rgba(0, 0, 0, 0.18)';
 /** Between the strip and the bar. */
 const GAP = 8;
 /** Between the round buttons and the capsule. */
@@ -191,8 +197,24 @@ const PAD = 18;
 /** Height of the fade at the bottom of the all-filters list. */
 const FADE = 28;
 /** The chip label's and the card title's font sizes: the title grows from one to the other. */
-const CHIP_FONT = 14;
+const CHIP_FONT = 15;
 const TITLE_FONT = 18;
+/**
+ * The motion's two stretches, as in the reference: over the first part of the progress the
+ * capsule widens to the bar's width (swallowing the round buttons); from a little later the
+ * card grows up out of it. Folding back runs them in reverse, so the card drops to a full-width
+ * pill, the chips come back inside it, and it narrows to the capsule on the spring's slow end.
+ */
+const WIDEN_UNTIL = 0.3;
+const RISE_FROM = 0.15;
+const widen = (p: number) => {
+  'worklet';
+  return Math.min(1, Math.max(0, p / WIDEN_UNTIL));
+};
+const rise = (p: number) => {
+  'worklet';
+  return Math.min(1, Math.max(0, (p - RISE_FROM) / (1 - RISE_FROM)));
+};
 /** The key of the all-filters sheet (group ids are app data, so it can't be a plain word). */
 const ALL = '\u0000all';
 
@@ -268,11 +290,6 @@ export function FilterChips({
 
 type ViewRef = ComponentRef<typeof View>;
 
-interface Point {
-  x: number;
-  y: number;
-}
-
 function Filters({
   id,
   tuck,
@@ -301,7 +318,6 @@ function Filters({
   // row (the round button's in the strip), each chip label's frame in its chip, the capsule's
   // frame, and the row's size and scroll offset.
   const frames = useRef(new Map<string, { x: number; w: number }>());
-  const labelFrames = useRef(new Map<string, Point>());
   const capsule = useRef({ x: 0, w: 0 });
   const viewport = useRef(0);
   const rowWidth = useRef(0);
@@ -316,38 +332,15 @@ function Filters({
   const lift = useSharedValue(0);
   const strip = useSharedValue<Rect>(ZERO);
   const card = useSharedValue<Rect>(ZERO);
-  // The title travels from the chip's label (in the strip, as it rests) to the card's title.
-  const titleFrom = useSharedValue<Point>({ x: 0, y: 0 });
-  // 1 while the chip's label reads the same as the title, so one text can travel between them.
-  const shared = useSharedValue(0);
-  const titleW = useSharedValue(0);
-
   const views = [ALL, ...groups.map((group) => group.id)];
   const peekBlock = STRIP_H + GAP + tuck;
   const below = GAP + tuck;
   const contentHeight = Math.max(peekBlock, ...views.map((key) => (heights[key] ?? 0) + below));
   const ready = width > 0 && views.every((key) => (heights[key] ?? 0) > 0);
   const appliedCount = groups.filter((group) => (value[group.id] ?? []).length > 0).length;
-  const viewGroup = groups.find((group) => group.id === view);
-  const title = viewGroup ? viewGroup.label : labels.allFilters;
 
   const haptic = () => {
     if (haptics) Haptics.selectionAsync();
-  };
-
-  /**
-   * The chip's frame in the panel's content, kept inside the capsule when scrolled partly off.
-   * Worked out from layout events rather than measured: a scroll view laid out right to left
-   * reports its children's positions mirrored, and this is synchronous.
-   */
-  const chipRect = (key: string): Rect | null => {
-    const frame = frames.current.get(key);
-    if (!frame) return null;
-    if (key === ALL) return { x: frame.x, y: 0, w: frame.w, h: STRIP_H };
-    const left = capsule.current.x;
-    const x = left + frame.x - scrollX.current;
-    const max = left + Math.max(0, viewport.current - frame.w);
-    return { x: Math.min(Math.max(left, x), max), y: 0, w: frame.w, h: STRIP_H };
   };
 
   /**
@@ -360,16 +353,6 @@ function Filters({
     w: capsule.current.w || width,
     h: STRIP_H,
   });
-
-  /** Where the title starts (the chip's label), and whether the label and title are one text. */
-  const placeTitle = (key: string, current: FilterValue) => {
-    const group = groups.find((g) => g.id === key);
-    const rect = chipRect(key);
-    const label = labelFrames.current.get(key);
-    const same = !!group && !!rect && !!label && summaryOf(group, current, labels) === null;
-    shared.value = same ? 1 : 0;
-    if (rect && label) titleFrom.value = { x: rect.x + label.x, y: label.y };
-  };
 
   /**
    * While folding back, follows the chip if it moves (its label changed with the choice, or
@@ -392,7 +375,6 @@ function Filters({
       }
     }
     strip.value = capsuleRect();
-    placeTitle(view, value);
   };
   /** Right to left, the row is laid out from its right end: show that end until scrolled. */
   const toStart = () => {
@@ -416,13 +398,11 @@ function Filters({
       lift.value = contentHeight - peekBlock;
       strip.value = capsuleRect();
       card.value = { x: 0, y: contentHeight - below - h, w: width, h };
-      placeTitle(view, value);
       progress.value = withSpring(1, tabcnSpring);
       return;
     }
     if (progress.value === 0) return;
     strip.value = capsuleRect();
-    placeTitle(view, value);
     progress.value = withSpring(0, tabcnSpring);
     // Back to the chip that opened the sheet, for screen-reader users.
     const timer = setTimeout(() => {
@@ -477,9 +457,10 @@ function Filters({
   };
 
   // The strip stays where it rests on screen while the panel rises (it moves down the panel
-  // as far as the panel moves up), and fades as the card grows out of it.
+  // as far as the panel moves up). Its chips and round buttons fade while the capsule widens
+  // under them, and come back inside the full-width pill before it narrows.
   const stripStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.07], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(progress.value, [0, 0.2], [1, 0], Extrapolation.CLAMP),
     transform: [{ translateY: progress.value * lift.value }],
   }));
 
@@ -489,11 +470,6 @@ function Filters({
   const chipLayout = (key: string) => (event: LayoutChangeEvent) => {
     const { x, width: w } = event.nativeEvent.layout;
     frames.current.set(key, { x, w });
-    if (key === view) follow();
-  };
-  const labelLayout = (key: string) => (event: LayoutChangeEvent) => {
-    const { x, y } = event.nativeEvent.layout;
-    labelFrames.current.set(key, { x, y });
     if (key === view) follow();
   };
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -513,7 +489,9 @@ function Filters({
         accessibilityElementsHidden
         style={[StyleSheet.absoluteFill, styles.ltr]}
       >
-        {ready ? <Morph progress={progress} from={strip} to={card} color={colors.surface} /> : null}
+        {ready ? (
+          <Morph progress={progress} lift={lift} from={strip} to={card} color={colors.surface} />
+        ) : null}
       </View>
 
       <Animated.View
@@ -600,16 +578,14 @@ function Filters({
                       { opacity: down ? 0.6 : 1 },
                     ]}
                   >
-                    {Icon ? <Icon color={tint} size={16} /> : null}
-                    <ChipLabel
-                      travelling={view === group.id}
-                      progress={progress}
-                      shared={shared}
-                      onLayout={labelLayout(group.id)}
-                      color={tint}
+                    {Icon ? <Icon color={tint} size={17} /> : null}
+                    <Text
+                      numberOfLines={1}
+                      maxFontSizeMultiplier={1.3}
+                      style={[styles.chipText, { color: tint }]}
                     >
                       {summary ?? group.label}
-                    </ChipLabel>
+                    </Text>
                   </Pressable>
                 </Fragment>
               );
@@ -679,134 +655,14 @@ function Filters({
           </SheetBody>
         );
       })}
-
-      {/* The card's title, drawn once over everything: it travels from the chip's label. */}
-      <View
-        pointerEvents="none"
-        importantForAccessibility="no-hide-descendants"
-        accessibilityElementsHidden
-        style={[StyleSheet.absoluteFill, styles.ltr]}
-      >
-        <TravellingTitle
-          progress={progress}
-          strip={strip}
-          card={card}
-          from={titleFrom}
-          shared={shared}
-          color={colors.foreground}
-          rtl={rtl}
-          titleW={titleW}
-          onWidth={(w) => {
-            titleW.value = w;
-          }}
-        >
-          {title}
-        </TravellingTitle>
-      </View>
     </View>
-  );
-}
-
-/** A chip's label: hidden while its text is the one travelling to the card's title. */
-function ChipLabel({
-  travelling,
-  progress,
-  shared,
-  onLayout,
-  color,
-  children,
-}: {
-  travelling: boolean;
-  progress: SharedValue<number>;
-  shared: SharedValue<number>;
-  onLayout: (event: LayoutChangeEvent) => void;
-  color: string;
-  children: string;
-}) {
-  const style = useAnimatedStyle(() => ({
-    opacity: travelling && shared.value === 1 && progress.value > 0.001 ? 0 : 1,
-  }));
-  return (
-    <Animated.Text
-      numberOfLines={1}
-      maxFontSizeMultiplier={1.3}
-      onLayout={onLayout}
-      style={[styles.chipText, { color }, style]}
-    >
-      {children}
-    </Animated.Text>
-  );
-}
-
-/**
- * The card's title. Where the chip's label reads the same, it is that label: it rises and
- * grows from the chip into the header. Otherwise it fades in where the header is.
- */
-function TravellingTitle({
-  progress,
-  strip,
-  card,
-  rtl,
-  titleW,
-  from,
-  shared,
-  color,
-  onWidth,
-  children,
-}: {
-  progress: SharedValue<number>;
-  strip: SharedValue<Rect>;
-  card: SharedValue<Rect>;
-  rtl: boolean;
-  titleW: SharedValue<number>;
-  from: SharedValue<Point>;
-  shared: SharedValue<number>;
-  color: string;
-  onWidth: (width: number) => void;
-  children: string;
-}) {
-  const style = useAnimatedStyle(() => {
-    const p = progress.value;
-    const travel = shared.value === 1;
-    // Eased out, so the title reaches the header before the options fade in under its path.
-    const t = travel ? 1 - (1 - p) ** 3 : 1;
-    // Rides the growing card's top edge, easing from the label's inset in the chip to the
-    // header's padding, so it is always the card's header and never crosses its content.
-    const y = lerp(strip.value.y, card.value.y, p) + lerp(from.value.y, PAD, t);
-    // The header's x on the growing card: its leading edge plus the padding.
-    const left = lerp(strip.value.x, card.value.x, p);
-    const right = left + lerp(strip.value.w, card.value.w, p);
-    const scale = lerp(CHIP_FONT / TITLE_FONT, 1, t);
-    const header = rtl ? right - PAD - titleW.value * scale : left + PAD;
-    return {
-      opacity: travel
-        ? p > 0.001
-          ? 1
-          : 0
-        : interpolate(p, [0.35, 0.8], [0, 1], Extrapolation.CLAMP),
-      transform: [
-        { translateX: travel ? lerp(from.value.x, header, t) : header },
-        { translateY: y },
-        { scale },
-      ],
-    };
-  });
-  return (
-    <Animated.Text
-      numberOfLines={1}
-      maxFontSizeMultiplier={1.6}
-      onLayout={(event) => onWidth(event.nativeEvent.layout.width)}
-      style={[styles.travellingTitle, { color }, style]}
-    >
-      {children}
-    </Animated.Text>
   );
 }
 
 /**
  * One card's content: laid out at all times (its height sets the panel's), shown while it is
- * in view. It rides the growing card's top edge, and is clipped at the card's bottom edge (the
- * strip's line, which holds still on screen): a clip moved up, its content moved back down.
+ * in view. It rides the growing card's top edge and fades in where it sits, and is clipped at
+ * the card's bottom edge (the strip's line): a clip moved up, its content moved back down.
  */
 function SheetBody({
   shown,
@@ -842,17 +698,17 @@ function SheetBody({
   children: ReactNode;
 }) {
   const live = shown && open;
-  // The card is (1 - p) * (height - STRIP_H) short of full height; that much of the content
-  // is still below the strip's line, cut off.
+  // The card is (1 - rise) * (height - STRIP_H) short of full height; that much of the
+  // content is still below the strip's line, cut off.
   const clipStyle = useAnimatedStyle(() => {
     const p = progress.value;
     return {
-      opacity: shown ? interpolate(p, [0.25, 0.75], [0, 1], Extrapolation.CLAMP) : 0,
+      opacity: shown ? interpolate(rise(p), [0.35, 0.85], [0, 1], Extrapolation.CLAMP) : 0,
       transform: [{ translateY: -(1 - p) * lift.value }],
     };
   });
   const contentStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: (1 - progress.value) * Math.max(0, height - STRIP_H) }],
+    transform: [{ translateY: (1 - rise(progress.value)) * Math.max(0, height - STRIP_H) }],
   }));
   return (
     <Animated.View
@@ -863,11 +719,12 @@ function SheetBody({
       style={[styles.body, { bottom }, clipStyle]}
     >
       <Animated.View style={[styles.bodyContent, contentStyle]}>
-        {/* Read by screen readers; drawn by the travelling title above. */}
+        {/* A hairline edge, so the dark card reads as a surface over a dark screen too. */}
+        <View pointerEvents="none" style={[styles.rim, { borderColor: colors.rim }]} />
         <Text
           accessibilityRole="header"
           maxFontSizeMultiplier={1.6}
-          style={[styles.title, styles.hiddenText]}
+          style={[styles.title, { color: colors.foreground }]}
         >
           {title}
         </Text>
@@ -961,14 +818,14 @@ function Options({
               styles.option,
               {
                 backgroundColor: chosen ? colors.chosen : 'transparent',
-                borderColor: chosen ? colors.accent : colors.divider,
+                borderColor: chosen ? colors.accent : colors.optionBorder,
                 opacity: pressed ? 0.7 : 1,
               },
             ]}
           >
             <Text
               maxFontSizeMultiplier={1.6}
-              style={[styles.optionText, { color: chosen ? colors.accent : colors.foreground }]}
+              style={[styles.optionText, { color: colors.foreground }]}
             >
               {option.label}
             </Text>
@@ -980,18 +837,21 @@ function Options({
 }
 
 /**
- * The growing shape: a rounded rectangle from the chip's frame to the sheet's, drawn as a
+ * The growing shape: a rounded rectangle from the capsule's frame to the card's, drawn as a
  * horizontal band, a vertical band and four corner circles. The bands are unit squares
  * stretched with scaleX and scaleY; the circles only move and scale. All in physical
- * coordinates (the layer is left to right).
+ * coordinates (the layer is left to right). It widens first, then grows up, its bottom edge
+ * held on the strip's line on screen (the panel's rise, `p * lift`, added back).
  */
 function Morph({
   progress,
+  lift,
   from,
   to,
   color,
 }: {
   progress: SharedValue<number>;
+  lift: SharedValue<number>;
   from: SharedValue<Rect>;
   to: SharedValue<Rect>;
   color: string;
@@ -1000,10 +860,13 @@ function Morph({
     const p = progress.value;
     const a = from.value;
     const b = to.value;
-    const w = lerp(a.w, b.w, p);
-    const h = lerp(a.h, b.h, p);
-    const r = Math.max(0, Math.min(lerp(a.h / 2, RADIUS, p), w / 2, h / 2));
-    return { x: lerp(a.x, b.x, p), y: lerp(a.y, b.y, p), w, h, r };
+    const across = widen(p);
+    const up = rise(p);
+    const w = lerp(a.w, b.w, across);
+    const h = lerp(a.h, b.h, up);
+    const bottom = a.y + a.h + p * lift.value;
+    const r = Math.max(0, Math.min(lerp(a.h / 2, RADIUS, up), w / 2, h / 2));
+    return { x: lerp(a.x, b.x, across), y: bottom - h, w, h, r };
   });
   // Solid until the strip is fully back over it (the strip fades in over p 0.07 to 0), then
   // gone: half-faded, the two would mix into a grey band.
@@ -1098,11 +961,12 @@ const styles = StyleSheet.create({
     borderRadius: STRIP_H / 2,
     alignItems: 'center',
     justifyContent: 'center',
+    boxShadow: STRIP_SHADOW,
   },
   dot: {
     position: 'absolute',
-    top: 9,
-    end: 9,
+    top: 11,
+    end: 11,
     width: 9,
     height: 9,
     borderRadius: 4.5,
@@ -1113,50 +977,52 @@ const styles = StyleSheet.create({
     height: STRIP_H,
     borderRadius: STRIP_H / 2,
     overflow: 'hidden',
+    boxShadow: STRIP_SHADOW,
   },
   chips: { alignItems: 'center', paddingHorizontal: 4 },
   chip: {
     height: STRIP_H,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
+    gap: 7,
+    paddingHorizontal: 14,
   },
   chipText: { fontSize: CHIP_FONT, fontWeight: '500', letterSpacing: -0.1 },
-  divider: { width: StyleSheet.hairlineWidth * 2, height: 16, borderRadius: 1 },
+  divider: { width: StyleSheet.hairlineWidth * 2, height: 18, borderRadius: 1 },
   body: { position: 'absolute', left: 0, right: 0, overflow: 'hidden' },
   bodyContent: { padding: PAD },
-  title: { fontSize: TITLE_FONT, fontWeight: '600', marginBottom: 14 },
-  hiddenText: { color: 'transparent' },
-  travellingTitle: {
+  title: { fontSize: TITLE_FONT, fontWeight: '600', letterSpacing: -0.2, marginBottom: 16 },
+  rim: {
     position: 'absolute',
-    left: 0,
     top: 0,
-    fontSize: TITLE_FONT,
-    fontWeight: '600',
-    transformOrigin: 'left top',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: RADIUS,
+    borderWidth: StyleSheet.hairlineWidth * 2,
   },
   section: { marginBottom: 16 },
   edgeFade: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   sectionTitle: { fontSize: 13, fontWeight: '500', marginBottom: 8 },
-  options: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  options: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
   option: {
-    minHeight: 36,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 18,
-    borderWidth: 1,
+    minHeight: 40,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    // The same width chosen or not, so choosing never re-wraps the card.
+    borderWidth: 1.5,
     justifyContent: 'center',
   },
-  optionText: { fontSize: 14, fontWeight: '500' },
+  optionText: { fontSize: 15, fontWeight: '500' },
   footer: { flexDirection: 'row', gap: 10, marginTop: 22 },
   button: {
-    minHeight: 46,
-    borderRadius: 23,
+    minHeight: 50,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 22,
   },
   apply: { flex: 1 },
-  buttonText: { fontSize: 15, fontWeight: '600' },
+  buttonText: { fontSize: 16, fontWeight: '600' },
 });
