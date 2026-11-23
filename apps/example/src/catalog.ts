@@ -428,6 +428,16 @@ export const catalog: DesignEntry[] = [
     status: 'ready',
   },
   {
+    id: 'ink-underline',
+    ref: 0,
+    title: 'Ink Underline',
+    kind: 'bar',
+    layout: 'docked-bar',
+    summary:
+      'An editorial bar of serif text tabs on paper; a hand-drawn ink stroke draws itself under the active label while the last one wipes away.',
+    status: 'ready',
+  },
+  {
     id: 'mini-player',
     ref: 0,
     title: 'Mini Player',

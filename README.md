@@ -6,9 +6,9 @@
 
 Animated tab bars for React Native and Expo, in the style of shadcn/ui: install a small foundation package, then copy the design you want into your app and make it yours.
 
-**[Browse all 47 designs →](https://vanitascaesar1.github.io/tabcn/)** Each one opens in Expo Go from a QR code and plays on a phone in the page.
+**[Browse all 48 designs →](https://vanitascaesar1.github.io/tabcn/)** Each one opens in Expo Go from a QR code and plays on a phone in the page.
 
-> **Status: 0.x.** All 47 designs (39 tab bars and 8 panels) and the foundation are built. The foundation is on npm as [`react-native-tabcn`](https://www.npmjs.com/package/react-native-tabcn) (npm turned down the bare name `tabcn` as too close to `table`). Before 1.0, a minor release may change its API; the changelog says so when it does.
+> **Status: 0.x.** All 48 designs (40 tab bars and 8 panels) and the foundation are built. The foundation is on npm as [`react-native-tabcn`](https://www.npmjs.com/package/react-native-tabcn) (npm turned down the bare name `tabcn` as too close to `table`). Before 1.0, a minor release may change its API; the changelog says so when it does.
 
 ## How it works
 
@@ -61,7 +61,7 @@ The docs are on the site:
 - [Using with PanelUI](https://vanitascaesar1.github.io/tabcn/docs/panelui/): designs that follow a PanelUI theme
 - Guides: [Panels](https://vanitascaesar1.github.io/tabcn/docs/panels/) · [Sheets](https://vanitascaesar1.github.io/tabcn/docs/sheets/) · [Minimize on scroll](https://vanitascaesar1.github.io/tabcn/docs/minimize-on-scroll/) · [Companions](https://vanitascaesar1.github.io/tabcn/docs/companions/) · [Toasts](https://vanitascaesar1.github.io/tabcn/docs/toasts/) · [Sub-tabs](https://vanitascaesar1.github.io/tabcn/docs/sub-tabs/) · [Sheet navigation](https://vanitascaesar1.github.io/tabcn/docs/sheet-navigation/) · [Scrubbing](https://vanitascaesar1.github.io/tabcn/docs/scrubbing/) · [Live tabs](https://vanitascaesar1.github.io/tabcn/docs/live-tabs/)
 
-## The 47 designs
+## The 48 designs
 
 Every design animates: tap to see the active tab move. Click one to open its page, with the install command and a QR code for Expo Go.
 
@@ -87,7 +87,7 @@ Every design animates: tap to see the active tab move. Click one to open its pag
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/glass-badges/"><img src="assets/readme/glass-badges.gif" width="400" alt="Glass Badges tab bar"></a><br><b>Glass Badges</b><br><sub>Pill + action button</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/section-sheet/"><img src="assets/readme/section-sheet.gif" width="300" alt="Section Sheet tab bar"></a><br><b>Section Sheet</b><br><sub>Sheet</sub></td></tr>
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/scrub-pill/"><img src="assets/readme/scrub-pill.gif" width="400" alt="Scrub Pill tab bar"></a><br><b>Scrub Pill</b><br><sub>Floating pill</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/live-tabs/"><img src="assets/readme/live-tabs.gif" width="400" alt="Live Tabs tab bar"></a><br><b>Live Tabs</b><br><sub>Docked bar</sub></td></tr>
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/composer-dock/"><img src="assets/readme/composer-dock.gif" width="400" alt="Composer Dock tab bar"></a><br><b>Composer Dock</b><br><sub>Docked bar</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/account-dock/"><img src="assets/readme/account-dock.gif" width="300" alt="Account Dock tab bar"></a><br><b>Account Dock</b><br><sub>Pill + action button</sub></td></tr>
-<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/ambient-bar/"><img src="assets/readme/ambient-bar.gif" width="400" alt="Ambient Bar tab bar"></a><br><b>Ambient Bar</b><br><sub>Docked bar</sub></td><td></td></tr>
+<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/ambient-bar/"><img src="assets/readme/ambient-bar.gif" width="400" alt="Ambient Bar tab bar"></a><br><b>Ambient Bar</b><br><sub>Docked bar</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/ink-underline/"><img src="assets/readme/ink-underline.gif" width="400" alt="Ink Underline tab bar"></a><br><b>Ink Underline</b><br><sub>Docked bar</sub></td></tr>
 </table>
 
 ### Panels

@@ -91,6 +91,19 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
     { tap: 'Apply' },
     { wait: 2000 },
   ],
+  // Each tab change draws the new stroke and wipes the old one: forward through the tabs, then
+  // back to the first (a long move, so both strokes show at once).
+  'ink-underline': [
+    { wait: 900 },
+    { tab: 1 },
+    { wait: 1300 },
+    { tab: 2 },
+    { wait: 1300 },
+    { tab: 3 },
+    { wait: 1300 },
+    { tab: 0 },
+    { wait: 1500 },
+  ],
   // The sheet's sections are its tabs.
   'section-sheet': [
     { wait: 800 },

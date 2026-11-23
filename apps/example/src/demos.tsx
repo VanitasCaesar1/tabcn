@@ -28,6 +28,11 @@ import { GlowGlass as GlowGlassDesign } from '@registry/glow-glass/glow-glass';
 import * as GlowGlassIcons from '@registry/glow-glass/icons';
 import { GradientStickers as GradientStickersDesign } from '@registry/gradient-stickers/gradient-stickers';
 import * as GradientStickersIcons from '@registry/gradient-stickers/icons';
+import {
+  type InkUnderlineColors,
+  InkUnderline as InkUnderlineDesign,
+  inkUnderlineDark,
+} from '@registry/ink-underline/ink-underline';
 import * as LabeledPlusIcons from '@registry/labeled-plus/icons';
 import { LabeledPlus as LabeledPlusDesign } from '@registry/labeled-plus/labeled-plus';
 import * as LightIconsIcons from '@registry/light-icons/icons';
@@ -93,6 +98,7 @@ import {
 } from '@/composer-dock-demo';
 import { DEMO_CONTROLS } from '@/demo-controls';
 import { DESIGN_TAGS, type SceneScheme } from '@/design-tags';
+import { usePreviewSettings } from '@/embed';
 import {
   BarSheetActions,
   BarSheetPanel,
@@ -150,6 +156,7 @@ const GlassBadges = themed('glass-badges', GlassBadgesDesign);
 const GlassExpand = themed('glass-expand', GlassExpandDesign);
 const GlowGlass = themed('glow-glass', GlowGlassDesign);
 const GradientStickers = themed('gradient-stickers', GradientStickersDesign);
+const InkUnderline = themed('ink-underline', InkUnderlineDesign);
 const LabeledPlus = themed('labeled-plus', LabeledPlusDesign);
 const LightIcons = themed('light-icons', LightIconsDesign);
 const LiveTabs = themed('live-tabs', LiveTabsDesign);
@@ -297,6 +304,17 @@ function GlowGlassBar({ onActionPress }: { onActionPress: () => void }) {
       )}
     />
   );
+}
+
+/**
+ * Ink Underline follows the Customize panel's light or dark scene: paper on ink when it is dark.
+ * Under a PanelUI theme the theme's colours apply instead; the accent control's `colors` win.
+ */
+function InkUnderlineBar({ colors }: { colors?: Partial<InkUnderlineColors> }) {
+  const dark = usePreviewSettings().scheme === 'dark';
+  const themedColors = useDemoColors('ink-underline');
+  const base = dark && !themedColors ? inkUnderlineDark : undefined;
+  return <InkUnderline colors={base || colors ? { ...base, ...colors } : undefined} />;
 }
 
 /** Cart Pill with the demo's bag count, which "Add to bag" on the screen raises. */
@@ -839,6 +857,19 @@ export const demos: Record<string, Demo> = {
       { label: 'Plans', icon: AmbientBarIcons.LoopIcon },
       { label: 'Ask', icon: AmbientBarIcons.SparkIcon },
       { label: 'Profile', icon: AmbientBarIcons.PersonIcon },
+    ],
+  },
+  'ink-underline': {
+    // Text tabs: a stroke draws itself under each new tab as the last one wipes away. Plan
+    // carries a count and You a dot, the two kinds of badge.
+    render: () => <InkUnderlineBar />,
+    background: HEALTH_LIGHT,
+    barHeight: 54,
+    tabs: [
+      { label: 'Today', icon: () => null },
+      { label: 'Plan', icon: () => null, badge: 2 },
+      { label: 'Sessions', icon: () => null },
+      { label: 'You', icon: () => null, badge: '' },
     ],
   },
   'live-tabs': {

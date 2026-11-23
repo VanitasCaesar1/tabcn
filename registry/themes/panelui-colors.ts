@@ -214,6 +214,13 @@ export const panelUIColorMaps = {
     inactiveIcon: 'muted-foreground',
   },
   'gradient-stickers': { badge: 'destructive' },
+  'ink-underline': {
+    background: 'background',
+    hairline: 'border',
+    ink: 'foreground',
+    muted: 'muted-foreground',
+    badge: 'foreground',
+  },
   'labeled-plus': {
     background: ['card', 0.86],
     glassTint: ['card', 0.78],

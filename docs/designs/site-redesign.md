@@ -338,7 +338,7 @@ in `demos.tsx`.
 | `finance`                         | sliding-capsule, color-flood, scrub-pill                                                                                                | chip-rail, glow-glass, ambient-bar, slider-sheet |
 | `chat`                            | glass-badges, composer-dock, account-dock                                                                                               | badge-dock                                       |
 | `files`                           | material-pill, side-rail                                                                                                                | outline-dark                                     |
-| `health` (rings, plan, sessions)  | glass-expand, mono-type, context-tray                                                                                                   |                                                  |
+| `health` (rings, plan, sessions)  | glass-expand, mono-type, context-tray, ink-underline                                                                                    |                                                  |
 
 ### Target Files to Create/Modify
 
