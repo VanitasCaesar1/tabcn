@@ -54,6 +54,8 @@ const defaultColors = {
   icon: 'rgba(255, 255, 255, 0.82)',
   /** The active icon. */
   activeIcon: '#ffffff',
+  /** Darkens the Liquid Glass lens, so it reads as dark glass lit by what is under it. */
+  lensTint: 'rgba(0, 0, 0, 0.35)',
   /** The faint white over the lens's blur: more washes the colour out. */
   lens: 'rgba(255, 255, 255, 0.12)',
   /** The dark fade under the blur (over the screen on Android), strongest at the bottom. */
@@ -81,10 +83,10 @@ const ICON = 25;
 const LENS_W = 74;
 const LENS_H = 42;
 /** How strong the blur is (expo-blur intensity, 0-100) where it is fully in. */
-const BLUR_INTENSITY = 32;
+const BLUR_INTENSITY = 16;
 /**
- * The default material at a light radius keeps a mark's colour together, so it glows; the dark
- * materials grey it, and a stronger blur spreads it too thin.
+ * A light blur, as the reference's: text behind the bar stays legible as faint ghosts, and the
+ * dark overlay (`shadeStyle`) does most of the darkening. Apple's dark materials grey the colour.
  */
 const TINT = 'default' as const;
 /** The lens's own blur, a little stronger than the bar's. */
@@ -122,7 +124,12 @@ export function AmbientBar({ reach = 12, colors: custom, haptics = true }: Ambie
           {/* A lens: a blur of its own over the active tab picks up the colour under it, and a
               faint white lifts it, so it reads grey over black and lit red over red. */}
           {GLASS ? (
-            <GlassView glassEffectStyle="clear" colorScheme="dark" style={styles.lens} />
+            <GlassView
+              glassEffectStyle="clear"
+              colorScheme="dark"
+              tintColor={colors.lensTint}
+              style={styles.lens}
+            />
           ) : (
             <View style={styles.lens}>
               {BLUR ? (
@@ -197,16 +204,15 @@ function maskStyle(fullAt: number) {
 }
 
 /**
- * A dark fade from the bottom edge up: clear at the top of the area, so the blur alone softens
- * the content there; darker towards the bottom so the icons read. On Android, with no blur, it
- * is a little stronger.
+ * The dark overlay, from the bottom edge up: half black at the bottom, clear at the top of the
+ * area, so the bar is near black and the icons read. On Android, with no blur, it is stronger.
  */
 function shadeStyle(shade: string) {
   const strength = BLUR ? 1 : 1.25;
   const stops = [
-    [0.18, 0],
-    [0.1, 35],
-    [0.03, 70],
+    [0.5, 0],
+    [0.45, 45],
+    [0.2, 75],
     [0, 100],
   ]
     .map(([alpha, at]) => `${withAlpha(shade, Math.min(1, (alpha as number) * strength))} ${at}%`)
