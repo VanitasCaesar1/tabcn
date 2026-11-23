@@ -5,6 +5,7 @@
  * it: the theme (`tabcn:theme`) and the Customize panel's settings (`tabcn:settings`, see
  * preview-settings.ts). Read once at startup, before the router drops the query.
  */
+import { useURL } from 'expo-linking';
 import { useSyncExternalStore } from 'react';
 import { I18nManager, Platform } from 'react-native';
 
@@ -73,4 +74,13 @@ if (embed && typeof window !== 'undefined') {
 /** The Customize panel's current settings; empty outside the site's live preview. */
 export function usePreviewSettings(): PreviewSettings {
   return useSyncExternalStore(subscribe, getSettings, getSettings);
+}
+
+/**
+ * Whether the app was opened for a recording (apps/site/scripts/record.sh adds `record=1` to the
+ * deep link): the demo's own navigation row is hidden so the take shows only the app and its bar.
+ */
+export function useRecording(): boolean {
+  const url = useURL();
+  return url?.includes('record=1') ?? false;
 }

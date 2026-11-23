@@ -8,7 +8,7 @@ import { useMinimizeOnScroll } from 'react-native-tabcn';
 import { catalog } from '@/catalog';
 import { demoScene, demos, designHref, useCurrentDemo } from '@/demos';
 import { DESIGN_TAGS } from '@/design-tags';
-import { embed, usePreviewSettings } from '@/embed';
+import { embed, usePreviewSettings, useRecording } from '@/embed';
 import { PANEL_FAMILIES, useDemoScreenColors, usePanelFamily } from '@/panel-theme';
 import { SCENE_COMPONENTS, type SceneColors, scenePalette } from '@/scenes';
 import { floodColors, Glyph, ICONS, type Palette } from '@/scenes/kit';
@@ -29,6 +29,7 @@ export function DemoScreen({ index }: { index: number }) {
   const onScroll = useMinimizeOnScroll();
   const focused = useIsFocused();
   const navigation = useNavigation();
+  const recording = useRecording();
 
   // A design that comes with its own page draws it instead.
   if (demo?.screen) {
@@ -53,7 +54,7 @@ export function DemoScreen({ index }: { index: number }) {
       vivid={demo.vivid}
       seed={sceneSeed(id, setting.name)}
       onScroll={onScroll}
-      nav={embed ? null : <DemoNav id={id} palette={palette} />}
+      nav={embed || recording ? null : <DemoNav id={id} palette={palette} />}
     />
   );
 

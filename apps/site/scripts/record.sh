@@ -37,7 +37,7 @@ for id in "$@"; do
 
   $=A open host.exp.Exponent --relaunch >/dev/null 2>&1
   sleep 2
-  $=A open "$METRO/--/$route" >/dev/null 2>&1
+  $=A open host.exp.Exponent "$METRO/--/$route?record=1" >/dev/null 2>&1
   for i in $(seq 1 40); do snap | grep -q ", tab, 1 of" && break; sleep 2; done
   sleep 2.5
 
