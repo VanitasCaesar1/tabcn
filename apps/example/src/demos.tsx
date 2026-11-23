@@ -70,6 +70,8 @@ import * as SplitSearchIcons from '@registry/split-search/icons';
 import { SplitSearch as SplitSearchDesign } from '@registry/split-search/split-search';
 import * as StickerTilesIcons from '@registry/sticker-tiles/icons';
 import { StickerTiles as StickerTilesDesign } from '@registry/sticker-tiles/sticker-tiles';
+import * as ThumbArcIcons from '@registry/thumb-arc/icons';
+import { ThumbArc as ThumbArcDesign } from '@registry/thumb-arc/thumb-arc';
 import * as TilePlusIcons from '@registry/tile-plus/icons';
 import { TilePlus as TilePlusDesign } from '@registry/tile-plus/tile-plus';
 import * as TintedIconsIcons from '@registry/tinted-icons/icons';
@@ -176,6 +178,7 @@ const SoftPill = themed('soft-pill', SoftPillDesign);
 const SolidDark = themed('solid-dark', SolidDarkDesign);
 const SplitSearch = themed('split-search', SplitSearchDesign);
 const StickerTiles = themed('sticker-tiles', StickerTilesDesign);
+const ThumbArc = themed('thumb-arc', ThumbArcDesign);
 const TilePlus = themed('tile-plus', TilePlusDesign);
 const TintedIcons = themed('tinted-icons', TintedIconsDesign);
 const TopNotch = themed('top-notch', TopNotchDesign);
@@ -870,6 +873,21 @@ export const demos: Record<string, Demo> = {
       { label: 'Plan', icon: () => null, badge: 2 },
       { label: 'Sessions', icon: () => null },
       { label: 'You', icon: () => null, badge: '' },
+    ],
+  },
+  'thumb-arc': {
+    // One button in the corner over the map: hold or tap it and the tabs fan out around the
+    // thumb; slide to one and lift (or tap one) to switch.
+    render: () => <ThumbArc />,
+    background: MAPS_LIGHT,
+    initialTab: 0,
+    barHeight: 60,
+    tabs: [
+      { label: 'Explore', icon: ThumbArcIcons.CompassIcon },
+      { label: 'Routes', icon: ThumbArcIcons.RouteIcon },
+      { label: 'Saved', icon: ThumbArcIcons.BookmarkIcon, badge: 2 },
+      { label: 'Guides', icon: ThumbArcIcons.GuideIcon, badge: '' },
+      { label: 'Profile', icon: ThumbArcIcons.PersonIcon },
     ],
   },
   'live-tabs': {

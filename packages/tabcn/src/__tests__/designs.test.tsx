@@ -116,6 +116,14 @@ const REQUIRED_PROPS: Record<string, Record<string, unknown>> = {
   'account-dock': ACCOUNT_DOCK_PROPS,
 };
 
+/**
+ * Designs whose tabs stay hidden until something opens them, and how to open them: Thumb Arc's
+ * tabs fan out from its button.
+ */
+const OPEN_TABS: Record<string, () => Promise<unknown>> = {
+  'thumb-arc': () => fireEvent.press(screen.getByRole('button', { name: /^Tabs/ })),
+};
+
 // Theme items (PanelUI Colors) colour designs rather than being one.
 const ids = registry.items
   .filter((item) => !item.categories?.includes('theme'))
@@ -184,6 +192,7 @@ describe.each(barCases)('%s', (_name, id, position) => {
         </TabBarStateProvider>
       </GestureHandlerRootView>,
     );
+    await OPEN_TABS[id]?.();
     const tabs = screen.getAllByRole('tab');
     expect(tabs).toHaveLength(count);
     const second = tabs[1];
@@ -204,6 +213,7 @@ describe.each(barCases)('%s', (_name, id, position) => {
         </TabBarProvider>
       </GestureHandlerRootView>,
     );
+    await OPEN_TABS[id]?.();
     const tabs = screen.getAllByRole('tab');
     expect(tabs).toHaveLength(count);
     const last = tabs[count - 1];
@@ -230,6 +240,7 @@ describe.each(barCases)('%s', (_name, id, position) => {
         </TabBarStateProvider>
       </GestureHandlerRootView>,
     );
+    await OPEN_TABS[id]?.();
     const selected = screen
       .getAllByRole('tab')
       .filter((t) => t.props.accessibilityState?.selected === true);

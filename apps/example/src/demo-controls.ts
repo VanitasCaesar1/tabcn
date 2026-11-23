@@ -70,6 +70,7 @@ export const DEMO_CONTROLS: Record<string, DemoControls> = {
   'split-search': { accent: 'colors.active', maxTabs: 5 },
   'sticker-tiles': { maxTabs: 6 },
   'sub-tabs': { minTabs: 3, maxTabs: 5 },
+  'thumb-arc': { accent: 'colors.accent', maxTabs: 5 },
   'tile-plus': { maxTabs: 4 },
   'tinted-icons': { maxTabs: 5 },
   'top-notch': { accent: 'colors.active', maxTabs: 5 },

@@ -138,6 +138,20 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
     { tapAt: [45, 800] },
     { wait: 1800 },
   ],
+  // A tap on the corner button opens the fan and leaves it open; tap Saved. Then hold the button
+  // (by its label, which names the new tab): the fan opens under the finger and, lifted without
+  // a slide, stays open; tap Guides.
+  'thumb-arc': [
+    { wait: 800 },
+    { tapAt: [352, 798] },
+    { wait: 1400 },
+    { tap: 'Saved' },
+    { wait: 1500 },
+    { longPress: 'Tabs, Saved selected, new' },
+    { wait: 1400 },
+    { tap: 'Guides' },
+    { wait: 1800 },
+  ],
   // Hold Projects for its recent items, then open the attachment menu.
   'composer-dock': [
     { longPress: 'Projects' },
