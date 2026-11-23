@@ -21,7 +21,7 @@ import {
 import { Platform, useColorScheme } from 'react-native';
 import { Uniwind, useCSSVariable } from 'uniwind';
 
-import { embed } from '@/embed';
+import { embed, usePreviewSettings } from '@/embed';
 
 export type PanelFamily = 'tabcn' | 'panel' | 'moon' | 'grass';
 export const PANEL_FAMILIES: { id: PanelFamily; label: string }[] = [
@@ -43,6 +43,11 @@ export function PanelThemeProvider({ children }: { children: ReactNode }) {
   // The site's live preview picks the theme in the URL, then switches it with postMessage.
   const [family, setFamily] = useState<PanelFamily>(isFamily(embed?.theme) ? embed.theme : 'tabcn');
   const dark = useColorScheme() === 'dark';
+  // The Customize panel's theme, sent with its other settings.
+  const settingsTheme = usePreviewSettings().theme;
+  useEffect(() => {
+    if (isFamily(settingsTheme)) setFamily(settingsTheme);
+  }, [settingsTheme]);
   useEffect(() => {
     if (!embed || Platform.OS !== 'web') return;
     const onMessage = (event: MessageEvent) => {
@@ -100,15 +105,21 @@ export function themed<P extends { colors?: object }>(
 /** The demo screen's colours under a PanelUI theme; undefined for "tabcn". */
 export function useDemoScreenColors() {
   const { family } = usePanelFamily();
-  const [background, foreground, secondary] = useCSSVariable([
+  const [background, foreground, secondary, muted, primary] = useCSSVariable([
     '--color-background',
     '--color-foreground',
     '--color-secondary',
+    '--color-muted-foreground',
+    '--color-primary',
   ]);
   if (family === 'tabcn') return undefined;
+  const chip = String(secondary ?? 'rgba(0,0,0,0.06)');
   return {
     background: String(background ?? '#ffffff'),
     text: String(foreground ?? '#111114'),
-    chip: String(secondary ?? 'rgba(0,0,0,0.06)'),
+    chip,
+    // What the app scenes use for secondary text and their accent (cards take `chip`).
+    muted: muted == null ? undefined : String(muted),
+    accent: primary == null ? undefined : String(primary),
   };
 }

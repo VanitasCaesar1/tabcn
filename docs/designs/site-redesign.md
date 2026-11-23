@@ -92,7 +92,7 @@ Stage exports (images, videos) on our site.
     scene each; how many batches a day depends on the machine's load at the time.
 
 Resolved while drafting: the scene list (seven, with `files` for rails and tablet layouts; see the scene
-table), photos (CC0 or our own, sources in `SOURCES.md`), and Center Stage stills (not used; our own frame
+table), photos (Unsplash License, from picsum.photos, sources in `SOURCES.md`; amended 2026-11-23 from "CC0 or our own", since the Unsplash License allows use in an app and the photos are credited), and Center Stage stills (not used; our own frame
 everywhere, so the look is consistent and nothing depends on another site).
 
 ## Critical User Journeys (CUJs)
@@ -189,10 +189,11 @@ is re-made.
     holdings list becomes the `finance` scene) or move to a scene (Composer Dock to `chat`). `Pattern` and
     `DemoFeed` are deleted once no design uses them.
 -   **Photos** live in `apps/example/assets/scenes/` as WebP at the size shown (no larger than 2x), with
-    `SOURCES.md` listing each file's source and licence. Only CC0 or our own photos. Budget: under 3 MB for
+    `SOURCES.md` listing each file's source and licence. Photos under the Unsplash License (picsum.photos), each credited. Budget: under 3 MB for
     all scenes, since Expo Go downloads them with the demo.
 -   **Re-recording.** The recording steps that ran from scratch scripts during the audits become one
-    committed script, `apps/site/scripts/record.sh <id>...`, that drives the one prepared simulator through
+    committed script, `apps/site/scripts/record.sh <out dir> <id>...` (with `encode.py` and
+    `record-routes.json` beside it), that drives the one prepared simulator through
     a design's tab switches and writes the raw recording; `encode`, `bar-loops.py`, `og-images.py` and the
     README GIF step run after it. Designs are re-made in batches, one scene per batch, each batch its own
     pull request, so the site improves batch by batch and the machine limits hold (one simulator, one heavy
@@ -277,7 +278,7 @@ live preview fails, and `react-native-tabcn`.
 -   **Pros**: Fast to make many photos in one style.
 -   **Cons**: Licence and provenance are unclear for a public repo; generated images often look generated,
     which works against "looks like a real app".
--   **Reason for Rejection**: Licence risk and quality; CC0 or our own photos instead.
+-   **Reason for Rejection**: Licence risk and quality; credited Unsplash License photos instead.
 
 ### Alternative F: Live previews in the gallery cards
 
@@ -312,6 +313,13 @@ Three parts, each one or more pull requests, merged in order. Part 2 is split in
 scene batch.
 
 ### Scene assignment (first pass)
+
+As built, `apps/example/src/design-tags.ts` is the source of truth. Changed while building, after
+checking each design's tabs and reference: pill-plus, orbs and light-icons to `maps`; search-dock,
+color-flood and tinted-icons to `social`; companion-chip to `shop`; frosted-media to `music` (dark);
+top-notch and sub-tabs to `music`; account-dock to `chat`. Panel demos are driven by UI inside the
+scene (a comment button opens Bar Sheet, the strip opens Mini Player), listed as steps in
+`apps/example/src/demo-actions.ts`, which `record.sh` plays.
 
 Seven scenes: side rails and tablet layouts fit none of the app types, so a `files` scene is included. The
 scheme follows the bar: a dark bar sits on the dark palette, a light or glass bar on the light one. Each
@@ -390,7 +398,7 @@ in `demos.tsx`.
 ##### 8. `apps/example/assets/scenes/*.webp` and `apps/example/assets/scenes/SOURCES.md` (Create)
 
 -   **Type / Scope**: Images and their sources.
--   **Proposed Changes**: CC0 or own photos, at the size shown (max 2x), WebP, under 3 MB in total.
+-   **Proposed Changes**: Unsplash License photos from picsum.photos, at the size shown (max 2x), WebP, under 3 MB in total.
     `SOURCES.md` lists file, source URL, author and licence for each.
 
 ##### 9. `apps/example/src/demos.tsx` and `apps/example/src/panel-demos.tsx` (Modify)

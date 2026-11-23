@@ -411,6 +411,7 @@ export function AccountDock({
               narrow={narrow}
               press={press}
               list={list}
+              tabLabel={activeTab?.label}
               onRound={() => {
                 tick();
                 progress.value = withSpring(0, tabcnSpring);
@@ -595,6 +596,7 @@ function Shapes({
   account,
   status,
   narrow,
+  tabLabel,
   onRound,
   onWorkspace,
   onAccount,
@@ -612,6 +614,8 @@ function Shapes({
   account: AccountDockAccount | undefined;
   status: AccountStatus;
   narrow: boolean;
+  /** The current tab's name, spoken after "Back to tabs". */
+  tabLabel: string | undefined;
   onRound: () => void;
   onWorkspace: () => void;
   onAccount: () => void;
@@ -789,18 +793,26 @@ function Shapes({
       {open ? (
         <>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={[labels.backToTabs, tabLabel].filter(Boolean).join(', ')}
             style={[styles.target, target(round)]}
             onPress={onRound}
             onPressIn={onPressIn('round')}
             onPressOut={onPressOut('round')}
           />
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={[labels.workspaces, workspace?.name].filter(Boolean).join(', ')}
             style={[styles.target, target(wsFrame)]}
             onPress={onWorkspace}
             onPressIn={onPressIn('ws')}
             onPressOut={onPressOut('ws')}
           />
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={[labels.accounts, account?.name, labels[status]]
+              .filter(Boolean)
+              .join(', ')}
             style={[styles.target, target(acctFrame)]}
             onPress={onAccount}
             onPressIn={onPressIn('acct')}

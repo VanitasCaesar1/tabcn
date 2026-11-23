@@ -1,40 +1,33 @@
 import { router, useNavigation } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsFocused } from 'expo-router/react-navigation';
+import { StatusBar } from 'expo-status-bar';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMinimizeOnScroll } from 'react-native-tabcn';
 
 import { catalog } from '@/catalog';
-import { DemoFeed } from '@/demo-feed';
-import { demos, designHref, isDarkScreen, screenBackground, useCurrentDemo } from '@/demos';
-import { embed } from '@/embed';
+import { demoScene, demos, designHref, useCurrentDemo } from '@/demos';
+import { DESIGN_TAGS } from '@/design-tags';
+import { embed, usePreviewSettings } from '@/embed';
 import { PANEL_FAMILIES, useDemoScreenColors, usePanelFamily } from '@/panel-theme';
-import { Pattern } from '@/pattern';
+import { SCENE_COMPONENTS, type SceneColors, scenePalette } from '@/scenes';
+import { floodColors, Glyph, ICONS, type Palette } from '@/scenes/kit';
 
 /**
- * A tab screen showing the design the way the reference does: the bar on the
- * reference's background colour and pattern, with a title and a Next button.
+ * A tab screen of a design: the design's app scene (DESIGN_TAGS in design-tags.ts) running under
+ * the bar, with the tab's name as its title. Outside the site's live preview it also has a quiet
+ * row on top: back to the list, the PanelUI theme, and the next design.
  */
 export function DemoScreen({ index }: { index: number }) {
   // Read from context, not route params: Expo Router creates the non-initial tab
   // routes of a dynamic [id] layout without params.
   const demo = useCurrentDemo();
-  const id = Object.keys(demos).find((key) => demos[key] === demo);
+  const id = Object.keys(demos).find((key) => demos[key] === demo) ?? '';
   const barHeight = useBottomTabBarHeight();
-  const { width, height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  // useBottomTabBarHeight() covers the bar plus the gap below it; the bar's centre sits half a bar above that gap.
-  const barCenterY = height - barHeight + (demo?.barHeight ?? 58) / 2;
-  const built = catalog.filter((d) => demos[d.id]);
-  const next = built[(built.findIndex((d) => d.id === id) + 1) % built.length];
-  const title = demo?.tabs[index]?.label ?? '';
-  // Under a PanelUI theme the screen takes the theme's colours and drops the reference's pattern.
+  const settings = usePreviewSettings();
   const themed = useDemoScreenColors();
-  const { family, setFamily } = usePanelFamily();
-  // Light ink on a dark screen: per tab, so a demo can mix light and dark screens (Offset Plus).
-  const darkScreen = demo ? isDarkScreen(demo, index) : false;
-  const text = themed?.text ?? (darkScreen ? '#ffffff' : '#111114');
-  const chip = themed?.chip ?? (darkScreen ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.06)');
-  const Extra = demo?.extra;
+  const onScroll = useMinimizeOnScroll();
+  const focused = useIsFocused();
   const navigation = useNavigation();
 
   // A design that comes with its own page draws it instead.
@@ -42,49 +35,95 @@ export function DemoScreen({ index }: { index: number }) {
     const Screen = demo.screen;
     return <Screen index={index} />;
   }
+  if (!demo) return null;
+
+  const setting = demoScene(id, demo, index, settings.scheme);
+  const colors: SceneColors | undefined = setting.flood ? floodColors(setting.flood) : themed;
+  const palette = scenePalette(setting.name, setting.scheme, colors);
+  const Scene = SCENE_COMPONENTS[setting.name];
+  const Extra = demo.extra;
+
+  const scene = (
+    <Scene
+      index={index}
+      barHeight={barHeight}
+      scheme={setting.scheme}
+      themed={colors}
+      title={demo.tabs[index]?.label ?? ''}
+      vivid={demo.vivid}
+      seed={sceneSeed(id, setting.name)}
+      onScroll={onScroll}
+      nav={embed ? null : <DemoNav id={id} palette={palette} />}
+    />
+  );
 
   return (
-    <View
-      style={[
-        styles.screen,
-        {
-          backgroundColor: themed?.background ?? (demo ? screenBackground(demo, index) : undefined),
-        },
-      ]}
-    >
-      {demo?.pattern && !themed ? <Pattern spec={demo.pattern} centerY={barCenterY} /> : null}
-      {demo?.blobs?.map((b) => (
-        <View
-          key={`${b.dx},${b.dy}`}
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            left: width / 2 + b.dx - b.r,
-            top: barCenterY + b.dy - b.r,
-            width: b.r * 2,
-            height: b.r * 2,
-            borderRadius: b.r,
-            backgroundColor: b.color,
-          }}
-        />
-      ))}
-      {/* A demo with a sheet hides the stack header (see Demo.fullScreen), so it offers its own
-          way back. */}
-      {demo?.fullScreen && !embed ? (
-        <Pressable
-          role="button"
-          accessibilityLabel="Back"
-          hitSlop={10}
-          onPress={() => router.back()}
-          style={[styles.next, styles.back, { top: insets.top + 12, backgroundColor: chip }]}
+    <View style={styles.screen}>
+      {focused ? <StatusBar style={palette.dark ? 'light' : 'dark'} /> : null}
+      {/* A demo's extra hangs its behaviour on the scene's own controls. */}
+      {Extra ? (
+        <Extra
+          index={index}
+          adapter="expo-router"
+          barHeight={barHeight}
+          goToFirstTab={() => navigation.navigate('index' as never)}
         >
-          <Text style={{ color: text, fontWeight: '600' }}>Back</Text>
-        </Pressable>
-      ) : null}
-      {/* The stack header is transparent on iOS 26, so clear it by hand. */}
-      <View style={[styles.header, { paddingTop: insets.top + 64 }]}>
-        <Text style={[styles.title, { color: text }]}>{title}</Text>
-        {next && !embed ? (
+          {scene}
+        </Extra>
+      ) : (
+        scene
+      )}
+    </View>
+  );
+}
+
+/**
+ * The design's place among the designs shown in the same scene, so neighbours in the list open
+ * on different content (another first post, another album).
+ */
+function sceneSeed(id: string, scene: string) {
+  return catalog.filter((d) => DESIGN_TAGS[d.id]?.scene === scene).findIndex((d) => d.id === id);
+}
+
+/**
+ * Back to the list, the theme, and the next design, drawn the way a navigation bar draws its
+ * buttons: plain text in the scene's colours.
+ */
+function DemoNav({ id, palette }: { id: string; palette: Palette }) {
+  const { family, setFamily } = usePanelFamily();
+  const built = catalog.filter((d) => demos[d.id]);
+  const next = built[(built.findIndex((d) => d.id === id) + 1) % built.length];
+  const at = PANEL_FAMILIES.findIndex((f) => f.id === family);
+  const theme = PANEL_FAMILIES[at] ?? PANEL_FAMILIES[0];
+  const nextTheme = PANEL_FAMILIES[(at + 1) % PANEL_FAMILIES.length];
+  return (
+    <View style={styles.nav}>
+      <Pressable
+        role="button"
+        accessibilityLabel="Back to designs"
+        hitSlop={10}
+        onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+        style={({ pressed }) => [styles.navButton, styles.back, { opacity: pressed ? 0.5 : 1 }]}
+      >
+        <Glyph d={ICONS.back} color={palette.text} size={22} strokeWidth={2.2} />
+        <Text style={[styles.navText, { color: palette.text }]}>Designs</Text>
+      </Pressable>
+      <View style={styles.navEnd}>
+        {nextTheme ? (
+          <Pressable
+            role="button"
+            accessibilityLabel={`Theme: ${theme?.label}. Switch to ${nextTheme.label}`}
+            hitSlop={8}
+            onPress={() => setFamily(nextTheme.id)}
+            style={({ pressed }) => [
+              styles.theme,
+              { borderColor: palette.subtle, opacity: pressed ? 0.5 : 1 },
+            ]}
+          >
+            <Text style={[styles.themeText, { color: palette.subtle }]}>{theme?.label}</Text>
+          </Pressable>
+        ) : null}
+        {next ? (
           <Pressable
             role="button"
             accessibilityLabel={`Next design: ${next.title}`}
@@ -95,82 +134,35 @@ export function DemoScreen({ index }: { index: number }) {
               router.dismissTo('/');
               router.push(designHref(next.id));
             }}
-            style={[styles.next, { backgroundColor: chip }]}
+            style={({ pressed }) => [styles.navButton, { opacity: pressed ? 0.5 : 1 }]}
           >
-            <Text style={{ color: text, fontWeight: '600' }}>Next: {next.title}</Text>
+            <Text style={[styles.navText, { color: palette.text }]}>Next</Text>
+            <Glyph d={ICONS.chevron} color={palette.text} size={22} strokeWidth={2.2} />
           </Pressable>
         ) : null}
       </View>
-      {/* PanelUI's themes, through the bridge an app installs (registry/themes/panelui-colors.ts). */}
-      {/* In the site's live preview the page around it has these. */}
-      {embed ? null : (
-        <View style={styles.themes} role="radiogroup" accessibilityLabel="Theme">
-          {PANEL_FAMILIES.map((option) => {
-            const selected = option.id === family;
-            return (
-              <Pressable
-                key={option.id}
-                role="radio"
-                accessibilityState={{ selected }}
-                accessibilityLabel={
-                  option.id === 'tabcn' ? 'Design colours' : `PanelUI ${option.label}`
-                }
-                hitSlop={6}
-                onPress={() => setFamily(option.id)}
-                style={[styles.theme, { backgroundColor: selected ? text : chip }]}
-              >
-                <Text
-                  style={[
-                    styles.themeLabel,
-                    {
-                      color: selected
-                        ? (themed?.background ?? (darkScreen ? '#000000' : '#ffffff'))
-                        : text,
-                    },
-                  ]}
-                >
-                  {option.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      )}
-      {/* A panel demo's controls, or a list to scroll. */}
-      {Extra ? (
-        <Extra
-          index={index}
-          text={text}
-          chip={chip}
-          adapter="expo-router"
-          barHeight={barHeight}
-          goToFirstTab={() => navigation.navigate('index' as never)}
-        />
-      ) : (
-        // App-like content for the bar to sit over, unless the demo brings its own.
-        <DemoFeed index={index} text={text} barHeight={barHeight} />
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: {
+  nav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    height: 44,
+    paddingHorizontal: 8,
   },
-  title: { fontSize: 30, fontWeight: '700' },
-  next: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 },
-  back: { position: 'absolute', left: 20 },
-  themes: { flexDirection: 'row', gap: 6, paddingHorizontal: 20, paddingTop: 12 },
+  navButton: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 4 },
+  back: { marginLeft: -2 },
+  navText: { fontSize: 17 },
+  navEnd: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   theme: {
-    paddingHorizontal: 11,
-    paddingVertical: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
     borderRadius: 999,
-    borderCurve: 'continuous',
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  themeLabel: { fontSize: 13, fontWeight: '600' },
+  themeText: { fontSize: 13, fontWeight: '500' },
 });
