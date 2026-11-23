@@ -51,7 +51,7 @@ const GLASS = isLiquidGlassAvailable();
 
 const defaultColors = {
   /** Idle icons. */
-  icon: 'rgba(255, 255, 255, 0.62)',
+  icon: 'rgba(255, 255, 255, 0.82)',
   /** The active icon. */
   activeIcon: '#ffffff',
   /** The faint white over the lens's blur: more washes the colour out. */
@@ -63,7 +63,10 @@ const defaultColors = {
 export type AmbientBarColors = typeof defaultColors;
 
 export interface AmbientBarProps {
-  /** Points above the bar where the blur starts to build. Default 56. */
+  /**
+   * Points above the bar where the blur starts to build. Default 12: the content above the bar
+   * stays sharp, and the blur is fully in by the icons' top edge.
+   */
   reach?: number;
   colors?: Partial<AmbientBarColors>;
   /** Selection haptic on every tab press. Default true. */
@@ -71,10 +74,12 @@ export interface AmbientBarProps {
 }
 
 /** Height of the row of tabs. */
-const ROW = 58;
-const ICON = 23;
-const LENS_W = 62;
-const LENS_H = 38;
+const ROW = 62;
+/** Points below the bar's top edge by which the blur is fully in. */
+const RAMP = 14;
+const ICON = 25;
+const LENS_W = 74;
+const LENS_H = 42;
 /** How strong the blur is (expo-blur intensity, 0-100) where it is fully in. */
 const BLUR_INTENSITY = 32;
 /**
@@ -85,7 +90,7 @@ const TINT = 'default' as const;
 /** The lens's own blur, a little stronger than the bar's. */
 const LENS_INTENSITY = 60;
 
-export function AmbientBar({ reach = 56, colors: custom, haptics = true }: AmbientBarProps) {
+export function AmbientBar({ reach = 12, colors: custom, haptics = true }: AmbientBarProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs, insets } = useTabBar();
   const { width } = useWindowDimensions();
@@ -103,7 +108,9 @@ export function AmbientBar({ reach = 56, colors: custom, haptics = true }: Ambie
           // content melts into it with no edge.
           <MaskedView
             style={StyleSheet.absoluteFill}
-            maskElement={<View style={[StyleSheet.absoluteFill, maskStyle(reach / height)]} />}
+            maskElement={
+              <View style={[StyleSheet.absoluteFill, maskStyle((reach + RAMP) / height)]} />
+            }
           >
             <BlurView intensity={BLUR_INTENSITY} tint={TINT} style={StyleSheet.absoluteFill} />
           </MaskedView>
@@ -180,10 +187,10 @@ function Tab({
   );
 }
 
-/** The blur's mask: clear at the top of the area, fully in by the row's top edge. */
-function maskStyle(fadeShare: number) {
-  const end = `${Math.round(fadeShare * 1000) / 10}%`;
-  const image = `linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.55) ${Math.round(fadeShare * 600) / 10}%, rgba(0, 0, 0, 1) ${end}, rgba(0, 0, 0, 1) 100%)`;
+/** The blur's mask: clear at the top of the area, fully in at `fullAt` (a share of its height). */
+function maskStyle(fullAt: number) {
+  const pct = (t: number) => `${Math.round(t * 1000) / 10}%`;
+  const image = `linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.5) ${pct(fullAt * 0.55)}, rgba(0, 0, 0, 1) ${pct(fullAt)}, rgba(0, 0, 0, 1) 100%)`;
   return Platform.OS === 'web'
     ? ({ backgroundImage: image } as object)
     : { experimental_backgroundImage: image };

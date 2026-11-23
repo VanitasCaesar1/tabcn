@@ -1,12 +1,12 @@
 /**
  * Icons for the Ambient Bar design: five tab glyphs for the demo (portfolio, markets, loop,
- * ask, profile), drawn by hand in a 24-unit box with a 2-unit round stroke. They work as any
+ * ask, profile), drawn by hand in a 24-unit box with a 2.3-unit round stroke. They work as any
  * screen's `tabBarIcon`; the focused one fills in.
  */
 import Svg, { Circle, Path } from 'react-native-svg';
 import type { TabIconProps } from 'react-native-tabcn';
 
-const STROKE = 2;
+const STROKE = 2.3;
 
 const line = {
   strokeWidth: STROKE,

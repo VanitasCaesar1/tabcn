@@ -51,9 +51,11 @@ export function AmbientBarScreen({ index, barHeight }: DemoExtraProps) {
             </View>
             <View style={styles.right}>
               <Text style={styles.value}>{row.value}</Text>
-              <Text style={[styles.change, { color: up ? '#22e06b' : '#ff3b5c' }]}>
-                {row.change}
-              </Text>
+              {/* The change on a solid chip, as trading apps show it: it lights the bar's right
+                  side green or red as it passes under. */}
+              <View style={[styles.chip, { backgroundColor: up ? '#14b85a' : '#e0284a' }]}>
+                <Text style={styles.change}>{row.change}</Text>
+              </View>
             </View>
           </View>
         );
@@ -65,11 +67,11 @@ export function AmbientBarScreen({ index, barHeight }: DemoExtraProps) {
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { paddingHorizontal: 18, paddingTop: 8, gap: 6 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   mark: {
-    width: 40,
-    height: 40,
-    borderRadius: 11,
+    width: 46,
+    height: 46,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -77,7 +79,8 @@ const styles = StyleSheet.create({
   middle: { flex: 1, gap: 2 },
   name: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
   sub: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
-  right: { alignItems: 'flex-end', gap: 2 },
+  right: { alignItems: 'flex-end', gap: 4 },
   value: { color: '#ffffff', fontSize: 15, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  change: { fontSize: 12, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  chip: { borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 },
+  change: { color: '#ffffff', fontSize: 12, fontWeight: '700', fontVariant: ['tabular-nums'] },
 });
