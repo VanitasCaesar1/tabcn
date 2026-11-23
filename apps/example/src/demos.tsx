@@ -321,10 +321,26 @@ function InkUnderlineBar({ colors }: { colors?: Partial<InkUnderlineColors> }) {
   return <InkUnderline colors={base || colors ? { ...base, ...colors } : undefined} />;
 }
 
-/** Cart Pill with the demo's bag count, which "Add to bag" on the screen raises. */
-function CartPillBar({ onActionPress }: { onActionPress: () => void }) {
+/**
+ * Cart Pill with the demo's bag count, which "Add to bag" on the screen raises. The Search tab
+ * is Shop's assistant: the row turns into a back button and an "Ask a follow-up" field.
+ */
+function CartPillBar({
+  onActionPress,
+  searchRoute,
+}: {
+  onActionPress: () => void;
+  searchRoute: string;
+}) {
   const count = useCartCount();
-  return <CartPill onBackPress={onActionPress} onCartPress={onActionPress} cartCount={count} />;
+  return (
+    <CartPill
+      onBackPress={onActionPress}
+      onCartPress={onActionPress}
+      cartCount={count}
+      search={{ route: searchRoute }}
+    />
+  );
 }
 
 /** Whether a `#rrggbb` or `rgb()`/`rgba()` colour is light (for picking a blur tint). */
@@ -744,8 +760,10 @@ export const demos: Record<string, Demo> = {
   },
   'cart-pill': {
     // The full row of the store shot: back disc, pill, purple cart disc with 2 items. "Add to
-    // bag" on the screen raises the count.
-    render: ({ onActionPress }) => <CartPillBar onActionPress={onActionPress} />,
+    // bag" on the screen raises the count; the Search tab swaps the row for back + a field.
+    render: ({ onActionPress, routes }) => (
+      <CartPillBar onActionPress={onActionPress} searchRoute={routes[1] ?? 't2'} />
+    ),
     extra: CartPillActions,
     background: SHOP_LIGHT,
     initialTab: 0,

@@ -54,15 +54,18 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
     { tap: 'Text' },
     { wait: 1400 },
   ],
-  // A product's add button fills the bag; the count on the cart button rolls each time.
+  // A product's add button fills the bag (the count on the cart rolls each time); the Search tab
+  // turns the row into a back button and an "Ask a follow-up" field; Back brings the tabs back.
   'cart-pill': [
     { wait: 800 },
     { tap: 'Add to bag' },
-    { wait: 1200 },
+    { wait: 1000 },
     { tap: 'Add to bag' },
     { wait: 1200 },
-    { tap: 'Add to bag' },
-    { wait: 2000 },
+    { tab: 1 },
+    { wait: 1800 },
+    { tap: 'Back' },
+    { wait: 1600 },
   ],
   // The chip's own toast, a product's add toast (both clear the bar and chip), then the search
   // field raises the keyboard and the bar and chip slide away for it.

@@ -354,7 +354,7 @@ export const catalog: DesignEntry[] = [
     kind: 'bar',
     layout: 'pill-with-action',
     summary:
-      "Shop's frosted pill of filled icons with a sliding white capsule, centred between an optional back button and a purple cart button with the count cut out of the basket; soft bottom-edge blur (Liquid Glass, blur fallback).",
+      'Shop\'s clear Liquid Glass pill of filled icons with a gliding lens, between an optional glass back button and a purple glass cart with the count cut out of the basket; on the search tab the row turns into back and an "Ask a follow-up" field. Soft bottom-edge blur (blur fallback).',
     status: 'ready',
   },
   {
