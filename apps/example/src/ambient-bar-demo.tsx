@@ -29,8 +29,10 @@ export function AmbientBarScreen({ index, barHeight }: DemoExtraProps) {
     turn.map((row) => ({ ...row, key: `${round}-${row.name}` })),
   );
   return (
+    // Its own black screen, under every theme: the bar is made for dark screens, and a light
+    // themed screen left the white text invisible and the bar a grey band.
     <ScrollView
-      style={styles.scroll}
+      style={[styles.scroll, { backgroundColor: '#000000' }]}
       contentContainerStyle={[styles.content, { paddingBottom: barHeight + 24 }]}
       showsVerticalScrollIndicator={false}
       accessibilityElementsHidden
