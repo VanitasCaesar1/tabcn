@@ -842,6 +842,30 @@
       ]
     },
     {
+      "name": "thumb-arc",
+      "type": "registry:item",
+      "title": "Thumb Arc",
+      "description": "A tab bar for one hand: a round button in a bottom corner. Hold it, or press and slide, and the tabs fan out on an arc; slide to one and lift to switch. Needs a GestureHandlerRootView.",
+      "dependencies": [
+        "react-native-tabcn",
+        "react-native-gesture-handler",
+        "expo-haptics",
+        "react-native-svg"
+      ],
+      "files": [
+        {
+          "path": "registry/designs/thumb-arc/thumb-arc.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/thumb-arc.tsx"
+        },
+        {
+          "path": "registry/designs/thumb-arc/icons.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/thumb-arc-icons.tsx"
+        }
+      ]
+    },
+    {
       "name": "mini-player",
       "type": "registry:item",
       "title": "Mini Player",

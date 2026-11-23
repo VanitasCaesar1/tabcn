@@ -9,5 +9,9 @@
     "at": 5.0,
     "top": 1380
   },
-  "sub-tabs": 4.0
+  "sub-tabs": 4.0,
+  "thumb-arc": {
+    "at": 5.5,
+    "top": 1640
+  }
 }

@@ -397,6 +397,18 @@ export const panelUIColorMaps = {
     foreground: 'overlay-foreground',
     pressed: 'accent',
   },
+  'thumb-arc': {
+    button: 'foreground',
+    buttonIcon: 'background',
+    item: 'card',
+    itemIcon: 'card-foreground',
+    accent: 'primary',
+    accentIcon: 'primary-foreground',
+    label: 'foreground',
+    labelText: 'background',
+    border: 'border',
+    ...badge,
+  },
   'tile-plus': {
     background: 'background',
     foreground: 'foreground',

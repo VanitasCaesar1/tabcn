@@ -438,6 +438,16 @@ export const catalog: DesignEntry[] = [
     status: 'ready',
   },
   {
+    id: 'thumb-arc',
+    ref: 0,
+    title: 'Thumb Arc',
+    kind: 'bar',
+    layout: 'floating-buttons',
+    summary:
+      'One round button in the bottom corner instead of a bar: hold it, or press and slide, and the tabs fan out on an arc around the thumb; slide to one and lift to switch.',
+    status: 'ready',
+  },
+  {
     id: 'mini-player',
     ref: 0,
     title: 'Mini Player',
