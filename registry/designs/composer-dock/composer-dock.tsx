@@ -58,7 +58,7 @@ import Animated, {
 import { TabBarRoot, type TabItem, useTabBar } from 'react-native-tabcn';
 import { TabScrub } from 'react-native-tabcn/gestures';
 import { Composer } from './composer-dock-composer';
-import { MenuRow, Popover } from './composer-dock-menu';
+import { MenuRow, type Pointer, Popover } from './composer-dock-menu';
 import { DockTab, ScrubLabel } from './composer-dock-tabs';
 import {
   ATTACH_CARD_WIDTH,
@@ -155,8 +155,9 @@ export function ComposerDock({
   const [held, setHeld] = useState<{ key: string; anchor: Frame; rowTop: number } | null>(null);
   const [attach, setAttach] = useState<Frame | null>(null);
   // The finger that opened a hold menu, while it stays down: sliding it onto a row and lifting
-  // chooses that row.
-  const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
+  // chooses that row. A shared value, written on the UI thread: the menu works out the row
+  // under it there and re-renders only when that row changes, not on every frame of the slide.
+  const pointer = useSharedValue<Pointer | null>(null);
   // Menus are drawn inside the dock (not in a modal, which would cancel the finger still down
   // from the long press), over the whole screen: this is where the dock sits in the window.
   const dockRef = useRef<ComponentRef<typeof View>>(null);
@@ -191,7 +192,6 @@ export function ComposerDock({
         openRef.current(tab, { x: fx, y: fy, width: fw, height: fh }),
       );
     };
-    const move = (x: number, y: number) => setPointer({ x, y });
     // The last position stays until the menu closes: the row under it is the one the lift
     // chooses.
     const lift = () => setLifts((n) => n + 1);
@@ -205,13 +205,13 @@ export function ComposerDock({
       })
       .onUpdate((e) => {
         'worklet';
-        runOnJS(move)(e.absoluteX, e.absoluteY);
+        pointer.value = { x: e.absoluteX, y: e.absoluteY };
       })
       .onEnd(() => {
         'worklet';
         runOnJS(lift)();
       });
-  }, [icons]);
+  }, [icons, pointer]);
 
   // The menus are positioned against the bar's padding box, which starts `insets.left` before
   // the dock (the docked bar pads the side safe areas), so that is the overlay's origin.
@@ -229,7 +229,7 @@ export function ComposerDock({
       setOrigin(overlayOrigin(dock));
       measure(rowRef, (row) => {
         if (haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        setPointer(null);
+        pointer.value = null;
         setHeld({ key: tab.key, anchor, rowTop: row.y });
       });
     });

@@ -7,7 +7,16 @@
 import { BlurView } from 'expo-blur';
 import { GlassView } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-import { createContext, type ReactNode, use, useEffect, useRef, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   BackHandler,
   Pressable,
@@ -22,7 +31,9 @@ import Animated, {
   interpolate,
   ReduceMotion,
   runOnJS,
+  type SharedValue,
   useAnimatedProps,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -55,6 +66,32 @@ function blurTint(background: string): 'light' | 'dark' {
 interface RowFrame {
   y: number;
   height: number;
+}
+
+/** Where a held finger is, in window coordinates. */
+export interface Pointer {
+  x: number;
+  y: number;
+}
+
+/** Where an open card's rows sit on screen, for matching a held finger to one. */
+interface HitBox {
+  open: boolean;
+  left: number;
+  width: number;
+  top: number;
+  rows: { id: string; y: number; height: number }[];
+}
+
+/** The row under `point`, or null. Runs on the UI thread as the finger moves, and on lift. */
+function rowAt(point: Pointer | null, box: HitBox): string | null {
+  'worklet';
+  if (!point || !box.open || point.x < box.left || point.x > box.left + box.width) return null;
+  let found: string | null = null;
+  for (const row of box.rows) {
+    if (point.y >= box.top + row.y && point.y < box.top + row.y + row.height) found = row.id;
+  }
+  return found;
 }
 
 /** What a card tells its rows: the row under a held finger, and where each row sits. */
@@ -105,7 +142,7 @@ export function Popover({
   bottom: number;
   gap: number;
   grow?: boolean;
-  pointer?: { x: number; y: number } | null;
+  pointer?: SharedValue<Pointer | null>;
   lifts?: number;
   haptics: boolean;
   colors: ComposerDockColors;
@@ -120,6 +157,9 @@ export function Popover({
   const [mounted, setMounted] = useState(open);
   if (open && !mounted) setMounted(true);
   const shown = useSharedValue(0);
+  // The blur over a growing card is unmounted once it has cleared, rather than left drawing at
+  // intensity 0 while the menu stays open. It is back (at 0) as the card starts to close.
+  const [cleared, setCleared] = useState(false);
   // Rows report where they sit, so a held finger can be matched to one.
   const [frames, setFrames] = useState<Record<string, RowFrame>>({});
   const runs = useRef(new Map<string, () => void>());
@@ -137,12 +177,19 @@ export function Popover({
   }).current;
   useEffect(() => {
     if (open)
-      shown.value = withTiming(1, {
-        duration: grow ? 260 : tabcnTiming.duration,
-        easing: Easing.out(Easing.cubic),
-        reduceMotion: ReduceMotion.System,
-      });
-    else
+      shown.value = withTiming(
+        1,
+        {
+          duration: grow ? 260 : tabcnTiming.duration,
+          easing: Easing.out(Easing.cubic),
+          reduceMotion: ReduceMotion.System,
+        },
+        (done) => {
+          if (done) runOnJS(setCleared)(true);
+        },
+      );
+    else {
+      setCleared(false);
       shown.value = withTiming(
         0,
         {
@@ -154,6 +201,7 @@ export function Popover({
           if (done) runOnJS(finish)();
         },
       );
+    }
   }, [open, shown, finish, grow]);
 
   const close = (then?: () => void) => {
@@ -181,29 +229,46 @@ export function Popover({
   const originX = Math.min(Math.max((centerX ?? x) - x, 0), width);
 
   const [cardHeight, setCardHeight] = useState(0);
-  const place = (id: string, frame: RowFrame | null, run?: () => void) => {
+  const place = useCallback((id: string, frame: RowFrame | null, run?: () => void) => {
     if (run) runs.current.set(id, run);
     if (frame)
       setFrames((all) =>
         all[id]?.y === frame.y && all[id]?.height === frame.height ? all : { ...all, [id]: frame },
       );
-  };
+  }, []);
   // A row that leaves an open card (its item was removed) takes its frame and action with it.
-  const forget = (id: string) => {
+  const forget = useCallback((id: string) => {
     runs.current.delete(id);
     setFrames((all) => {
       if (!(id in all)) return all;
       const { [id]: _gone, ...rest } = all;
       return rest;
     });
-  };
+  }, []);
   const cardTop = cardBottom - cardHeight;
-  let hovered: string | null = null;
-  if (pointer && open && pointer.x >= x && pointer.x <= x + width) {
-    for (const [id, f] of Object.entries(frames)) {
-      if (pointer.y >= cardTop + f.y && pointer.y < cardTop + f.y + f.height) hovered = id;
-    }
-  }
+  const box = useMemo<HitBox>(
+    () => ({
+      open,
+      left: x,
+      width,
+      top: cardTop,
+      rows: Object.entries(frames).map(([id, f]) => ({ id, y: f.y, height: f.height })),
+    }),
+    [open, x, width, cardTop, frames],
+  );
+  // The finger moves on the UI thread; the row under it is worked out there, and the card
+  // re-renders only when that row changes.
+  const hitBox = useSharedValue(box);
+  useEffect(() => {
+    hitBox.value = box;
+  }, [box, hitBox]);
+  const [hovered, setHovered] = useState<string | null>(null);
+  useAnimatedReaction(
+    () => (pointer ? rowAt(pointer.value, hitBox.value) : null),
+    (next, previous) => {
+      if (next !== previous) runOnJS(setHovered)(next);
+    },
+  );
   // A selection tick for each row the finger slides onto; lifting on one chooses it.
   const lastHovered = useRef<string | null>(null);
   useEffect(() => {
@@ -214,9 +279,12 @@ export function Popover({
   useEffect(() => {
     if (lifts === undefined || lifts === seenLifts.current) return;
     seenLifts.current = lifts;
-    const id = lastHovered.current;
+    // Read where the finger let go, not the last row the card rendered: the lift can arrive
+    // before the reaction reports a row the finger reached in its last frame.
+    const id = rowAt(pointer?.get() ?? null, box);
     if (id) runs.current.get(id)?.();
-  }, [lifts]);
+  }, [lifts, pointer, box]);
+  const context = useMemo(() => ({ hovered, place, forget }), [hovered, place, forget]);
 
   const scrimStyle = useAnimatedStyle(() => ({ opacity: shown.value }));
   const cardStyle = useAnimatedStyle(() =>
@@ -275,8 +343,8 @@ export function Popover({
             style={[StyleSheet.absoluteFill, grow ? styles.cardLargeFill : styles.cardGlassFill]}
           />
         ) : null}
-        <PopoverContext value={{ hovered, place, forget }}>{children(close)}</PopoverContext>
-        {grow ? (
+        <PopoverContext value={context}>{children(close)}</PopoverContext>
+        {grow && !(open && cleared) ? (
           <AnimatedBlurView
             pointerEvents="none"
             tint={blurTint(colors.background)}
