@@ -50,28 +50,36 @@ describe('badges from the navigator', () => {
   });
 });
 
+/** A bar whose first tab gets `first` as its ref and the others `rest`. */
+function Bar({
+  first,
+  rest,
+}: {
+  first: React.Ref<React.ComponentRef<typeof Pressable>>;
+  rest: (node: unknown) => void;
+}) {
+  const { tabs } = useTabBar();
+  return (
+    <TabBarRoot placement="docked">
+      <TabList>
+        <TabIndicator />
+        {tabs.map((tab) => (
+          <TabButton key={tab.key} tab={tab} ref={tab.index === 0 ? first : rest}>
+            <Text>{tab.label}</Text>
+          </TabButton>
+        ))}
+      </TabList>
+    </TabBarRoot>
+  );
+}
+
 describe('TabButton', () => {
   it('sets a ref the design passes and still measures the tab', async () => {
     const passed = createRef<React.ComponentRef<typeof Pressable>>();
     const callback = jest.fn();
-    function Bar() {
-      const { tabs } = useTabBar();
-      return (
-        <TabBarRoot placement="docked">
-          <TabList>
-            <TabIndicator />
-            {tabs.map((tab) => (
-              <TabButton key={tab.key} tab={tab} ref={tab.index === 0 ? passed : callback}>
-                <Text>{tab.label}</Text>
-              </TabButton>
-            ))}
-          </TabList>
-        </TabBarRoot>
-      );
-    }
     await render(
       <TabBarStateProvider value={makeTabState()}>
-        <Bar />
+        <Bar first={passed} rest={callback} />
       </TabBarStateProvider>,
     );
     expect(passed.current).not.toBeNull();

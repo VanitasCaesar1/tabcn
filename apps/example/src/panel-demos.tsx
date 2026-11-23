@@ -681,7 +681,7 @@ function PillTab({
     <TabButton tab={tab} style={styles.pillTab} {...rest}>
       {tab.renderIcon?.({ focused: tab.focused, color: PILL.foreground, size: 18 })}
       {/* One weight in both states, so the label never changes width as the tab changes. */}
-      <Text numberOfLines={1} style={styles.pillLabel}>
+      <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.pillLabel}>
         {tab.label}
       </Text>
       {children}

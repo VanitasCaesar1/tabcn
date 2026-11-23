@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
   },
   count: {
     minWidth: BADGE,
-    height: BADGE,
+    minHeight: BADGE,
     paddingHorizontal: 5,
     borderRadius: BADGE / 2,
     alignItems: 'center',
@@ -411,9 +411,9 @@ const styles = StyleSheet.create({
     height: DOT,
     borderRadius: DOT / 2,
   },
+  // No fixed line height: it scaled with large text while the badge didn't, which cut the digits.
   badgeText: {
     fontSize: 13,
-    lineHeight: BADGE,
     fontWeight: '600',
     includeFontPadding: false,
   },
