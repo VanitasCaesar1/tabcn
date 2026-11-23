@@ -315,8 +315,12 @@ function WideTab({
   haptics: boolean;
 }) {
   const progress = useFocusProgress(tab);
+  // Strings, not `colors`: a worklet that captured the object made on each render would
+  // restart its animated style on every render.
+  const fromColor = colors.foreground;
+  const toColor = colors.active;
   const label = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0, 1], [colors.foreground, colors.active]),
+    color: interpolateColor(progress.value, [0, 1], [fromColor, toColor]),
   }));
   const [narrow, setNarrow] = useState(false);
   return (

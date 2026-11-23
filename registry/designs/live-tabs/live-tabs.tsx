@@ -144,8 +144,12 @@ function LiveTab({
     opacity: interpolate(focus.value, [0.8, 1], [1, 0], 'clamp'),
   }));
   const focusedIcon = useAnimatedStyle(() => ({ opacity: focus.value }));
+  // Strings, not `colors`: a worklet that captured the object made on each render would
+  // restart its animated style on every render.
+  const fromColor = colors.muted;
+  const toColor = colors.foreground;
   const labelColor = useAnimatedStyle(() => ({
-    color: interpolateColor(focus.value, [0, 1], [colors.muted, colors.foreground]),
+    color: interpolateColor(focus.value, [0, 1], [fromColor, toColor]),
   }));
 
   // The ring shows only while something is in progress (between 0 and 1, exclusive). The fade

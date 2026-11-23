@@ -152,8 +152,12 @@ function Tab({
 }) {
   const focus = useFocusProgress(tab);
   const { coverage: progress, onLayout } = useCoverage(indicator, moving, activeIndex, focus);
+  // Strings, not `colors`: a worklet that captured the object made on each render would
+  // restart its animated style on every render.
+  const fromColor = colors.inactive;
+  const toColor = colors.active;
   const label = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0, 1], [colors.inactive, colors.active]),
+    color: interpolateColor(progress.value, [0, 1], [fromColor, toColor]),
   }));
   // The active icon fades in over the inactive one, which stays opaque until the last stretch,
   // so the glyph never dims half-way.

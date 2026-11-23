@@ -297,8 +297,12 @@ function Tab({
   const inactiveIcon = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0.8, 1], [1, 0], 'clamp'),
   }));
+  // Strings, not `colors`: a worklet that captured the object made on each render would
+  // restart its animated style on every render.
+  const fromColor = colors.foreground;
+  const toColor = colors.active;
   const label = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0, 1], [colors.foreground, colors.active]),
+    color: interpolateColor(progress.value, [0, 1], [fromColor, toColor]),
   }));
 
   return (
@@ -340,12 +344,12 @@ function Badge({
   colors: GlassBadgesColors;
   progress: SharedValue<number>;
 }) {
+  // Strings, not `colors`: a worklet that captured the object made on each render would
+  // restart its animated style on every render.
+  const fromColor = colors.badgeRing;
+  const toColor = colors.badgeRingActive;
   const ring = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(
-      progress.value,
-      [0, 1],
-      [colors.badgeRing, colors.badgeRingActive],
-    ),
+    borderColor: interpolateColor(progress.value, [0, 1], [fromColor, toColor]),
   }));
   if (tab.badge == null) return null;
   const empty = String(tab.badge).trim() === '';

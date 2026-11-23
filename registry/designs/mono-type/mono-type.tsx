@@ -131,8 +131,12 @@ function Tab({
   haptics: boolean;
 }) {
   const progress = useFocusProgress(tab);
+  // Strings, not `colors`: a worklet that captured the object made on each render would
+  // restart its animated style on every render.
+  const fromColor = colors.foreground;
+  const toColor = colors.accent;
   const label = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0, 1], [colors.foreground, colors.accent]),
+    color: interpolateColor(progress.value, [0, 1], [fromColor, toColor]),
   }));
   // The accent copy fades in over the plain one, which stays opaque until the last stretch
   // (no dip in ink mid-change) and then drops out, so the accent icon rests with no dark
