@@ -5,6 +5,7 @@
  * Spec: docs/designs/bottom-components.md (Companions).
  */
 import {
+  memo,
   type ReactNode,
   useEffect,
   useId,
@@ -151,9 +152,9 @@ const noHandle = () => undefined;
 /**
  * Draws the declared companions inside the bar box. Internal: rendered by `TabBarRoot`. It
  * subscribes to the companions on its own, so a screen that re-renders its companion
- * re-renders only this layer.
+ * re-renders only this layer; memoised, so a re-render of the root alone skips it.
  */
-export function CompanionLayer({
+export const CompanionLayer = memo(function CompanionLayer({
   store,
   docked,
   side,
@@ -244,7 +245,7 @@ export function CompanionLayer({
       ))}
     </Animated.View>
   );
-}
+});
 
 function CompanionItem({
   record,

@@ -4,6 +4,7 @@ import {
   type ReactNode,
   type RefObject,
   use,
+  useMemo,
   useRef,
 } from 'react';
 import { type StyleProp, View, type ViewStyle } from 'react-native';
@@ -48,8 +49,11 @@ export interface TabListProps {
 export function TabList({ style, children }: TabListProps) {
   const listRef = useRef<ComponentRef<typeof View>>(null);
   const frames = useSharedValue<Record<number, TabFrame>>({});
+  // One object for the list's life, so a re-render of the list doesn't re-render every
+  // `TabButton` and indicator through the context.
+  const context = useMemo(() => ({ listRef, frames }), [frames]);
   return (
-    <TabListContext value={{ listRef, frames }}>
+    <TabListContext value={context}>
       <View ref={listRef} role="tablist" style={[{ flexDirection: 'row' }, style]}>
         {children}
       </View>

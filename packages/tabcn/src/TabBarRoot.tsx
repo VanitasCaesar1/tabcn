@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import {
   Keyboard,
@@ -36,6 +37,7 @@ import {
   DEFAULT_PANEL_OVERLAP,
   modalPanel,
   type Snapshot,
+  type TabBarStore,
   useStoreSelector,
   useTabBarProvider,
   warnOnce,
@@ -137,17 +139,36 @@ const NO_CONTENT_LAYOUT: ViewStyle = {
   columnGap: 0,
 };
 
-const selectSnapshot = (s: Snapshot) => s;
+// Narrow selectors: each returns a value that keeps its identity until it changes, so the root
+// re-renders only for what it draws (not for anchor frames, which only the panel layer reads).
+const selectPanels = (s: Snapshot) => s.panels;
+const selectOverrideActive = (s: Snapshot) => s.overrideActive;
+const selectNavigatorFocused = (s: Snapshot) => s.navigatorFocused;
+
+const noSubscribe = () => () => {};
+const noOverride = () => null;
+
+/**
+ * The override element. It subscribes on its own, so a screen that re-renders its override
+ * re-renders only this slot. While the override fades out it keeps drawing the last element
+ * (the same instance) until the fade finishes.
+ */
+function OverrideSlot({ store }: { store: TabBarStore | undefined }) {
+  const element = useSyncExternalStore(
+    store?.subscribeOverride ?? noSubscribe,
+    store?.getOverride ?? noOverride,
+    noOverride,
+  );
+  const [last, setLast] = useState<ReactNode>(element);
+  if (element != null && element !== last) setLast(element);
+  return element ?? last;
+}
 
 /**
  * Crossfade between the design's own children and an override element set by a focused
- * screen (`useTabBarOverride`). The element that is fading out stays mounted (the same
- * instance) until the fade finishes.
+ * screen (`useTabBarOverride`).
  */
-function useOverride(override: ReactNode | null) {
-  const active = override != null;
-  const last = useRef<ReactNode>(null);
-  if (active) last.current = override;
+function useOverride(active: boolean) {
   // Tracked during render, so the commit in which the override turns off still draws it.
   const [wasActive, setWasActive] = useState(active);
   const [fadingOut, setFadingOut] = useState(false);
@@ -174,12 +195,7 @@ function useOverride(override: ReactNode | null) {
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: Math.min(1, Math.max(0, (progress.value - 0.3) / 0.7)),
   }));
-  return {
-    active,
-    element: active ? override : fadingOut ? last.current : null,
-    childrenStyle,
-    overlayStyle,
-  };
+  return { active, shown: active || fadingOut, childrenStyle, overlayStyle };
 }
 
 interface Size {
@@ -255,7 +271,9 @@ export function TabBarRoot({
   const { insets, hideOnKeyboard, reportHeight, tabs: items, activeIndex } = useTabBar();
   const provider = useTabBarProvider();
   const store = provider?.store;
-  const snapshot = useStoreSelector(store, selectSnapshot);
+  const panelRecords = useStoreSelector(store, selectPanels);
+  const overrideActive = useStoreSelector(store, selectOverrideActive);
+  const navigatorFocused = useStoreSelector(store, selectNavigatorFocused);
   const rail = placement === 'rail';
   const floating = placement === 'floating';
   // The keyboard is tracked when the screen hides the bar for it, and under a provider for
@@ -287,12 +305,12 @@ export function TabBarRoot({
     [store],
   );
   const hidden = useSharedValue(0);
-  const override = useOverride(snapshot.override);
+  const override = useOverride(overrideActive);
   // A `coversBar` panel is open: the floating bar box slides away and the panel takes its
   // place (PanelLayer moves its window down by the bar's height on the same spring).
   const covering =
-    floating && snapshot.panels.some((p) => p.coversBar && p.state === 'open' && !p.leaving);
-  if (!floating && !rail && snapshot.panels.some((p) => p.coversBar)) {
+    floating && panelRecords.some((p) => p.coversBar && p.state === 'open' && !p.leaving);
+  if (!floating && !rail && panelRecords.some((p) => p.coversBar)) {
     warnOnce(
       'coversBar only works under a floating bar (TabBarRoot placement="floating"); it is ignored here.',
     );
@@ -333,7 +351,7 @@ export function TabBarRoot({
   // Peeking and open panels reserve their peek height; open panels overlay the screen.
   let peek = 0;
   if (!rail) {
-    for (const panel of snapshot.panels) {
+    for (const panel of panelRecords) {
       if (panel.state !== 'hidden' && !panel.leaving) peek += panel.peekHeight;
     }
   }
@@ -359,22 +377,22 @@ export function TabBarRoot({
   // While a panel is open at its highest height it is modal: the bar's root hides its
   // siblings (the screens) from VoiceOver, and the tabs and the override are hidden inside it.
   // A sheet open lower down leaves them readable.
-  const panelOpen = !rail && modalPanel(snapshot);
+  const panelOpen = !rail && modalPanel(panelRecords);
 
   // Companions: above-positions ride the peek of the last bar panel that showed.
   const [companionsAbove, setCompanionsAbove] = useState(0);
   const liftPanel = useRef<string | null>(null);
-  const shownBarPanel = snapshot.panels.find(
+  const shownBarPanel = panelRecords.find(
     (p) => p.anchorKey === 'bar' && p.state !== 'hidden' && !p.leaving,
   );
   if (shownBarPanel) liftPanel.current = shownBarPanel.id;
-  else if (!snapshot.panels.some((p) => p.id === liftPanel.current)) liftPanel.current = null;
+  else if (!panelRecords.some((p) => p.id === liftPanel.current)) liftPanel.current = null;
 
   // useTabBarInset(): the reported height plus companions above, or 0 when the bar isn't
   // what's at the bottom: a rail, a covered navigator, or the keyboard up (toast libraries
   // add the keyboard's height themselves, whether or not the bar hides for it).
   const inset =
-    !store || rail || keyboardUp || !snapshot.navigatorFocused || reported === null
+    !store || rail || keyboardUp || !navigatorFocused || reported === null
       ? 0
       : reported + companionsAbove;
   useEffect(() => {
@@ -426,17 +444,22 @@ export function TabBarRoot({
   }, [store, overlap]);
   // Sheets size themselves from where the root sits on screen. The root's size is the settled
   // one, so a minimizing bar doesn't move a sheet's heights on every frame.
-  const geometry: SheetGeometry | null = rootSize
-    ? {
-        width: rootSize.width,
-        height: rootSize.height,
-        left: floating ? 0 : insets.left,
-        right: floating ? 0 : insets.right,
-        roomAboveRoot: screenHeight - bottomGap - rootSize.height - insets.top,
-        belowRoot: bottomGap,
-        docked: !floating,
-      }
-    : null;
+  // Memoised so the panel layer (memoised too) skips renders that change none of it.
+  const geometry = useMemo<SheetGeometry | null>(
+    () =>
+      rootSize
+        ? {
+            width: rootSize.width,
+            height: rootSize.height,
+            left: floating ? 0 : insets.left,
+            right: floating ? 0 : insets.right,
+            roomAboveRoot: screenHeight - bottomGap - rootSize.height - insets.top,
+            belowRoot: bottomGap,
+            docked: !floating,
+          }
+        : null,
+    [rootSize, floating, insets.left, insets.right, insets.top, screenHeight, bottomGap],
+  );
 
   // Under a provider, the design's children sit in a wrapper that can fade out for an
   // override. The wrapper is always a box and takes over the root's padding, so the root's
@@ -480,22 +503,21 @@ export function TabBarRoot({
             left: insets.left,
             right: 0,
           };
-  const overlay =
-    override.element != null ? (
-      <Animated.View
-        pointerEvents={override.active ? 'box-none' : 'none'}
-        importantForAccessibility={panelOpen ? 'no-hide-descendants' : 'auto'}
-        accessibilityElementsHidden={panelOpen}
-        style={[overlayFrame, override.overlayStyle]}
-      >
-        {override.element}
-      </Animated.View>
-    ) : null;
+  const overlay = override.shown ? (
+    <Animated.View
+      pointerEvents={override.active ? 'box-none' : 'none'}
+      importantForAccessibility={panelOpen ? 'no-hide-descendants' : 'auto'}
+      accessibilityElementsHidden={panelOpen}
+      style={[overlayFrame, override.overlayStyle]}
+    >
+      <OverrideSlot store={store} />
+    </Animated.View>
+  ) : null;
   const panels =
     store && !rail ? (
       <PanelLayer
         store={store}
-        snapshot={snapshot}
+        panels={panelRecords}
         barFrame={barFrame}
         overlap={overlap}
         geometry={geometry}
@@ -509,7 +531,7 @@ export function TabBarRoot({
         store={store}
         docked={!floating}
         side={Math.max(insets.left, insets.right)}
-        hidden={anyPanelOpen(snapshot)}
+        hidden={anyPanelOpen(panelRecords)}
         liftPanel={liftPanel.current}
         overlap={overlap}
         clipped={flatStyle.overflow === 'hidden'}

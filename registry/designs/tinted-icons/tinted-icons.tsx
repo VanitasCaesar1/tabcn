@@ -159,7 +159,7 @@ export function TintedIcons({
   }, [background, fill]);
   const fillStyle = useAnimatedStyle(() => ({ backgroundColor: fill.value }));
 
-  const { current, previous, clear } = useInactiveColor(inactive);
+  const { current, fading, clear } = useInactiveColor(inactive);
 
   return (
     // The root holds the active surface's colour, so it covers the bottom safe area too (the
@@ -175,7 +175,7 @@ export function TintedIcons({
             tab={tab}
             tint={tintAt(tab.index)}
             inactive={current}
-            previous={previous}
+            fading={fading}
             onFaded={clear}
             colors={colors}
             haptics={haptics}
@@ -186,20 +186,40 @@ export function TintedIcons({
   );
 }
 
+/** An old grey fading out over the new one. */
+interface Fading {
+  id: number;
+  color: string;
+}
+
 /**
- * The grey of the inactive icons. When a surface changes it, the old grey is kept as
- * `previous` until it has faded out over the new one.
+ * The grey of the inactive icons. When a surface changes it, the old grey is kept in
+ * `fading` until it has faded out over the new one. Each grey fades on its own, so a quick
+ * second change doesn't cut off a grey still fading out.
  */
 function useInactiveColor(color: string) {
-  const [state, setState] = useState<{ current: string; previous: string | null }>({
-    current: color,
-    previous: null,
-  });
+  const [state, setState] = useState<{
+    current: string;
+    fading: readonly Fading[];
+    next: number;
+  }>({ current: color, fading: [], next: 0 });
   if (state.current !== color) {
-    setState({ current: color, previous: state.current });
+    setState({
+      current: color,
+      fading: [...state.fading, { id: state.next, color: state.current }],
+      next: state.next + 1,
+    });
   }
-  const clear = useCallback(() => setState((s) => (s.previous ? { ...s, previous: null } : s)), []);
-  return { ...state, clear };
+  const clear = useCallback(
+    (id: number) =>
+      setState((s) =>
+        s.fading.some((f) => f.id === id)
+          ? { ...s, fading: s.fading.filter((f) => f.id !== id) }
+          : s,
+      ),
+    [],
+  );
+  return { current: state.current, fading: state.fading, clear };
 }
 
 /**
@@ -231,7 +251,7 @@ function Tab({
   tab,
   tint,
   inactive,
-  previous,
+  fading,
   onFaded,
   colors,
   haptics,
@@ -239,8 +259,8 @@ function Tab({
   tab: TabItem;
   tint: string;
   inactive: string;
-  previous: string | null;
-  onFaded: () => void;
+  fading: readonly Fading[];
+  onFaded: (id: number) => void;
   colors: TintedIconsColors;
   haptics: boolean;
 }) {
@@ -256,7 +276,7 @@ function Tab({
           tab={tab}
           tint={tint}
           inactive={inactive}
-          previous={previous}
+          fading={fading}
           onFaded={onFaded}
           progress={progress}
         />
@@ -269,21 +289,21 @@ function Tab({
 /**
  * The outline in grey and in the tab's tint. The tinted copy fades in over the grey one,
  * which stays until the last stretch and then drops out, so the icon never dims mid-way.
- * A grey from the previous surface fades out on top of the new grey.
+ * Greys from earlier surfaces fade out on top of the new grey.
  */
 function Icons({
   tab,
   tint,
   inactive,
-  previous,
+  fading,
   onFaded,
   progress,
 }: {
   tab: TabItem;
   tint: string;
   inactive: string;
-  previous: string | null;
-  onFaded: () => void;
+  fading: readonly Fading[];
+  onFaded: (id: number) => void;
   progress: SharedValue<number>;
 }) {
   const grey = useAnimatedStyle(() => ({
@@ -296,11 +316,12 @@ function Icons({
         <View style={[StyleSheet.absoluteFill, styles.center]}>
           {tab.renderIcon?.({ focused: false, color: inactive, size: ICON })}
         </View>
-        {previous ? (
-          <FadeOut key={previous} onDone={onFaded}>
-            {tab.renderIcon?.({ focused: false, color: previous, size: ICON })}
+        {/* Newest first, so the oldest (the one that was on top before) stays on top. */}
+        {[...fading].reverse().map((f) => (
+          <FadeOut key={f.id} id={f.id} onDone={onFaded}>
+            {tab.renderIcon?.({ focused: false, color: f.color, size: ICON })}
           </FadeOut>
-        ) : null}
+        ))}
       </Animated.View>
       <Animated.View style={[StyleSheet.absoluteFill, styles.center, tinted]}>
         {tab.renderIcon?.({ focused: true, color: tint, size: ICON })}
@@ -309,15 +330,23 @@ function Icons({
   );
 }
 
-/** Starts opaque when mounted and fades out on tabcnTiming, then calls `onDone`. */
-function FadeOut({ onDone, children }: { onDone: () => void; children: ReactNode }) {
+/** Starts opaque when mounted and fades out on tabcnTiming, then calls `onDone(id)`. */
+function FadeOut({
+  id,
+  onDone,
+  children,
+}: {
+  id: number;
+  onDone: (id: number) => void;
+  children: ReactNode;
+}) {
   const opacity = useSharedValue(1);
   useEffect(() => {
     opacity.value = withTiming(0, tabcnTiming, (finished) => {
       'worklet';
-      if (finished) runOnJS(onDone)();
+      if (finished) runOnJS(onDone)(id);
     });
-  }, [opacity, onDone]);
+  }, [opacity, onDone, id]);
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.center, style]}>

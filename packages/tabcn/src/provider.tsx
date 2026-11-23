@@ -38,7 +38,6 @@ export type SnapPoint = number | `${number}%`;
 
 export interface PanelRecord {
   id: string;
-  content: ReactNode;
   anchor: PanelAnchor;
   /** 'bar' or `name:<name>`: panels with the same key share one visible slot. */
   anchorKey: string;
@@ -47,8 +46,8 @@ export interface PanelRecord {
   snapPoints: readonly SnapPoint[];
   /** While open, the bar slides away and the panel moves into its place (floating bars). */
   coversBar: boolean;
-  /** Drawn over the whole screen behind the panel while it is open; null for none. */
-  backdrop: ReactNode;
+  /** The panel has a backdrop. The backdrop itself is in its `PanelContent`. */
+  hasBackdrop: boolean;
   state: PanelState;
   /** Index into `snapPoints` while open; -1 otherwise, and always -1 without snap points. */
   snap: number;
@@ -60,13 +59,27 @@ export interface PanelRecord {
   restoreSnap: number;
 }
 
+/**
+ * What a panel draws. Kept out of the snapshot with a subscription per panel: a screen that
+ * declares a panel hands over new elements on each of its renders, and that should re-render
+ * that panel's content only, not the bar and every other panel.
+ */
+export interface PanelContent {
+  content: ReactNode;
+  /** Drawn over the whole screen behind the panel while it is open; null for none. */
+  backdrop: ReactNode;
+}
+
 export interface Snapshot {
   /** Registered panels, in the order they were first declared. */
   panels: readonly PanelRecord[];
   /** Frames of named anchors, relative to `TabBarRoot`. */
   anchors: Readonly<Record<string, TabFrame>>;
-  /** The element that replaces the bar's tabs, if a focused screen set one. */
-  override: ReactNode | null;
+  /**
+   * Whether a focused screen set an element to replace the bar's tabs. The element itself has
+   * its own subscription (`getOverride`), for the same reason as `PanelContent`.
+   */
+  overrideActive: boolean;
   /** False while a screen pushed over the tab navigator covers it (set by the adapters). */
   navigatorFocused: boolean;
 }
@@ -127,8 +140,8 @@ export const anchorKey = (anchor: PanelAnchor): string =>
   anchor === 'bar' ? 'bar' : `name:${anchor.name}`;
 
 /** True while a panel is open at any height (and not on its way out). */
-export const anyPanelOpen = (snapshot: Snapshot): boolean =>
-  snapshot.panels.some((p) => p.state === 'open' && !p.leaving);
+export const anyPanelOpen = (panels: readonly PanelRecord[]): boolean =>
+  panels.some((p) => p.state === 'open' && !p.leaving);
 
 /**
  * Whether a peeking panel is covered: another panel on the same anchor is open. The panel
@@ -136,10 +149,10 @@ export const anyPanelOpen = (snapshot: Snapshot): boolean =>
  * `peek` state (and its peek stays reserved in the reported height), so it comes back when
  * the open panel rests.
  */
-export const isCovered = (panel: PanelRecord, snapshot: Snapshot): boolean =>
+export const isCovered = (panel: PanelRecord, panels: readonly PanelRecord[]): boolean =>
   panel.state === 'peek' &&
   !panel.leaving &&
-  snapshot.panels.some(
+  panels.some(
     (p) => p !== panel && p.anchorKey === panel.anchorKey && p.state === 'open' && !p.leaving,
   );
 
@@ -154,7 +167,7 @@ export const isModal = (panel: PanelRecord): boolean =>
  * tabs, the override and the other panels are hidden from screen readers. A plain panel has
  * one open height; a sheet open at a lower snap point leaves the screen behind usable.
  */
-export const modalPanel = (snapshot: Snapshot): boolean => snapshot.panels.some(isModal);
+export const modalPanel = (panels: readonly PanelRecord[]): boolean => panels.some(isModal);
 
 interface PanelOptions {
   content: ReactNode;
@@ -183,10 +196,64 @@ export const restingState = (panel: { peekHeight: number }): PanelState =>
 const sameFrame = (a: TabFrame | undefined, b: TabFrame) =>
   !!a && a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
 
+const sameSnapPoints = (a: readonly SnapPoint[], b: readonly SnapPoint[]) =>
+  a.length === b.length && a.every((point, i) => point === b[i]);
+
+const EMPTY_CONTENT: PanelContent = { content: null, backdrop: null };
+
+/**
+ * `panel` with a declaration's options applied, or `panel` itself when they change nothing.
+ * A screen passes new objects on each render (`anchor={{ name }}`, `snapPoints={['50%']}`),
+ * so they are compared by value: an unchanged record keeps the bar from re-rendering.
+ */
+function withOptions(panel: PanelRecord, options: PanelOptions): PanelRecord {
+  const key = anchorKey(options.anchor);
+  const snapPoints = sameSnapPoints(panel.snapPoints, options.snapPoints)
+    ? panel.snapPoints
+    : options.snapPoints;
+  const hasBackdrop = options.backdrop != null;
+  if (
+    panel.anchorKey === key &&
+    panel.snapPoints === snapPoints &&
+    panel.peekHeight === options.peekHeight &&
+    panel.coversBar === options.coversBar &&
+    panel.hasBackdrop === hasBackdrop
+  ) {
+    return panel;
+  }
+  return {
+    ...panel,
+    anchor: panel.anchorKey === key ? panel.anchor : options.anchor,
+    anchorKey: key,
+    peekHeight: options.peekHeight,
+    snapPoints,
+    coversBar: options.coversBar,
+    hasBackdrop,
+  };
+}
+
 /** Plain store read with `useSyncExternalStore`, so writers never re-render themselves. */
 export function createTabBarStore() {
-  let snapshot: Snapshot = { panels: [], anchors: {}, override: null, navigatorFocused: true };
+  let snapshot: Snapshot = {
+    panels: [],
+    anchors: {},
+    overrideActive: false,
+    navigatorFocused: true,
+  };
   let overrideOwner: string | null = null;
+  let override: ReactNode | null = null;
+  const overrideListeners = new Set<() => void>();
+  /** Each panel's content, with a subscription per panel id. */
+  const contents = new Map<string, PanelContent>();
+  const contentListeners = new Map<string, Set<() => void>>();
+  const setContent = (id: string, options: PanelOptions) => {
+    const current = contents.get(id);
+    if (current && current.content === options.content && current.backdrop === options.backdrop) {
+      return;
+    }
+    contents.set(id, { content: options.content, backdrop: options.backdrop });
+    for (const listener of contentListeners.get(id) ?? []) listener();
+  };
   const handles = new Map<string, PanelHandle>();
   /**
    * The mounted `<TabPanel>`s declaring each id, in mount order, with their options. The
@@ -234,6 +301,12 @@ export function createTabBarStore() {
   const commit = (next: Partial<Snapshot>) => {
     snapshot = { ...snapshot, ...next };
     emit();
+  };
+  /** Commits `panels` unless it holds the same records as now. */
+  const commitPanels = (panels: readonly PanelRecord[]) => {
+    const same =
+      panels.length === snapshot.panels.length && panels.every((p, i) => p === snapshot.panels[i]);
+    if (!same) commit({ panels });
   };
   const find = (id: string) => snapshot.panels.find((p) => p.id === id);
 
@@ -292,13 +365,17 @@ export function createTabBarStore() {
       declared.set(owner, options);
       // Only the latest-mounted declaration draws the panel.
       if ([...declared.keys()].at(-1) !== owner) return;
-      const key = anchorKey(options.anchor);
+      setContent(id, options);
       const existing = find(id);
       if (!existing) {
         const record: PanelRecord = {
           id,
-          ...options,
-          anchorKey: key,
+          anchor: options.anchor,
+          anchorKey: anchorKey(options.anchor),
+          peekHeight: options.peekHeight,
+          snapPoints: options.snapPoints,
+          coversBar: options.coversBar,
+          hasBackdrop: options.backdrop != null,
           state: 'hidden',
           snap: -1,
           leaving: false,
@@ -311,22 +388,18 @@ export function createTabBarStore() {
         });
         return;
       }
-      let panels = snapshot.panels.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              ...options,
-              anchorKey: key,
-              leaving: false,
-              // Snap points can change between renders; keep the index inside them.
-              snap: p.state === 'open' ? clampSnap(options.snapPoints, p.snap, screenReader) : -1,
-            }
-          : p,
-      );
+      let panels = snapshot.panels.map((p) => {
+        if (p.id !== id) return p;
+        const next = withOptions(p, options);
+        // Snap points can change between renders; keep the index inside them.
+        const snap =
+          next.state === 'open' ? clampSnap(next.snapPoints, next.snap, screenReader) : -1;
+        return next.leaving || next.snap !== snap ? { ...next, leaving: false, snap } : next;
+      });
       if (existing.leaving && existing.restoreState !== 'hidden') {
         panels = withState(panels, id, existing.restoreState, existing.restoreSnap);
       }
-      commit({ panels });
+      commitPanels(panels);
     },
 
     /**
@@ -338,12 +411,8 @@ export function createTabBarStore() {
       declared?.delete(owner);
       const remaining = declared ? [...declared.values()].at(-1) : undefined;
       if (remaining) {
-        const key = anchorKey(remaining.anchor);
-        commit({
-          panels: snapshot.panels.map((p) =>
-            p.id === id ? { ...p, ...remaining, anchorKey: key } : p,
-          ),
-        });
+        setContent(id, remaining);
+        commitPanels(snapshot.panels.map((p) => (p.id === id ? withOptions(p, remaining) : p)));
         return;
       }
       owners.delete(id);
@@ -367,8 +436,24 @@ export function createTabBarStore() {
 
     removePanel(id: string) {
       if (!find(id)?.leaving) return;
+      contents.delete(id);
       commit({ panels: snapshot.panels.filter((p) => p.id !== id) });
     },
+
+    /** Panel `id`'s content; read by its view only, so new content re-renders only it. */
+    subscribePanelContent(id: string, listener: () => void) {
+      let set = contentListeners.get(id);
+      if (!set) {
+        set = new Set();
+        contentListeners.set(id, set);
+      }
+      set.add(listener);
+      return () => {
+        set.delete(listener);
+        if (set.size === 0 && contentListeners.get(id) === set) contentListeners.delete(id);
+      };
+    },
+    getPanelContent: (id: string): PanelContent => contents.get(id) ?? EMPTY_CONTENT,
 
     /** Moves a panel to `next`; an open sheet goes to snap point `snap` (default the lowest). */
     setPanelState(id: string, next: PanelState, snap = 0) {
@@ -445,16 +530,29 @@ export function createTabBarStore() {
 
     setOverride(owner: string, element: ReactNode) {
       overrideOwner = owner;
-      if (snapshot.override === element) return;
-      commit({ override: element });
+      if (override === element) return;
+      override = element;
+      for (const listener of overrideListeners) listener();
+      if (!snapshot.overrideActive) commit({ overrideActive: true });
     },
 
     clearOverride(owner: string) {
       if (overrideOwner !== owner) return;
       overrideOwner = null;
-      if (snapshot.override === null) return;
-      commit({ override: null });
+      if (override === null) return;
+      override = null;
+      for (const listener of overrideListeners) listener();
+      commit({ overrideActive: false });
     },
+
+    /** The override element; read by the bar's override slot only (see `PanelContent`). */
+    subscribeOverride(listener: () => void) {
+      overrideListeners.add(listener);
+      return () => {
+        overrideListeners.delete(listener);
+      };
+    },
+    getOverride: () => override,
 
     setHandle(id: string, handle: PanelHandle) {
       handles.set(id, handle);
@@ -581,7 +679,12 @@ export function useTabBarProvider(): TabBarProviderValue | null {
   return use(TabBarProviderContext);
 }
 
-const emptySnapshot: Snapshot = { panels: [], anchors: {}, override: null, navigatorFocused: true };
+const emptySnapshot: Snapshot = {
+  panels: [],
+  anchors: {},
+  overrideActive: false,
+  navigatorFocused: true,
+};
 const noopSubscribe = () => () => {};
 
 /** Subscribes to a value derived from the store; returns `fallback` without a provider. */

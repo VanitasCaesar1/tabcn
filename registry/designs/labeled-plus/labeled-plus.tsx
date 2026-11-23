@@ -222,8 +222,12 @@ function Tab({
   const inactiveIcon = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0.8, 1], [1, 0], 'clamp'),
   }));
+  // Strings, not `colors`: a worklet that captured the object made on each render would
+  // restart its animated style on every render.
+  const fromColor = colors.inactive;
+  const toColor = colors.foreground;
   const label = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0, 1], [colors.inactive, colors.foreground]),
+    color: interpolateColor(progress.value, [0, 1], [fromColor, toColor]),
   }));
 
   return (

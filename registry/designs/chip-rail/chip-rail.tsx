@@ -153,8 +153,12 @@ function Chip({
   const surface = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 0.15], [1, 0], 'clamp'),
   }));
+  // Strings, not `colors`: a worklet that captured the object made on each render would
+  // restart its animated style on every render.
+  const fromColor = colors.text;
+  const toColor = colors.activeText;
   const label = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0.35, 0.65], [colors.text, colors.activeText]),
+    color: interpolateColor(progress.value, [0.35, 0.65], [fromColor, toColor]),
   }));
   return (
     <TabButton

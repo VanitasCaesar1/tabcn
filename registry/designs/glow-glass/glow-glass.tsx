@@ -188,8 +188,12 @@ function Tab({
   haptics: boolean;
 }) {
   const progress = useFocusProgress(tab);
+  // Strings, not `colors`: a worklet that captured the object made on each render would
+  // restart its animated style on every render.
+  const fromColor = colors.inactive;
+  const toColor = colors.active;
   const label = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0, 1], [colors.inactive, colors.active]),
+    color: interpolateColor(progress.value, [0, 1], [fromColor, toColor]),
   }));
   const dim = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
   const lit = useAnimatedStyle(() => ({ opacity: progress.value }));

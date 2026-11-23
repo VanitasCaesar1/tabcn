@@ -23,7 +23,7 @@
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode, useState } from 'react';
 import { type LayoutChangeEvent, Platform, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
@@ -297,8 +297,12 @@ function Tab({
   const inactiveIcon = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0.8, 1], [1, 0], 'clamp'),
   }));
+  // Strings, not `colors`: a worklet that captured the object made on each render would
+  // restart its animated style on every render.
+  const fromColor = colors.foreground;
+  const toColor = colors.active;
   const label = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0, 1], [colors.foreground, colors.active]),
+    color: interpolateColor(progress.value, [0, 1], [fromColor, toColor]),
   }));
 
   return (
@@ -340,12 +344,12 @@ function Badge({
   colors: GlassBadgesColors;
   progress: SharedValue<number>;
 }) {
+  // Strings, not `colors`: a worklet that captured the object made on each render would
+  // restart its animated style on every render.
+  const fromColor = colors.badgeRing;
+  const toColor = colors.badgeRingActive;
   const ring = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(
-      progress.value,
-      [0, 1],
-      [colors.badgeRing, colors.badgeRingActive],
-    ),
+    borderColor: interpolateColor(progress.value, [0, 1], [fromColor, toColor]),
   }));
   if (tab.badge == null) return null;
   const empty = String(tab.badge).trim() === '';
@@ -390,13 +394,14 @@ interface IndicatorFrame {
  * these take colour from the indicator, so tabs it passes over on a long move stay unlit.
  */
 function useMovingBetween(activeIndex: number) {
-  const last = useRef(activeIndex);
-  const previous = useRef(activeIndex);
-  if (last.current !== activeIndex) {
-    previous.current = last.current;
-    last.current = activeIndex;
+  // State, not refs written during render: React can throw a render away, and a ref written
+  // in it would keep a "previous" tab that never showed.
+  const [tabs, setTabs] = useState({ active: activeIndex, previous: activeIndex });
+  if (tabs.active !== activeIndex) {
+    setTabs({ active: activeIndex, previous: tabs.active });
+    return tabs.active;
   }
-  return previous.current;
+  return tabs.previous;
 }
 
 /**

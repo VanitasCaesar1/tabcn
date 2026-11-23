@@ -394,8 +394,12 @@ function PillTab({
     opacity: kept ? 1 : 1 - minimized.value,
     transform: [{ translateY: kept ? minimized.value * ICON_DROP : 0 }],
   }));
+  // Strings, not `colors`: a worklet that captured the object made on each render would
+  // restart its animated style on every render.
+  const fromColor = colors.foreground;
+  const toColor = colors.active;
   const label = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0, 1], [colors.foreground, colors.active]),
+    color: interpolateColor(progress.value, [0, 1], [fromColor, toColor]),
     opacity: 1 - minimized.value,
   }));
 

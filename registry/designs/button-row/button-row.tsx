@@ -146,6 +146,9 @@ export function ButtonRow({
   const row = window.width - insets.left - insets.right - SIDE * 2;
   const count = Math.max(1, tabs.length);
   const size = Math.max(0, Math.min(BUTTON, (row - GAP * (count - 1)) / count));
+  // The pill takes what the circles and gaps leave, known before layout, so a narrow screen
+  // never shows the label for a frame before it is dropped.
+  const pillWidth = row - (count - 1) * (size + GAP);
 
   // The app's buttons end 1 pt above the home indicator's inset. Where there's no inset
   // (older iPhones, some Android navigation modes) they keep a small gap from the edge.
@@ -180,6 +183,7 @@ export function ButtonRow({
               colors={colors}
               surface={surface}
               size={size}
+              expectedWidth={pillWidth}
               fontFamily={fontFamily}
               haptics={haptics}
             />
@@ -304,6 +308,7 @@ function WideTab({
   colors,
   surface,
   size,
+  expectedWidth,
   fontFamily,
   haptics,
 }: {
@@ -311,19 +316,26 @@ function WideTab({
   colors: ButtonRowColors;
   surface: ViewStyle;
   size: number;
+  /** The pill's width worked out from the screen's; its measured width replaces it. */
+  expectedWidth: number;
   fontFamily: string | undefined;
   haptics: boolean;
 }) {
   const progress = useFocusProgress(tab);
+  // Strings, not `colors`: a worklet that captured the object made on each render would
+  // restart its animated style on every render.
+  const fromColor = colors.foreground;
+  const toColor = colors.active;
   const label = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0, 1], [colors.foreground, colors.active]),
+    color: interpolateColor(progress.value, [0, 1], [fromColor, toColor]),
   }));
-  const [narrow, setNarrow] = useState(false);
+  const [measured, setMeasured] = useState<number | null>(null);
+  const narrow = (measured ?? expectedWidth) < MIN_LABELLED_PILL;
   return (
     <TabButton
       tab={tab}
       style={[styles.button, styles.pill, surface, { height: size, borderRadius: size / 2 }]}
-      onLayout={(e) => setNarrow(e.nativeEvent.layout.width < MIN_LABELLED_PILL)}
+      onLayout={(e) => setMeasured(e.nativeEvent.layout.width)}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <View style={[styles.icon, !narrow && styles.pillIcon]}>

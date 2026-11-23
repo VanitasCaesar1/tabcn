@@ -318,8 +318,12 @@ function Tab({
   );
   const outlined = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
   const filled = useAnimatedStyle(() => ({ opacity: progress.value }));
+  // Strings, not `colors`: a worklet that captured the object made on each render would
+  // restart its animated style on every render.
+  const fromColor = colors.inactive;
+  const toColor = colors.activeLabel;
   const label = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0, 1], [colors.inactive, colors.activeLabel]),
+    color: interpolateColor(progress.value, [0, 1], [fromColor, toColor]),
   }));
 
   return (

@@ -6,7 +6,7 @@
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { useRef } from 'react';
+import { useState } from 'react';
 import { I18nManager, type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
@@ -152,8 +152,12 @@ function Tab({
 }) {
   const focus = useFocusProgress(tab);
   const { coverage: progress, onLayout } = useCoverage(indicator, moving, activeIndex, focus);
+  // Strings, not `colors`: a worklet that captured the object made on each render would
+  // restart its animated style on every render.
+  const fromColor = colors.inactive;
+  const toColor = colors.active;
   const label = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0, 1], [colors.inactive, colors.active]),
+    color: interpolateColor(progress.value, [0, 1], [fromColor, toColor]),
   }));
   // The active icon fades in over the inactive one, which stays opaque until the last stretch,
   // so the glyph never dims half-way.
@@ -210,13 +214,14 @@ interface IndicatorFrame {
  * these take colour from the indicator, so tabs it passes over on a long move stay unlit.
  */
 function useMovingBetween(activeIndex: number) {
-  const last = useRef(activeIndex);
-  const previous = useRef(activeIndex);
-  if (last.current !== activeIndex) {
-    previous.current = last.current;
-    last.current = activeIndex;
+  // State, not refs written during render: React can throw a render away, and a ref written
+  // in it would keep a "previous" tab that never showed.
+  const [tabs, setTabs] = useState({ active: activeIndex, previous: activeIndex });
+  if (tabs.active !== activeIndex) {
+    setTabs({ active: activeIndex, previous: tabs.active });
+    return tabs.active;
   }
-  return previous.current;
+  return tabs.previous;
 }
 
 /**
