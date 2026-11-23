@@ -78,37 +78,42 @@ describe('tab keys', () => {
   });
 });
 
+// Icons with hooks, as React Compiler makes them: a different number of hooks each.
+function IconOne() {
+  useState(0);
+  return <Text>one</Text>;
+}
+
+function IconTwo() {
+  useState(0);
+  useState(1);
+  return <Text>two</Text>;
+}
+
+function iconState(focusedIndex: number) {
+  return buildTabBarState({
+    routes: [
+      { key: 'a', name: 'a' },
+      { key: 'b', name: 'b' },
+    ],
+    focusedIndex,
+    getOptions: (route) => ({ tabBarIcon: route.name === 'a' ? IconOne : IconTwo }),
+    insets: { top: 0, right: 0, bottom: 0, left: 0 },
+    reportHeight: () => {},
+    emitPress: () => false,
+    emitLongPress: () => {},
+    navigate: () => {},
+  });
+}
+
+/** A design that shows only the active tab's icon, in one place. */
+function ActiveIcon({ index }: { index: number }) {
+  const tab = iconState(index).tabs[index];
+  return <>{tab?.renderIcon?.({ focused: true, color: 'black', size: 24 })}</>;
+}
+
 describe('tab icons', () => {
   it('can be drawn in one slot that switches tabs, even when they use different hooks', async () => {
-    // Icons with hooks, as React Compiler makes them: a different number of hooks each.
-    function One() {
-      useState(0);
-      return <Text>one</Text>;
-    }
-    function Two() {
-      useState(0);
-      useState(1);
-      return <Text>two</Text>;
-    }
-    const build = (focusedIndex: number) =>
-      buildTabBarState({
-        routes: [
-          { key: 'a', name: 'a' },
-          { key: 'b', name: 'b' },
-        ],
-        focusedIndex,
-        getOptions: (route) => ({ tabBarIcon: route.name === 'a' ? One : Two }),
-        insets: { top: 0, right: 0, bottom: 0, left: 0 },
-        reportHeight: () => {},
-        emitPress: () => false,
-        emitLongPress: () => {},
-        navigate: () => {},
-      });
-    // A design that shows only the active tab's icon, in one place.
-    function ActiveIcon({ index }: { index: number }) {
-      const tab = build(index).tabs[index];
-      return <>{tab?.renderIcon?.({ focused: true, color: 'black', size: 24 })}</>;
-    }
     const view = await render(<ActiveIcon index={0} />);
     expect(screen.getByText('one')).toBeTruthy();
     await view.rerender(<ActiveIcon index={1} />);
