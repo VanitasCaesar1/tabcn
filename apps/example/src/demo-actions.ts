@@ -40,8 +40,9 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
     { wait: 1400 },
     { tap: 'Create' },
     { wait: 1600 },
-    { tap: 'Create' },
-    { wait: 1200 },
+    // While the menu is open it is the only thing a screen reader (and so the recorder) reaches.
+    { tap: 'Text' },
+    { wait: 1400 },
   ],
   // A product's add button fills the bag; the count on the cart button rolls each time.
   'cart-pill': [
@@ -96,9 +97,7 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
     { tap: 'Account and workspace, Northwind Studio, Sam Rivera, Online' },
     { wait: 1800 },
     { tap: 'Field Notes, 1,212 members' },
-    { wait: 2200 },
-    { tap: 'Back to tabs' },
-    { wait: 1500 },
+    { wait: 2500 },
   ],
   // Hold Projects for its recent items, then open the attachment menu.
   'composer-dock': [
