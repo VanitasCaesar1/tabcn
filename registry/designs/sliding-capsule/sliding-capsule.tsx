@@ -50,6 +50,11 @@ const defaultColors = {
    * are `foreground` like the rest, as in the app.
    */
   activeForeground: undefined as string | undefined,
+  /**
+   * Tint of the Liquid Glass (iOS 26+), so the bar reads near-white as the app's does: untinted,
+   * the glass took on strong colour from the content under it, with a hard seam at its edges.
+   */
+  glassTint: 'rgba(255, 255, 255, 0.85)',
   /** The bright 1 px edge of the bar (Liquid Glass draws its own). */
   rim: 'rgba(255, 255, 255, 0.95)',
   /** A faint, diffuse shadow around the bar. */
@@ -89,7 +94,8 @@ export interface SlidingCapsuleProps {
  */
 const TAB_WIDTH = 89.5;
 /** On a narrow screen the tabs shrink to fit, down to this width. */
-const MIN_TAB_WIDTH = 50;
+/** Tabs shrink to fit down to this; low enough that seven fit a 320 pt screen. */
+const MIN_TAB_WIDTH = 32;
 const BAR_HEIGHT = 62.5;
 const BAR_PADDING = 7.5;
 const CAPSULE_INSET = { x: -3.5, y: 4 };
@@ -134,6 +140,7 @@ export function SlidingCapsule({
             <GlassView
               glassEffectStyle="regular"
               colorScheme={glassColorScheme}
+              tintColor={colors.glassTint}
               style={StyleSheet.absoluteFill}
             />
           ) : (

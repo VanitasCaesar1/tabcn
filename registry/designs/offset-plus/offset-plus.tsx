@@ -85,8 +85,10 @@ const defaultColors = {
 export type OffsetPlusColors = typeof defaultColors;
 
 /**
- * The white bar TikTok shows on its Inbox and Profile screens: dark ink icons and labels,
- * the plus unchanged. From memory of the app, not measured. Used for `lightRoutes`.
+ * The white bar TikTok shows on its Inbox and Profile screens: dark ink icons and labels, and
+ * the plus inverted to a dark face with a white glyph (a white face vanished into the white
+ * bar, leaving only the coloured edges). From memory of the app, not measured. Used for
+ * `lightRoutes`.
  */
 export const offsetPlusLightColors: OffsetPlusColors = {
   background: '#ffffff',
@@ -94,8 +96,8 @@ export const offsetPlusLightColors: OffsetPlusColors = {
   inactive: '#8a8b91',
   actionLeft: '#29d1ec',
   actionRight: '#f12d6f',
-  actionFace: '#ffffff',
-  actionGlyph: '#161823',
+  actionFace: '#161823',
+  actionGlyph: '#ffffff',
   badge: '#fe2c55',
   badgeText: '#ffffff',
 };
@@ -389,7 +391,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: OffsetPlusC
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -398,6 +404,8 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: OffsetPlusC
 }
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   // Five equal slots across the full width; no side padding.
   bar: {
     height: BAR,

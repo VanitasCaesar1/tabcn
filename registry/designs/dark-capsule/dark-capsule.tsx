@@ -6,24 +6,28 @@
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { StyleSheet, View } from 'react-native';
+import { useRef } from 'react';
+import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
   FadeOut,
   interpolate,
   ReduceMotion,
+  type SharedValue,
   useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
 } from 'react-native-reanimated';
 import {
   TabBarRoot,
   TabButton,
-  TabIndicator,
   type TabItem,
   TabList,
   tabcnTiming,
   useFocusProgress,
   useTabBar,
+  useTabIndicator,
 } from 'react-native-tabcn';
 
 const defaultColors = {
@@ -54,22 +58,45 @@ export interface DarkCapsuleProps {
 
 export function DarkCapsule({ colors: custom, haptics = true }: DarkCapsuleProps) {
   const colors = { ...defaultColors, ...custom };
-  const { tabs } = useTabBar();
   return (
     <TabBarRoot placement="docked" style={[styles.dock, { backgroundColor: colors.background }]}>
       <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
-        <TabIndicator
-          inset={{ x: 11, y: 12.5 }}
+        <Row colors={colors} haptics={haptics} />
+      </TabList>
+    </TabBarRoot>
+  );
+}
+
+/** The capsule and the tabs, under `TabList`, sharing one indicator: the icons' colour follows it. */
+function Row({ colors, haptics }: { colors: DarkCapsuleColors; haptics: boolean }) {
+  const { tabs, activeIndex } = useTabBar();
+  // The capsule is its measured size (a tab less 11 pt a side, on a 402 pt phone with five
+  // tabs), centred on the tab and narrower only where the tab is: sized from the tab, it became a
+  // slab with two tabs or on an iPad, and narrower than the icon with seven.
+  const indicator = useTabIndicator({ inset: { x: 0, y: 12.5 } });
+  const previous = useMovingBetween(activeIndex);
+  return (
+    <>
+      <Animated.View pointerEvents="none" style={[indicator.style, styles.capsuleSlot]}>
+        <View
           style={[
             styles.capsule,
             { backgroundColor: colors.capsule, borderColor: colors.capsuleBorder },
           ]}
         />
-        {tabs.map((tab) => (
-          <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
-        ))}
-      </TabList>
-    </TabBarRoot>
+      </Animated.View>
+      {tabs.map((tab) => (
+        <Tab
+          key={tab.key}
+          tab={tab}
+          colors={colors}
+          haptics={haptics}
+          indicator={indicator}
+          moving={tab.index === activeIndex || tab.index === previous}
+          activeIndex={activeIndex}
+        />
+      ))}
+    </>
   );
 }
 
@@ -77,12 +104,19 @@ function Tab({
   tab,
   colors,
   haptics,
+  indicator,
+  moving,
+  activeIndex,
 }: {
   tab: TabItem;
   colors: DarkCapsuleColors;
   haptics: boolean;
+  indicator: IndicatorFrame;
+  moving: boolean;
+  activeIndex: number;
 }) {
-  const progress = useFocusProgress(tab);
+  const focus = useFocusProgress(tab);
+  const { coverage: progress, onLayout } = useCoverage(indicator, moving, activeIndex, focus);
   // Colour-only change: the inactive glyph stays fully opaque underneath while the active
   // glyph fades in on top, then drops out over the last stretch so the active glyph rests
   // alone (no grey outline or fringe left under a filled icon). Fading both layers against
@@ -95,6 +129,7 @@ function Tab({
     <TabButton
       tab={tab}
       style={styles.tab}
+      onLayout={onLayout}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
       <View style={styles.iconBox}>
@@ -130,6 +165,59 @@ const badgeOut = FadeOut.duration(BADGE_FADE_MS)
   .easing(BADGE_EASING)
   .reduceMotion(ReduceMotion.System);
 
+/** The indicator's animated frame, as `useTabIndicator` returns it. */
+interface IndicatorFrame {
+  x: SharedValue<number>;
+  width: SharedValue<number>;
+  ready: SharedValue<boolean>;
+}
+
+/**
+ * The active tab and the one it was before: the two tabs a change of tab moves between. Only
+ * these take colour from the indicator, so tabs it passes over on a long move stay unlit.
+ */
+function useMovingBetween(activeIndex: number) {
+  const last = useRef(activeIndex);
+  const previous = useRef(activeIndex);
+  if (last.current !== activeIndex) {
+    previous.current = last.current;
+    last.current = activeIndex;
+  }
+  return previous.current;
+}
+
+/**
+ * How much the indicator is on this tab, 0 to 1: 1 when it is centred on the tab, falling to 0
+ * as its centre moves a tab's width away. The tab's colour follows it, so the colour arrives
+ * with the indicator instead of ahead of it (a timed fade finished while the spring was still
+ * on its way). Until the tab and indicator are measured, and while no tab is active, it falls
+ * back to the tab's focus progress.
+ */
+function useCoverage(
+  indicator: IndicatorFrame,
+  moving: boolean,
+  activeIndex: number,
+  fallback: SharedValue<number>,
+) {
+  const frame = useSharedValue({ x: 0, width: 0 });
+  const onLayout = (event: LayoutChangeEvent) => {
+    const { x, width } = event.nativeEvent.layout;
+    frame.value = { x, width };
+  };
+  const coverage = useDerivedValue(() => {
+    const f = frame.value;
+    if (!indicator.ready.value || f.width === 0 || activeIndex < 0) return fallback.value;
+    if (!moving) return 0;
+    const centre = indicator.x.value + indicator.width.value / 2;
+    const distance = Math.abs(centre - (f.x + f.width / 2));
+    return Math.min(1, Math.max(0, 1 - distance / f.width));
+  });
+  return { coverage, onLayout };
+}
+
+/** The capsule's width, as measured. */
+const CAPSULE = 52;
+
 const styles = StyleSheet.create({
   // Docked like the app it comes from: full width and flush with the bottom edge, with the
   // background running under the home indicator. Side padding keeps the reference's tab spacing.
@@ -137,7 +225,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   bar: { height: 62 },
-  capsule: { borderRadius: 999, borderWidth: 1 },
+  capsuleSlot: { alignItems: 'center' },
+  capsule: { width: CAPSULE, maxWidth: '100%', height: '100%', borderRadius: 999, borderWidth: 1 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   iconBox: { width: 30, height: 30 },
   center: { alignItems: 'center', justifyContent: 'center' },

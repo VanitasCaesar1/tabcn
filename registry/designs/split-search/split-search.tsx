@@ -23,6 +23,7 @@ import {
   I18nManager,
   Platform,
   Pressable,
+  processColor,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -139,7 +140,11 @@ export function SplitSearch({
   // With a single visible tab there is no Search circle, and that tab sits in the pill.
   const pillTabs = search ? tabs.slice(0, -1) : tabs;
   const count = Math.max(1, pillTabs.length);
-  const pillWidth = Math.max(BAR, window.width - insets.left - insets.right - SIDE * 2 - GAP - BAR);
+  // The screen's width less the margins, up to MAX_PILL: on an iPad it was about 900 pt wide.
+  const pillWidth = Math.max(
+    BAR,
+    Math.min(MAX_PILL, window.width - insets.left - insets.right - SIDE * 2 - GAP - BAR),
+  );
   const slot = (pillWidth - INSET * 2) / count;
 
   // The pill tab the capsule marks: the active one, or the last one while Search is active.
@@ -329,16 +334,30 @@ function Capsule({
     // re-runs when `kept`, `center` or `pillWidth` (captured above) change.
   );
 
-  const style = useAnimatedStyle(() => ({
-    width: width.value,
-    opacity: ready.value ? shown.value * (1 - minimized.value) : 0,
-    transform: [{ translateX: x.value }],
+  // Two round caps and a stretched middle strip, moved by transforms only: animating `width`
+  // laid the capsule out again on every frame.
+  // The capsule's colour is translucent: drawn in it, the caps and strip darkened where they
+  // overlap. They are drawn opaque and the alpha is applied once, to the whole capsule.
+  const { color: solid, alpha } = splitAlpha(color);
+  const box = useAnimatedStyle(() => ({
+    opacity: ready.value ? alpha * shown.value * (1 - minimized.value) : 0,
+  }));
+  const startCap = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+  const endCap = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.value + Math.max(width.value, CAP) - CAP }],
+  }));
+  const strip = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: x.value + Math.max(width.value, CAP) / 2 - STRIP / 2 },
+      { scaleX: (Math.max(0, width.value - CAP) + 1) / STRIP },
+    ],
   }));
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={[styles.capsule, PHYSICAL_LEFT, { backgroundColor: color }, style]}
-    />
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.ltr, box]}>
+      <Animated.View style={[styles.capsuleStrip, { backgroundColor: solid }, strip]} />
+      <Animated.View style={[styles.capsule, { backgroundColor: solid }, startCap]} />
+      <Animated.View style={[styles.capsule, { backgroundColor: solid }, endCap]} />
+    </Animated.View>
   );
 }
 
@@ -479,7 +498,11 @@ function Badge({ tab, colors }: { tab: TabItem; colors: SplitSearchColors }) {
       {typeof tab.badge === 'number' ? (
         <BadgeCount value={tab.badge} textStyle={[styles.badgeText, text]} />
       ) : (
-        <Text maxFontSizeMultiplier={1.3} style={[styles.badgeText, text]}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[styles.badgeText, text, styles.badgeTextCap]}
+        >
           {tab.badge}
         </Text>
       )}
@@ -497,7 +520,25 @@ const PHYSICAL_LEFT =
     ? { right: 0 }
     : { left: 0 };
 
+/** The capsule's height, and so its caps' size. */
+const CAP = BAR - INSET * 2;
+/** Width of the capsule's middle strip before it is scaled. */
+const STRIP = 100;
+
+/** The widest the tab pill grows, on a tablet or in landscape. */
+const MAX_PILL = 420;
+
+/** A colour as its opaque version and its alpha, read by React Native's own parser. */
+function splitAlpha(color: string): { color: string; alpha: number } {
+  const value = processColor(color);
+  if (typeof value !== 'number') return { color, alpha: 1 };
+  const alpha = ((value >>> 24) & 255) / 255;
+  return { color: `rgb(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255})`, alpha };
+}
+
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   root: {
     alignSelf: 'stretch',
     marginHorizontal: SIDE,
@@ -525,12 +566,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: INSET,
   },
+  // A round cap of the capsule (CAP x CAP), and its middle strip (STRIP wide, scaled).
   capsule: {
     position: 'absolute',
+    left: 0,
     top: INSET,
-    height: BAR - INSET * 2,
-    borderRadius: (BAR - INSET * 2) / 2,
+    width: CAP,
+    height: CAP,
+    borderRadius: CAP / 2,
   },
+  capsuleStrip: {
+    position: 'absolute',
+    left: 0,
+    top: INSET,
+    width: STRIP,
+    height: CAP,
+  },
+  // The capsule's frame is physical (from the left edge) in either layout direction.
+  ltr: { direction: 'ltr' },
   tab: {
     height: BAR,
     alignItems: 'center',

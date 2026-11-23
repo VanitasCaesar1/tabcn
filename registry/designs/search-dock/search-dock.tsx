@@ -467,7 +467,11 @@ function Badge({ tab, colors }: { tab: TabItem; colors: SearchDockColors }) {
       {typeof tab.badge === 'number' ? (
         <BadgeCount value={tab.badge} textStyle={[styles.badgeText, text]} />
       ) : (
-        <Text maxFontSizeMultiplier={1.3} style={[styles.badgeText, text]}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[styles.badgeText, text, styles.badgeTextCap]}
+        >
           {tab.badge}
         </Text>
       )}
@@ -476,6 +480,8 @@ function Badge({ tab, colors }: { tab: TabItem; colors: SearchDockColors }) {
 }
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   root: {
     alignSelf: 'stretch',
     // The root already sits inside the side safe areas, so only the design's own margin is added.
@@ -488,7 +494,7 @@ const styles = StyleSheet.create({
   tile: {
     width: TILE,
     flexShrink: 1,
-    minWidth: 40,
+    minWidth: 30,
     height: TILE,
     borderRadius: RADIUS,
     alignItems: 'center',
@@ -496,7 +502,7 @@ const styles = StyleSheet.create({
   },
   field: {
     flex: 1,
-    minWidth: 120,
+    minWidth: 100,
     height: TILE,
     borderRadius: RADIUS,
   },

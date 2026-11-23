@@ -10,6 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { type ComponentRef, type ReactNode, useCallback, useEffect, useRef } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
+  interpolate,
   interpolateColor,
   useAnimatedStyle,
   useReducedMotion,
@@ -145,9 +146,15 @@ function Chip({
   useEffect(() => {
     progress.value = withSpring(tab.focused ? 1 : 0, tabcnSpring);
   }, [tab.focused, progress]);
-  const surface = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
+  // The chip's dark fill draws over the sliding lavender chip (it is inside the button, the
+  // lavender is behind the row), so it is only ever visible where the lavender isn't: it clears
+  // in the first 15% of the slide as the lavender arrives, and comes back in the last 15% as it
+  // leaves. The label changes colour in the middle, when the lavender covers half of it.
+  const surface = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.15], [1, 0], 'clamp'),
+  }));
   const label = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0, 1], [colors.text, colors.activeText]),
+    color: interpolateColor(progress.value, [0.35, 0.65], [colors.text, colors.activeText]),
   }));
   return (
     <TabButton
@@ -199,7 +206,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: ChipRailCol
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -210,6 +221,8 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: ChipRailCol
 const HIT_SLOP = { top: 3, bottom: 3 };
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   // Docked like Phantom's own bar: full width and flush with the bottom edge, with the dark
   // background running under the home indicator.
   rail: {

@@ -342,7 +342,13 @@ function Badge({ tab, colors }: { tab: TabItem; colors: ColorFloodColors }) {
       {typeof tab.badge === 'number' ? (
         <BadgeCount value={tab.badge} textStyle={textStyle} />
       ) : (
-        <Text style={textStyle}>{text}</Text>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
+          {text}
+        </Text>
       )}
     </Animated.View>
   );
@@ -357,6 +363,8 @@ const badgeOut = FadeOutAnimation.duration(tabcnTiming.duration ?? 200)
   .reduceMotion(ReduceMotion.System);
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   // Docked full width with square corners; the colour change is the only edge.
   bar: { height: BAR, paddingHorizontal: SIDE },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },

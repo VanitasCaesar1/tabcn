@@ -23,7 +23,16 @@
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { ScrollView, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { useEffect } from 'react';
+import {
+  processColor,
+  ScrollView,
+  type StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -31,7 +40,11 @@ import Animated, {
   interpolate,
   interpolateColor,
   ReduceMotion,
+  type SharedValue,
   useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 import {
   BadgeCount,
@@ -201,7 +214,8 @@ function Rail({
           style={[styles.menu, { marginTop: fromScreenTop(MENU_TOP) }]}
         >
           {({ pressed }) => (
-            <View style={[styles.menuLayer, pressed && { backgroundColor: colors.pressed }]}>
+            <View style={styles.menuLayer}>
+              <StateLayer pressed={pressed} color={colors.pressed} shape={styles.menuLayer} />
               <View style={styles.menuGlyph}>
                 {[0, 5, 10].map((top) => (
                   <View
@@ -230,15 +244,7 @@ function Rail({
         >
           {({ pressed }) => (
             <>
-              {pressed ? (
-                <View
-                  style={[
-                    StyleSheet.absoluteFill,
-                    styles.fabLayer,
-                    { backgroundColor: colors.pressed },
-                  ]}
-                />
-              ) : null}
+              <StateLayer pressed={pressed} color={colors.pressed} shape={styles.fabLayer} />
               <View style={styles.plus}>
                 <View style={[styles.plusBar, { backgroundColor: colors.actionIcon }]} />
                 <View
@@ -306,10 +312,10 @@ function Tab({
   // The pill grows out of its centre: scaleX from PILL_FROM to 1 as it fades in (and back as
   // it fades out). A transform only, so the layout never changes; it is drawn inside the tab's
   // own slot, so it lines up in right-to-left layouts too.
-  const pill = useAnimatedStyle(() => ({
-    opacity: progress.value,
-    transform: [{ scaleX: interpolate(progress.value, [0, 1], [PILL_FROM, 1]) }],
-  }));
+  // By transforms only, with round ends at every width (scaleX squashed them into ovals).
+  const pillW = useDerivedValue(
+    () => pillWidth * interpolate(progress.value, [0, 1], [PILL_FROM, 1]),
+  );
   const outlined = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
   const filled = useAnimatedStyle(() => ({ opacity: progress.value }));
   const label = useAnimatedStyle(() => ({
@@ -325,20 +331,14 @@ function Tab({
       {({ pressed }) => (
         <>
           <View style={[styles.slot, { width: pillWidth }]}>
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                StyleSheet.absoluteFill,
-                styles.round,
-                { backgroundColor: colors.indicator },
-                pill,
-              ]}
+            <GrowingPill
+              width={pillW}
+              maxWidth={pillWidth}
+              height={PILL_HEIGHT}
+              color={colors.indicator}
+              opacity={progress}
             />
-            {pressed ? (
-              <View
-                style={[StyleSheet.absoluteFill, styles.round, { backgroundColor: colors.pressed }]}
-              />
-            ) : null}
+            <StateLayer pressed={pressed} color={colors.pressed} shape={styles.round} />
             <View style={styles.icon}>
               <Animated.View style={[StyleSheet.absoluteFill, outlined]}>
                 {tab.renderIcon?.({ focused: false, color: colors.inactive, size: ICON })}
@@ -383,12 +383,19 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SideRailCol
     <Animated.View
       entering={badgeIn}
       exiting={badgeOut}
+      // The tab's label already reads the badge; on its own it was an extra stop on Android.
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
       style={[styles.count, { backgroundColor: colors.badge }]}
     >
       {/^\d+$/.test(text) ? (
         <BadgeCount value={Number(text)} max={999} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -396,7 +403,113 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SideRailCol
   );
 }
 
+/**
+ * Material's pressed state layer: fades in while pressed and out after, on tabcnTiming (instant
+ * with reduce motion on). It used to appear and vanish in a single frame.
+ */
+function StateLayer({
+  pressed,
+  color,
+  shape,
+}: {
+  pressed: boolean;
+  color: string;
+  shape: StyleProp<ViewStyle>;
+}) {
+  const opacity = useSharedValue(0);
+  useEffect(() => {
+    opacity.value = withTiming(pressed ? 1 : 0, tabcnTiming);
+  }, [pressed, opacity]);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, shape, { backgroundColor: color }, style]}
+    />
+  );
+}
+
+/**
+ * A fully round pill drawn from two end caps and a middle strip, so it changes width by
+ * transforms only (no layout per frame) and its ends stay round at every width. Narrower than
+ * it is tall, it is a circle of that width. Centred in a `maxWidth` x `height` box.
+ */
+function GrowingPill({
+  width,
+  maxWidth,
+  height,
+  color,
+  opacity,
+}: {
+  width: SharedValue<number>;
+  maxWidth: number;
+  height: number;
+  color: string;
+  opacity: SharedValue<number>;
+}) {
+  // Drawn opaque with the alpha applied once: in a translucent colour (a theme's), the caps
+  // and strip would darken where they overlap.
+  const { color: solid, alpha } = splitAlpha(color);
+  const box = useAnimatedStyle(() => ({ opacity: alpha * opacity.value }));
+  const cap = (side: -1 | 1) => () => {
+    'worklet';
+    const w = Math.max(0, width.value);
+    return {
+      transform: [
+        { translateX: side * (Math.max(w, height) / 2 - height / 2) },
+        { scale: Math.max(0.001, Math.min(1, w / height)) },
+      ],
+    };
+  };
+  const start = useAnimatedStyle(cap(-1));
+  const end = useAnimatedStyle(cap(1));
+  const strip = useAnimatedStyle(() => ({
+    transform: [{ scaleX: Math.max(0.001, width.value - height) / maxWidth }],
+  }));
+  const capStyle = {
+    position: 'absolute' as const,
+    top: 0,
+    left: (maxWidth - height) / 2,
+    width: height,
+    height,
+    borderRadius: height / 2,
+    backgroundColor: solid,
+  };
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[{ position: 'absolute', top: 0, width: maxWidth, height }, box]}
+    >
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: maxWidth,
+            height,
+            backgroundColor: solid,
+          },
+          strip,
+        ]}
+      />
+      <Animated.View style={[capStyle, start]} />
+      <Animated.View style={[capStyle, end]} />
+    </Animated.View>
+  );
+}
+
+/** A colour as its opaque version and its alpha, read by React Native's own parser. */
+function splitAlpha(color: string): { color: string; alpha: number } {
+  const value = processColor(color);
+  if (typeof value !== 'number') return { color, alpha: 1 };
+  const alpha = ((value >>> 24) & 255) / 255;
+  return { color: `rgb(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255})`, alpha };
+}
+
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   railScroll: { flexShrink: 1 },
   rail: {
     alignItems: 'center',

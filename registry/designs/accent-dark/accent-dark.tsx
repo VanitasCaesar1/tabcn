@@ -283,7 +283,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: AccentDarkC
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} style={textStyle}>
+        <Text
+          maxFontSizeMultiplier={1.3}
+          numberOfLines={1}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -292,6 +296,8 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: AccentDarkC
 }
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   // One physical pixel, as UIKit draws the bar's top line (1 px = 0.5 pt on the measured 2x shots).
   hairline: {
     height: StyleSheet.hairlineWidth,

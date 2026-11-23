@@ -62,7 +62,12 @@ export function useTabIndicator(options: TabIndicatorOptions = {}): TabIndicator
     // While scrubbing, the frame under the finger; otherwise the active tab's.
     () => scrub?.value ?? frames.value[activeIndex],
     (frame) => {
-      if (!frame) return;
+      if (!frame) {
+        // No active tab (a hidden route is focused): forget the old place, so the next tab's
+        // indicator appears there instead of springing over from the stale one.
+        if (activeIndex < 0) ready.value = false;
+        return;
+      }
       const next = {
         x: frame.x + insetX,
         y: frame.y + insetY,

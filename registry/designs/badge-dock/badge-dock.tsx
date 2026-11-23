@@ -327,20 +327,30 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: BadgeDockCo
       pointerEvents="none"
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
-      style={[styles.count, { backgroundColor: colors.badge }]}
+      // A zero-size box at the badge's centre: a wider count ("99+") grows both ways from
+      // there, instead of only rightwards, where on the last tab it reached the screen's edge.
+      style={styles.countAnchor}
     >
-      {typeof badge === 'number' ? (
-        <BadgeCount value={badge} textStyle={textStyle} />
-      ) : (
-        <Text numberOfLines={1} style={textStyle}>
-          {text}
-        </Text>
-      )}
+      <View style={[styles.count, { backgroundColor: colors.badge }]}>
+        {typeof badge === 'number' ? (
+          <BadgeCount value={badge} textStyle={textStyle} />
+        ) : (
+          <Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.3}
+            style={[textStyle, styles.badgeTextCap]}
+          >
+            {text}
+          </Text>
+        )}
+      </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   // One physical pixel, as UIKit draws the bar's top line.
   hairline: {
     height: StyleSheet.hairlineWidth,
@@ -375,12 +385,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
-  count: {
+  countAnchor: {
     position: 'absolute',
-    top: BADGE_TOP,
-    left: BADGE_LEFT,
+    top: BADGE_TOP + BADGE / 2,
+    left: BADGE_LEFT + BADGE / 2,
+    width: 0,
+    height: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+  },
+  count: {
     minWidth: BADGE,
-    height: BADGE,
+    minHeight: BADGE,
     paddingHorizontal: 5,
     borderRadius: BADGE / 2,
     alignItems: 'center',
@@ -394,9 +411,9 @@ const styles = StyleSheet.create({
     height: DOT,
     borderRadius: DOT / 2,
   },
+  // No fixed line height: it scaled with large text while the badge didn't, which cut the digits.
   badgeText: {
     fontSize: 13,
-    lineHeight: BADGE,
     fontWeight: '600',
     includeFontPadding: false,
   },

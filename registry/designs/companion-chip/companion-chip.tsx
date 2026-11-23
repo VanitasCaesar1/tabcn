@@ -17,7 +17,7 @@
  * it minimizes, slides away with it for the keyboard, rides above a peeking mini player, and
  * fades out while a panel is open. Needs a `TabBarProvider`.
  *
- * Pressing it darkens its fill (a colour change; nothing scales or moves) with a light
+ * Pressing it changes its fill (a colour change; nothing scales or moves) with a light
  * haptic tick (`haptics={false}` turns it off). Without `onPress`
  * it is plain text to screen readers, not a button. A new count crossfades in on
  * tabcnTiming. With "reduce motion" on, every change is instant. The surface is frosted on

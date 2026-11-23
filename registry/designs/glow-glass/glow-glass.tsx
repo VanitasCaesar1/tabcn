@@ -8,14 +8,14 @@
  * crossfade in colour. Presses give haptics only, with no scale or lift.
  *
  * Tabs keep their measured 62 pt where the row fits; on a narrow screen (or with many tabs)
- * they narrow to fit, down to 48 pt. The glow is a radial gradient: `experimental_backgroundImage`
+ * they narrow to fit, down to 40 pt. The glow is a radial gradient: `experimental_backgroundImage`
  * on iOS and Android, CSS `backgroundImage` on the web.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import type { ReactNode } from 'react';
-import { Platform, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Platform, processColor, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle } from 'react-native-reanimated';
 import {
   BadgeCount,
@@ -91,7 +91,10 @@ export function GlowGlass({
   // as a last resort (the row may then run past the screen's edges).
   const room = window.width - insets.left - insets.right - EDGE * 2;
   const fixed = LIST_PADDING * 2 + BORDER * 2 + GAP + HEIGHT;
-  const tabWidth = Math.max(MIN_TAB, Math.min(TAB, (room - fixed) / Math.max(1, tabs.length)));
+  // Down to MIN_TAB where it fits; with more tabs than that allows, narrower still, so the
+  // row never runs off the screen.
+  const each = (room - fixed) / Math.max(1, tabs.length);
+  const tabWidth = Math.min(TAB, Math.max(Math.min(MIN_TAB, each), each));
   return (
     <TabBarRoot placement="floating" style={styles.row}>
       <View
@@ -156,25 +159,21 @@ function glowImage(color: string) {
     : { experimental_backgroundImage: image };
 }
 
-/** `color` with its opacity multiplied by `alpha`. Hex and rgb()/rgba(); others unchanged. */
+/**
+ * A colour's red, green, blue (0-255) and alpha (0-1), read by React Native's own parser, so
+ * named colours, hsl() and every hex form work; null for what it can't read (PlatformColor).
+ */
+function channels(color: string): [number, number, number, number] | null {
+  const value = processColor(color);
+  if (typeof value !== 'number') return null;
+  return [(value >>> 16) & 255, (value >>> 8) & 255, value & 255, ((value >>> 24) & 255) / 255];
+}
+
+/** `color` with its opacity multiplied by `alpha`; colours it can't read are returned as they are. */
 function withAlpha(color: string, alpha: number): string {
-  const hex = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(color)?.[1];
-  let rgb: number[];
-  let own = 1;
-  if (hex) {
-    const full = hex.length <= 4 ? [...hex].map((c) => c + c).join('') : hex;
-    rgb = [0, 2, 4].map((i) => Number.parseInt(full.slice(i, i + 2), 16));
-    if (full.length === 8) own = Number.parseInt(full.slice(6, 8), 16) / 255;
-  } else {
-    const parts = /^rgba?\(([^)]+)\)$/i
-      .exec(color)?.[1]
-      ?.split(/[\s,/]+/)
-      .filter(Boolean);
-    if (!parts || parts.length < 3 || parts.some((p) => p.endsWith('%'))) return color;
-    rgb = parts.slice(0, 3).map(Number);
-    if (parts[3] !== undefined) own = Number(parts[3]);
-  }
-  return `rgba(${rgb.join(', ')}, ${Math.round(own * alpha * 1000) / 1000})`;
+  const c = channels(color);
+  if (!c) return color;
+  return `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${Math.round(c[3] * alpha * 1000) / 1000})`;
 }
 
 function Tab({
@@ -236,7 +235,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: GlowGlassCo
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -261,6 +264,8 @@ const ICON = 20.3;
 const ACTION_ICON = 21.5;
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   row: { flexDirection: 'row', alignItems: 'center', gap: GAP },
   pill: { height: HEIGHT, borderRadius: 999, borderWidth: BORDER, overflow: 'hidden' },
   list: { flex: 1, alignItems: 'stretch', paddingHorizontal: LIST_PADDING },

@@ -164,7 +164,11 @@ function Tab({
         </Animated.View>
         <Animated.View
           pointerEvents="none"
-          style={[styles.badge, { backgroundColor: colors.badge }, badge]}
+          style={[
+            styles.badge,
+            { backgroundColor: colors.badge, borderColor: colors.background },
+            badge,
+          ]}
         />
       </View>
       {/* A long label (TRANSITS on a 320 pt screen) shrinks a little to fit its slot rather
@@ -194,5 +198,15 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   // Menlo at 12.4 pt matches the app's 7.5 pt character advance; no letter spacing.
   label: { fontSize: 12.4, letterSpacing: 0, includeFontPadding: false },
-  badge: { position: 'absolute', top: 1, right: 0, width: 7, height: 7, borderRadius: 3.5 },
+  // A ring in the bar's colour separates the dot from the icon's ink; the coloured dot keeps
+  // its size inside it.
+  badge: {
+    position: 'absolute',
+    top: -0.5,
+    right: -1.5,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+  },
 });

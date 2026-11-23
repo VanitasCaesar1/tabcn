@@ -133,7 +133,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: ScrubPillCo
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -146,6 +150,8 @@ const ICON = 22;
 const LENS_INSET = { x: 2, y: 2 };
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   badgeOnly: { position: 'absolute', top: 4, right: 10 },
   pill: {
     // Fits the screen when the tabs' full width doesn't: they shrink instead.
@@ -163,7 +169,8 @@ const styles = StyleSheet.create({
   tab: {
     width: 68,
     flexShrink: 1,
-    minWidth: 46,
+    // Low enough that seven tabs fit a 320 pt screen.
+    minWidth: 32,
     height: 54,
     alignItems: 'center',
     justifyContent: 'center',

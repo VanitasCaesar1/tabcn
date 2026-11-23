@@ -20,7 +20,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { processColor, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -28,7 +28,9 @@ import Animated, {
   interpolate,
   interpolateColor,
   ReduceMotion,
+  type SharedValue,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -129,13 +131,9 @@ function Tab({
   // One ease-out progress drives everything, so the pill, the icon and the colours move in
   // lockstep (200 ms, no overshoot; instant with reduce motion on).
   const progress = useFocusProgress(tab);
-  // The pill grows from the icon's centre: its width runs 0 to 56 with the left edge kept
-  // centred, so the round ends stay round (no scaleX) and it never passes its resting size.
-  const pill = useAnimatedStyle(() => ({
-    left: (PILL_WIDTH * (1 - progress.value)) / 2,
-    width: PILL_WIDTH * progress.value,
-    opacity: progress.value,
-  }));
+  // The pill grows from the icon's centre: its width runs 0 to 56, a growing circle until it
+  // is as wide as it is tall, then a pill; round ends throughout, by transforms only.
+  const pillWidth = useDerivedValue(() => PILL_WIDTH * progress.value);
   // The filled icon fades in over the outline, which stays opaque until the last stretch, so
   // the icon never dims half-way.
   const outline = useAnimatedStyle(() => ({
@@ -155,7 +153,13 @@ function Tab({
       {({ pressed }) => (
         <>
           <View style={styles.pillBox}>
-            <Animated.View style={[styles.pill, { backgroundColor: colors.indicator }, pill]} />
+            <GrowingPill
+              width={pillWidth}
+              maxWidth={PILL_WIDTH}
+              height={PILL_HEIGHT}
+              color={colors.indicator}
+              opacity={progress}
+            />
             <StateLayer pressed={pressed} color={colors.pressed} />
             <View style={styles.icon}>
               <Animated.View style={[StyleSheet.absoluteFill, outline]}>
@@ -226,7 +230,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: MaterialPil
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} max={999} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} style={textStyle}>
+        <Text
+          maxFontSizeMultiplier={1.3}
+          numberOfLines={1}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -242,7 +250,87 @@ const badgeOut = FadeOut.duration(tabcnTiming.duration ?? 200)
   .easing(BADGE_EASING)
   .reduceMotion(ReduceMotion.System);
 
+/**
+ * A fully round pill drawn from two end caps and a middle strip, so it changes width by
+ * transforms only (no layout per frame) and its ends stay round at every width. Narrower than
+ * it is tall, it is a circle of that width. Centred in a `maxWidth` x `height` box.
+ */
+function GrowingPill({
+  width,
+  maxWidth,
+  height,
+  color,
+  opacity,
+}: {
+  width: SharedValue<number>;
+  maxWidth: number;
+  height: number;
+  color: string;
+  opacity: SharedValue<number>;
+}) {
+  // Drawn opaque with the alpha applied once: in a translucent colour (a theme's), the caps
+  // and strip would darken where they overlap.
+  const { color: solid, alpha } = splitAlpha(color);
+  const box = useAnimatedStyle(() => ({ opacity: alpha * opacity.value }));
+  const cap = (side: -1 | 1) => () => {
+    'worklet';
+    const w = Math.max(0, width.value);
+    return {
+      transform: [
+        { translateX: side * (Math.max(w, height) / 2 - height / 2) },
+        { scale: Math.max(0.001, Math.min(1, w / height)) },
+      ],
+    };
+  };
+  const start = useAnimatedStyle(cap(-1));
+  const end = useAnimatedStyle(cap(1));
+  const strip = useAnimatedStyle(() => ({
+    transform: [{ scaleX: Math.max(0.001, width.value - height) / maxWidth }],
+  }));
+  const capStyle = {
+    position: 'absolute' as const,
+    top: 0,
+    left: (maxWidth - height) / 2,
+    width: height,
+    height,
+    borderRadius: height / 2,
+    backgroundColor: solid,
+  };
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[{ position: 'absolute', top: 0, width: maxWidth, height }, box]}
+    >
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: maxWidth,
+            height,
+            backgroundColor: solid,
+          },
+          strip,
+        ]}
+      />
+      <Animated.View style={[capStyle, start]} />
+      <Animated.View style={[capStyle, end]} />
+    </Animated.View>
+  );
+}
+
+/** A colour as its opaque version and its alpha, read by React Native's own parser. */
+function splitAlpha(color: string): { color: string; alpha: number } {
+  const value = processColor(color);
+  if (typeof value !== 'number') return { color, alpha: 1 };
+  const alpha = ((value >>> 24) & 255) / 255;
+  return { color: `rgb(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255})`, alpha };
+}
+
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   bar: {
     height: BAR,
   },
@@ -257,12 +345,6 @@ const styles = StyleSheet.create({
     height: PILL_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  pill: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    borderRadius: PILL_HEIGHT / 2,
   },
   round: {
     borderRadius: PILL_HEIGHT / 2,

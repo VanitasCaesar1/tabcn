@@ -37,7 +37,7 @@
  */
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { processColor, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
@@ -171,7 +171,12 @@ function LiveTab({
     showLive.value = withTiming(text ? 1 : 0, tabcnTiming);
   }, [text, showLive]);
   const labelStyle = useAnimatedStyle(() => ({ opacity: 1 - showLive.value }));
-  const liveStyle = useAnimatedStyle(() => ({ opacity: showLive.value }));
+  const muted = splitAlpha(colors.muted);
+  // The live line stands in for the label, so it carries the focus cue too: a little faded
+  // while the tab isn't active, full while it is.
+  const liveStyle = useAnimatedStyle(() => ({
+    opacity: showLive.value * interpolate(focus.value, [0, 1], [0.7, 1]),
+  }));
 
   return (
     <TabButton
@@ -206,7 +211,9 @@ function LiveTab({
           </Svg>
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, mutedIcon]}>
-          {tab.renderIcon?.({ focused: false, color: colors.muted, size: ICON })}
+          <View style={[StyleSheet.absoluteFill, styles.center, { opacity: muted.alpha }]}>
+            {tab.renderIcon?.({ focused: false, color: muted.color, size: ICON })}
+          </View>
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, focusedIcon]}>
           {tab.renderIcon?.({ focused: true, color: colors.foreground, size: ICON })}
@@ -262,7 +269,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: LiveTabsCol
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -270,7 +281,30 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: LiveTabsCol
   );
 }
 
+/**
+ * A colour's red, green, blue (0-255) and alpha (0-1), read by React Native's own parser, so
+ * named colours, hsl() and every hex form work; null for what it can't read (PlatformColor).
+ */
+function channels(color: string): [number, number, number, number] | null {
+  const value = processColor(color);
+  if (typeof value !== 'number') return null;
+  return [(value >>> 16) & 255, (value >>> 8) & 255, value & 255, ((value >>> 24) & 255) / 255];
+}
+
+/**
+ * A translucent colour as its opaque colour and its alpha. An icon drawn in a translucent
+ * colour darkens wherever its strokes and fills overlap; drawn opaque under an opacity of the
+ * same alpha, it reads evenly.
+ */
+function splitAlpha(color: string): { color: string; alpha: number } {
+  const c = channels(color);
+  if (!c) return { color, alpha: 1 };
+  return { color: `rgb(${c[0]}, ${c[1]}, ${c[2]})`, alpha: c[3] };
+}
+
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   bar: {
     borderTopWidth: StyleSheet.hairlineWidth,
   },

@@ -59,6 +59,8 @@ export default function DesignLayout() {
             headerShown: false,
             tabBarPosition,
             tabBarHideOnKeyboard: demo.hideOnKeyboard,
+            // Designs whose bar takes each screen's colour fade the screens with it.
+            animation: demo.fadeScreens ? 'fade' : undefined,
             sceneStyle: { backgroundColor: themedScreen?.background ?? demo.background },
           }}
         >

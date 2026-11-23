@@ -56,6 +56,7 @@ export default function ReactNavigationDemo() {
                 // Side Rail: a rail on the left on wide windows, a bottom bar otherwise.
                 tabBarPosition: demo.railWhenWide && width >= RAIL_MIN_WIDTH ? 'left' : 'bottom',
                 tabBarHideOnKeyboard: demo.hideOnKeyboard,
+                animation: demo.fadeScreens ? 'fade' : undefined,
                 sceneStyle: { backgroundColor: demo.background },
               }}
             >

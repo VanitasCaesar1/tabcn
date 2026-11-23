@@ -72,7 +72,7 @@ export function buildTabBarState(input: BuildInput): TabBarState {
       label: resolveLabel(options, route),
       accessibilityLabel: options.tabBarAccessibilityLabel,
       testID: options.tabBarButtonTestID,
-      badge: options.tabBarBadge,
+      badge: normalizeBadge(options.tabBarBadge),
       renderIcon: icon ? (props: TabIconProps) => icon(props) : undefined,
       press: () => {
         const prevented = input.emitPress(route);
@@ -90,4 +90,15 @@ export function buildTabBarState(input: BuildInput): TabBarState {
     reportHeight: input.reportHeight,
     position: focusedOptions.tabBarPosition === 'left' ? 'left' : 'bottom',
   };
+}
+
+/**
+ * A count written as a string ("12", as navigators often pass it) becomes a number, so designs
+ * draw it as a count (capped at 99+, digits rolling) rather than as text; a number that isn't a
+ * count (NaN, negative, infinite) is dropped instead of shown as "NaN" or "-3".
+ */
+function normalizeBadge(badge: string | number | undefined): string | number | undefined {
+  if (typeof badge === 'number') return Number.isFinite(badge) && badge >= 0 ? badge : undefined;
+  if (typeof badge === 'string' && /^\s*\d+\s*$/.test(badge)) return Number(badge);
+  return badge;
 }

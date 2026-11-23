@@ -27,9 +27,28 @@ function ReactNavigationTabBar({ nav, children }: { nav: BottomTabBarProps; chil
         getOptions: (route) => (descriptors[route.key]?.options ?? {}) as TabOptionsLike,
         insets,
         reportHeight: onHeightChange ?? noop,
-        emitPress: (route) =>
-          navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true })
-            .defaultPrevented,
+        emitPress: (route) => {
+          // As React Navigation's own bar does: a press on the focused tab says whether it
+          // scrolls to top and pops to top (`tabBarRepeatedPressBehavior`).
+          const focused = state.routes[state.index]?.key === route.key;
+          const repeat = (
+            descriptors[route.key]?.options as {
+              tabBarRepeatedPressBehavior?: { scrollToTop?: boolean; popToTop?: boolean };
+            }
+          )?.tabBarRepeatedPressBehavior;
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+            data: {
+              behavior: {
+                scrollToTop: focused && repeat?.scrollToTop !== false,
+                popToTop: focused && repeat?.popToTop !== false,
+              },
+            },
+          } as never) as unknown as { defaultPrevented: boolean };
+          return event.defaultPrevented;
+        },
         emitLongPress: (route) => {
           navigation.emit({ type: 'tabLongPress', target: route.key });
         },

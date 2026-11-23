@@ -15,7 +15,7 @@
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { StyleSheet, View } from 'react-native';
+import { processColor, StyleSheet, View } from 'react-native';
 import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import {
   PressableScale,
@@ -150,25 +150,21 @@ function bevelShadow(color: string) {
   return `inset 0 0 5px ${fade(color, 0.07 / 0.1)}, inset 0 -6px 6px -3px ${color}`;
 }
 
-/** `color` with its opacity multiplied by `factor`. Hex and rgb()/rgba(); others unchanged. */
+/**
+ * A colour's red, green, blue (0-255) and alpha (0-1), read by React Native's own parser, so
+ * named colours, hsl() and every hex form work; null for what it can't read (PlatformColor).
+ */
+function channels(color: string): [number, number, number, number] | null {
+  const value = processColor(color);
+  if (typeof value !== 'number') return null;
+  return [(value >>> 16) & 255, (value >>> 8) & 255, value & 255, ((value >>> 24) & 255) / 255];
+}
+
+/** `color` with its opacity multiplied by `factor`; colours it can't read are returned as they are. */
 function fade(color: string, factor: number): string {
-  const hex = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(color)?.[1];
-  let rgb: number[];
-  let alpha = 1;
-  if (hex) {
-    const full = hex.length <= 4 ? [...hex].map((c) => c + c).join('') : hex;
-    rgb = [0, 2, 4].map((i) => Number.parseInt(full.slice(i, i + 2), 16));
-    if (full.length === 8) alpha = Number.parseInt(full.slice(6, 8), 16) / 255;
-  } else {
-    const parts = /^rgba?\(([^)]+)\)$/i
-      .exec(color)?.[1]
-      ?.split(/[\s,/]+/)
-      .filter(Boolean);
-    if (!parts || parts.length < 3 || parts.some((p) => p.endsWith('%'))) return color;
-    rgb = parts.slice(0, 3).map(Number);
-    if (parts[3] !== undefined) alpha = Number(parts[3]);
-  }
-  return `rgba(${rgb.join(', ')}, ${Math.round(alpha * factor * 1000) / 1000})`;
+  const c = channels(color);
+  if (!c) return color;
+  return `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${Math.round(c[3] * factor * 1000) / 1000})`;
 }
 
 const styles = StyleSheet.create({
@@ -188,7 +184,7 @@ const styles = StyleSheet.create({
   },
   list: { alignItems: 'stretch' },
   // Full slots where they fit; with many tabs they share the screen's width.
-  tab: { width: SLOT, flexShrink: 1, minWidth: 40, alignItems: 'center', justifyContent: 'center' },
+  tab: { width: SLOT, flexShrink: 1, minWidth: 32, alignItems: 'center', justifyContent: 'center' },
   iconBox: { width: ICON, height: ICON },
   center: { alignItems: 'center', justifyContent: 'center' },
   plusSlot: { width: PLUS_SLOT, alignItems: 'center', justifyContent: 'center' },

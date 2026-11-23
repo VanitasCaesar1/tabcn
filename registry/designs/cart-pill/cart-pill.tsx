@@ -24,7 +24,15 @@
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-import { I18nManager, Platform, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  I18nManager,
+  Platform,
+  processColor,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -300,6 +308,7 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: CartPillColors; h
     opacity: interpolate(progress.value, [0.8, 1], [1, 0], 'clamp'),
   }));
 
+  const idle = splitAlpha(colors.inactive);
   return (
     <TabButton
       tab={tab}
@@ -308,7 +317,9 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: CartPillColors; h
     >
       <View style={styles.icon}>
         <Animated.View style={[StyleSheet.absoluteFill, inactiveIcon]}>
-          {tab.renderIcon?.({ focused: false, color: colors.inactive, size: ICON })}
+          <View style={[StyleSheet.absoluteFill, { opacity: idle.alpha }]}>
+            {tab.renderIcon?.({ focused: false, color: idle.color, size: ICON })}
+          </View>
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, activeIcon]}>
           {tab.renderIcon?.({ focused: true, color: colors.active, size: ICON })}
@@ -340,7 +351,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: CartPillCol
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -443,7 +458,13 @@ function CartButton({
           <CartGlyph color={colors.cartGlyph} />
           {items > 0 ? (
             <View pointerEvents="none" style={styles.count}>
-              <BadgeCount value={items} textStyle={[styles.countText, { color: colors.cart }]} />
+              {/* The count is cut out of the basket, about two digits wide: past 9 it shows "9+",
+                  which still fits (two digits or "99+" spilled onto the disc and vanished). */}
+              <BadgeCount
+                value={items}
+                max={9}
+                textStyle={[styles.countText, { color: colors.cart }]}
+              />
             </View>
           ) : null}
         </Animated.View>
@@ -494,7 +515,30 @@ function Chevron({ color }: { color: string }) {
   );
 }
 
+/**
+ * A colour's red, green, blue (0-255) and alpha (0-1), read by React Native's own parser, so
+ * named colours, hsl() and every hex form work; null for what it can't read (PlatformColor).
+ */
+function channels(color: string): [number, number, number, number] | null {
+  const value = processColor(color);
+  if (typeof value !== 'number') return null;
+  return [(value >>> 16) & 255, (value >>> 8) & 255, value & 255, ((value >>> 24) & 255) / 255];
+}
+
+/**
+ * A translucent colour as its opaque colour and its alpha. An icon drawn in a translucent
+ * colour darkens wherever its strokes and fills overlap; drawn opaque under an opacity of the
+ * same alpha, it reads evenly.
+ */
+function splitAlpha(color: string): { color: string; alpha: number } {
+  const c = channels(color);
+  if (!c) return { color, alpha: 1 };
+  return { color: `rgb(${c[0]}, ${c[1]}, ${c[2]})`, alpha: c[3] };
+}
+
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   row: {
     alignSelf: 'stretch',
     flexDirection: 'row',

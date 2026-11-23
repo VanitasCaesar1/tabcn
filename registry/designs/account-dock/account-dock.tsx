@@ -339,7 +339,9 @@ export function AccountDock({
     setList('workspaces');
     setMenu(false);
     const timer = setTimeout(() => {
-      if (chipRef.current) AccessibilityInfo.sendAccessibilityEvent(chipRef.current, 'focus');
+      // Not on the web: react-native-web has no sendAccessibilityEvent.
+      if (chipRef.current && typeof AccessibilityInfo.sendAccessibilityEvent === 'function')
+        AccessibilityInfo.sendAccessibilityEvent(chipRef.current, 'focus');
     }, 400);
     return () => clearTimeout(timer);
   }, [open]);
@@ -505,6 +507,7 @@ export function AccountDock({
           status={status}
           colors={colors}
           labels={labels}
+          progress={progress}
           onWorkspace={(next) => {
             tick();
             onWorkspaceChange(next);
@@ -1003,7 +1006,11 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: AccountDock
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.badgeTextCap]}
+        >
           {text}
         </Text>
       )}
@@ -1141,6 +1148,7 @@ function Sheet({
   onAccount,
   onStatus,
   onAddWorkspace,
+  progress,
 }: {
   list: List;
   menu: boolean;
@@ -1157,6 +1165,8 @@ function Sheet({
   onAccount: (id: string) => void;
   onStatus: (status: AccountStatus) => void;
   onAddWorkspace?: () => void;
+  /** The fold, 0 (tabs) to 1 (account bar). */
+  progress: SharedValue<number>;
 }) {
   const overlap = usePanelOverlap();
   const { height } = useWindowDimensions();
@@ -1172,6 +1182,12 @@ function Sheet({
     fade.value = withTiming(1, tabcnTiming);
   }, [list, fade]);
   const listFade = useAnimatedStyle(() => ({ opacity: fade.value }));
+  // While the sheet rises, its lower rows pass behind the bar, where the split bar has gaps
+  // between its pills; they would show through. The content comes in once the sheet is
+  // mostly up, and goes first when it folds.
+  const reveal = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.72, 1], [0, 1], 'clamp'),
+  }));
 
   return (
     <View
@@ -1180,98 +1196,100 @@ function Sheet({
         { backgroundColor: colors.sheet, borderColor: colors.border, paddingBottom: overlap + 12 },
       ]}
     >
-      <View style={styles.header}>
-        <Text
-          accessibilityRole="header"
-          maxFontSizeMultiplier={1.3}
-          style={[styles.title, { color: colors.foreground }]}
-        >
-          {labels[list]}
-        </Text>
-        <Pressable
-          onPress={() => setList(other)}
-          accessibilityRole="button"
-          hitSlop={8}
-          style={({ pressed }) => [
-            styles.switch,
-            { backgroundColor: pressed ? colors.capsule : 'transparent' },
-          ]}
-        >
-          <Text maxFontSizeMultiplier={1.3} style={[styles.switchText, { color: colors.accent }]}>
-            {labels[other]}
+      <Animated.View style={reveal}>
+        <View style={styles.header}>
+          <Text
+            accessibilityRole="header"
+            maxFontSizeMultiplier={1.3}
+            style={[styles.title, { color: colors.foreground }]}
+          >
+            {labels[list]}
           </Text>
-        </Pressable>
-      </View>
+          <Pressable
+            onPress={() => setList(other)}
+            accessibilityRole="button"
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.switch,
+              { backgroundColor: pressed ? colors.capsule : 'transparent' },
+            ]}
+          >
+            <Text maxFontSizeMultiplier={1.3} style={[styles.switchText, { color: colors.accent }]}>
+              {labels[other]}
+            </Text>
+          </Pressable>
+        </View>
 
-      <ScrollView style={{ maxHeight: Math.max(160, height * 0.6 - 120) }} bounces={false}>
-        <Animated.View style={listFade}>
-          {list === 'workspaces' ? (
-            <>
-              {workspaces.map((w) => (
+        <ScrollView style={{ maxHeight: Math.max(160, height * 0.6 - 120) }} bounces={false}>
+          <Animated.View style={listFade}>
+            {list === 'workspaces' ? (
+              <>
+                {workspaces.map((w) => (
+                  <Row
+                    key={w.id}
+                    title={w.name}
+                    detail={w.detail}
+                    current={w.id === workspaceId}
+                    colors={colors}
+                    onPress={() => onWorkspace(w.id)}
+                    mark={<Mark item={w} size={ROW_MARK} square />}
+                  />
+                ))}
+                {onAddWorkspace ? (
+                  <Row
+                    title={labels.addWorkspace}
+                    colors={colors}
+                    accent
+                    onPress={onAddWorkspace}
+                    mark={
+                      <View style={[styles.addMark, { borderColor: colors.border }]}>
+                        <PlusIcon color={colors.accent} size={20} />
+                      </View>
+                    }
+                  />
+                ) : null}
+              </>
+            ) : (
+              <>
+                {accounts.map((a) => (
+                  <Row
+                    key={a.id}
+                    title={a.name}
+                    current={a.id === accountId}
+                    colors={colors}
+                    onPress={() => onAccount(a.id)}
+                    mark={<Mark item={a} size={ROW_MARK} />}
+                  />
+                ))}
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
                 <Row
-                  key={w.id}
-                  title={w.name}
-                  detail={w.detail}
-                  current={w.id === workspaceId}
+                  title={labels.status}
+                  detail={labels[status]}
                   colors={colors}
-                  onPress={() => onWorkspace(w.id)}
-                  mark={<Mark item={w} size={ROW_MARK} square />}
-                />
-              ))}
-              {onAddWorkspace ? (
-                <Row
-                  title={labels.addWorkspace}
-                  colors={colors}
-                  accent
-                  onPress={onAddWorkspace}
-                  mark={
-                    <View style={[styles.addMark, { borderColor: colors.border }]}>
-                      <PlusIcon color={colors.accent} size={20} />
+                  onPress={() => setMenu(!menu)}
+                  expanded={menu}
+                  mark={<StatusCircle status={status} colors={colors} size={ROW_MARK} />}
+                  trailing={
+                    <View style={I18nManager.isRTL ? styles.mirror : undefined}>
+                      <ChevronIcon color={colors.muted} size={16} />
                     </View>
                   }
                 />
-              ) : null}
-            </>
-          ) : (
-            <>
-              {accounts.map((a) => (
-                <Row
-                  key={a.id}
-                  title={a.name}
-                  current={a.id === accountId}
-                  colors={colors}
-                  onPress={() => onAccount(a.id)}
-                  mark={<Mark item={a} size={ROW_MARK} />}
-                />
-              ))}
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
-              <Row
-                title={labels.status}
-                detail={labels[status]}
-                colors={colors}
-                onPress={() => setMenu(!menu)}
-                expanded={menu}
-                mark={<StatusCircle status={status} colors={colors} size={ROW_MARK} />}
-                trailing={
-                  <View style={I18nManager.isRTL ? styles.mirror : undefined}>
-                    <ChevronIcon color={colors.muted} size={16} />
-                  </View>
-                }
-              />
-            </>
-          )}
-        </Animated.View>
-      </ScrollView>
+              </>
+            )}
+          </Animated.View>
+        </ScrollView>
 
-      <StatusMenu
-        open={menu && list === 'accounts'}
-        status={status}
-        colors={colors}
-        labels={labels}
-        bottom={overlap + 10}
-        onClose={() => setMenu(false)}
-        onChoose={onStatus}
-      />
+        <StatusMenu
+          open={menu && list === 'accounts'}
+          status={status}
+          colors={colors}
+          labels={labels}
+          bottom={overlap + 10}
+          onClose={() => setMenu(false)}
+          onChoose={onStatus}
+        />
+      </Animated.View>
     </View>
   );
 }
@@ -1480,6 +1498,8 @@ function StatusMenu({
 const shadow = '0 10px 28px rgba(40, 40, 60, 0.14)';
 
 const styles = StyleSheet.create({
+  // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
+  badgeTextCap: { maxWidth: 56 },
   row: { flexDirection: 'row', alignItems: 'center', maxWidth: '100%' },
   rest: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: GAP },
   pillBox: { flex: 1 },

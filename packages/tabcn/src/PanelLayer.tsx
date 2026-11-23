@@ -21,7 +21,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-
+import { physicalLeft } from './indicator';
 import { tabcnSpring, tabcnTiming } from './motion';
 import { PanelContext, type PanelContextValue } from './panel-context';
 import {
@@ -85,6 +85,9 @@ interface PanelLayerProps {
  */
 function useScreenReaderRule(store: TabBarStore) {
   useEffect(() => {
+    // react-native-web always reports a screen reader as on, which would hold every sheet at
+    // its highest snap point on the web; there is no reliable way to tell there, so assume off.
+    if (Platform.OS === 'web') return;
     let live = true;
     AccessibilityInfo.isScreenReaderEnabled()
       .then((on) => {
@@ -263,6 +266,7 @@ function PanelView({
   // the drag (Android back, a tab switch, \`hide()\`), the drag must not undo that on release.
   const dragStart = useRef<string | null>(null);
   const lastModal = useRef(false);
+  const pendingFocus = useRef(false);
   const contentRef = useRef<ComponentRef<typeof View>>(null);
 
   // State, snap and cover changes glide on tabcnSpring; size changes (content, rotation) ease
@@ -280,25 +284,38 @@ function PanelView({
     }
     const remove = () => store.removePanel(id);
     const focus = () => {
-      if (contentRef.current) AccessibilityInfo.sendAccessibilityEvent(contentRef.current, 'focus');
+      // react-native-web has no sendAccessibilityEvent: calling it there threw.
+      if (contentRef.current && typeof AccessibilityInfo.sendAccessibilityEvent === 'function') {
+        AccessibilityInfo.sendAccessibilityEvent(contentRef.current, 'focus');
+      }
     };
     const key = `${state}:${snap}:${covered}`;
     const becomingModal = selfModal && !lastModal.current;
     lastModal.current = selfModal;
+    // Focus moves in once the panel is in place. Kept pending across re-runs: if the open
+    // animation is retargeted (its content resized as it opened), the first one ends unfinished
+    // and focus would never move.
+    if (becomingModal) pendingFocus.current = true;
+    if (!selfModal) pendingFocus.current = false;
+    const settleFocus = () => {
+      if (!pendingFocus.current) return;
+      pendingFocus.current = false;
+      focus();
+    };
     if (lastKey.current === null) {
       visible.value = target;
       lastKey.current = key;
       if (leaving) remove();
-      else if (becomingModal) focus();
+      else settleFocus();
       return;
     }
     const done =
-      leaving || becomingModal
+      leaving || pendingFocus.current
         ? (finished?: boolean) => {
             'worklet';
             if (!finished) return;
             if (leaving) runOnJS(remove)();
-            else runOnJS(focus)();
+            else runOnJS(settleFocus)();
           }
         : undefined;
     visible.value =
@@ -434,10 +451,13 @@ function PanelView({
   const anchor = frame ?? { x: 0, y: 0, width: 0, height: 0 };
   const shown = state !== 'hidden' && !leaving && !covered;
   const exposed = shown && (selfModal || !modal);
+  // Frames are physical (measured from the left edge); in a right-to-left layout React Native
+  // reads `left` as the start edge, the right, so pin to the physical left as the indicator does.
+  const physical = (x: number) => ('left' in physicalLeft() ? { left: x } : { right: x });
   const windowFrame = sheet
-    ? { left: sheet.left, width: sheet.width, top: sheet.top, height: sheet.contentHeight }
+    ? { ...physical(sheet.left), width: sheet.width, top: sheet.top, height: sheet.contentHeight }
     : {
-        left: anchor.x,
+        ...physical(anchor.x),
         width: anchor.width,
         // Bottom edge `overlap` points below the anchor's top edge, behind the bar.
         top: anchor.y + overlap - contentHeight,

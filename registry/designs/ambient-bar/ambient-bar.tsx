@@ -1,8 +1,9 @@
 /**
- * Ambient Bar: a bar with no colour of its own. The screen runs under it, and the bar is a deep,
- * dark blur of whatever is scrolling behind: a red logo passing under a tab glows red there,
- * green figures on the right glow green, and over a black list the bar is black. The blur builds
- * up from above the bar to the bottom edge, so content melts into it instead of meeting an edge.
+ * Ambient Bar: a bar with no colour of its own. The screen runs under it, and the bar is a light
+ * blur of whatever is scrolling behind, under a dark overlay: a red logo passing under a tab
+ * glows red there, green figures on the right glow green, and over a black list the bar is black.
+ * Blur and overlay share one soft shape, a slab set into the bottom of the screen whose top
+ * corners curve down at the screen's sides; the row above the bar stays sharp.
  * Icons only (each tab's label is still read by screen readers). The active tab sits on a lens:
  * Liquid Glass where iOS has it (26 and later), which refracts and saturates what passes under
  * it, so it lights up in a logo's colour; elsewhere a blur of its own lifted with a faint white.
@@ -13,10 +14,10 @@
  *
  * Made for dark, colourful screens that scroll under the bar. The lens slides on `tabcnSpring`;
  * icons crossfade on the tab's focus progress; reduce motion makes both instant.
- * The blur is one strong expo-blur, faded in from the top of its area by a gradient mask
- * (@react-native-masked-view/masked-view), so content melts into it; the web gets the same
- * from CSS backdrop-filter. Android,
- * where expo-blur is costly and uneven, gets a dark fade instead, as Mini Player does.
+ * The blur is one light expo-blur under the overlay, both inside one mask
+ * (@react-native-masked-view/masked-view, the slab drawn with react-native-svg). On the web the
+ * blur is CSS backdrop-filter and the fade a CSS mask, without the curved corners. Android, where expo-blur is costly and uneven, gets the overlay
+ * alone, stronger, as Mini Player does.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import MaskedViewClass from '@react-native-masked-view/masked-view';
@@ -24,7 +25,14 @@ import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import type { ComponentType, ReactElement } from 'react';
-import { Platform, StyleSheet, useWindowDimensions, View, type ViewProps } from 'react-native';
+import {
+  Platform,
+  processColor,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type ViewProps,
+} from 'react-native';
 import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import Svg, { Defs, FeGaussianBlur, Filter, LinearGradient, Path, Stop } from 'react-native-svg';
 import {
@@ -104,7 +112,6 @@ export function AmbientBar({ reach = 12, colors: custom, haptics = true }: Ambie
   // The bar's area, from `reach` above the row down past the home indicator.
   const height = reach + ROW + insets.bottom;
   const frame = { top: -reach, bottom: -insets.bottom, left: -insets.left, right: -insets.right };
-  const areaWidth = width;
 
   return (
     // Floating, edge to edge and flush with the safe area, so the screen runs under the bar;
@@ -114,15 +121,24 @@ export function AmbientBar({ reach = 12, colors: custom, haptics = true }: Ambie
         {/* The blur and the dark overlay share one soft shape: a fade from the top of the area
             whose top corners curve down at the screen's sides, like the phone's own corners,
             so the bar reads as a slab set into the bottom of the screen. */}
-        <MaskedView
-          style={StyleSheet.absoluteFill}
-          maskElement={<SlabMask width={areaWidth} height={height} fullAt={reach + RAMP} />}
-        >
-          {BLUR ? (
+        {Platform.OS === 'web' ? (
+          // MaskedView's web build draws only the mask and drops its children, so on the web
+          // the same fade is a CSS mask on a plain view (the curved corners are native only).
+          <View style={[StyleSheet.absoluteFill, webMask((reach + RAMP) / height)]}>
             <BlurView intensity={BLUR_INTENSITY} tint={TINT} style={StyleSheet.absoluteFill} />
-          ) : null}
-          <View style={[StyleSheet.absoluteFill, shadeStyle(colors.shade)]} />
-        </MaskedView>
+            <View style={[StyleSheet.absoluteFill, shadeStyle(colors.shade)]} />
+          </View>
+        ) : (
+          <MaskedView
+            style={StyleSheet.absoluteFill}
+            maskElement={<SlabMask width={width} height={height} fullAt={reach + RAMP} />}
+          >
+            {BLUR ? (
+              <BlurView intensity={BLUR_INTENSITY} tint={TINT} style={StyleSheet.absoluteFill} />
+            ) : null}
+            <View style={[StyleSheet.absoluteFill, shadeStyle(colors.shade)]} />
+          </MaskedView>
+        )}
       </View>
       <TabList style={[styles.row, { width: width - insets.left - insets.right }]}>
         <TabIndicator style={styles.lensSlot}>
@@ -199,6 +215,13 @@ function Tab({
   );
 }
 
+/** The slab's fade as a CSS mask, for the web: clear at the top, fully in at `fullAt` (a share). */
+function webMask(fullAt: number) {
+  const pct = `${Math.round(fullAt * 1000) / 10}%`;
+  const image = `linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.5) ${Math.round(fullAt * 550) / 10}%, black ${pct}, black 100%)`;
+  return { maskImage: image, WebkitMaskImage: image } as object;
+}
+
 /**
  * The mask the blur and overlay share, in points: clear at the top, fully in `fullAt` points
  * down, with the top corners curving down to the screen's sides over `CORNER` points. The
@@ -244,8 +267,9 @@ function SlabMask({ width, height, fullAt }: { width: number; height: number; fu
 }
 
 /**
- * The dark overlay, from the bottom edge up: half black at the bottom, clear at the top of the
- * area, so the bar is near black and the icons read. On Android, with no blur, it is stronger.
+ * The dark overlay, from the bottom edge up: half black at the bottom, about a fifth at the
+ * slab's top, so the bar is near black, the slab's shape reads on a coloured screen, and the
+ * icons read. On Android, with no blur, it is stronger.
  */
 function shadeStyle(shade: string) {
   const strength = BLUR ? 1 : 1.25;
@@ -263,25 +287,21 @@ function shadeStyle(shade: string) {
     : { experimental_backgroundImage: image };
 }
 
-/** `color` with its opacity multiplied by `alpha`. Hex and rgb()/rgba(); others unchanged. */
+/**
+ * A colour's red, green, blue (0-255) and alpha (0-1), read by React Native's own parser, so
+ * named colours, hsl() and every hex form work; null for what it can't read (PlatformColor).
+ */
+function channels(color: string): [number, number, number, number] | null {
+  const value = processColor(color);
+  if (typeof value !== 'number') return null;
+  return [(value >>> 16) & 255, (value >>> 8) & 255, value & 255, ((value >>> 24) & 255) / 255];
+}
+
+/** `color` with its opacity multiplied by `alpha`; colours it can't read are returned as they are. */
 function withAlpha(color: string, alpha: number): string {
-  const hex = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(color)?.[1];
-  let rgb: number[];
-  let own = 1;
-  if (hex) {
-    const full = hex.length <= 4 ? [...hex].map((c) => c + c).join('') : hex;
-    rgb = [0, 2, 4].map((i) => Number.parseInt(full.slice(i, i + 2), 16));
-    if (full.length === 8) own = Number.parseInt(full.slice(6, 8), 16) / 255;
-  } else {
-    const parts = /^rgba?\(([^)]+)\)$/i
-      .exec(color)?.[1]
-      ?.split(/[\s,/]+/)
-      .filter(Boolean);
-    if (!parts || parts.length < 3 || parts.some((p) => p.endsWith('%'))) return color;
-    rgb = parts.slice(0, 3).map(Number);
-    if (parts[3] !== undefined) own = Number(parts[3]);
-  }
-  return `rgba(${rgb.join(', ')}, ${Math.round(own * alpha * 1000) / 1000})`;
+  const c = channels(color);
+  if (!c) return color;
+  return `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${Math.round(c[3] * alpha * 1000) / 1000})`;
 }
 
 const styles = StyleSheet.create({

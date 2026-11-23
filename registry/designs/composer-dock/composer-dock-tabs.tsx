@@ -100,10 +100,12 @@ export function ScrubLabel({ tab, colors }: { tab: TabItem | null; colors: Compo
   useEffect(() => {
     shown.value = withTiming(tab ? 1 : 0, fade);
   }, [tab, shown]);
+  // A wide track of fixed width, centred on the tab by a transform: the pill centres in it with
+  // no layout per frame (animating the track's width re-laid it out on every frame of a scrub;
+  // a zero-width track left the name no room, so it collapsed).
   const style = useAnimatedStyle(() => ({
     opacity: shown.value,
-    width: width.value,
-    transform: [{ translateX: x.value }],
+    transform: [{ translateX: x.value + width.value / 2 - LABEL_TRACK / 2 }],
   }));
   return (
     <Animated.View
@@ -135,6 +137,9 @@ const PHYSICAL_LEFT =
     ? { right: 0 }
     : { left: 0 };
 
+/** Width of the scrub label's track: wider than any tab name, centred on the tab. */
+const LABEL_TRACK = 240;
+
 const styles = StyleSheet.create({
   tab: { alignItems: 'center', justifyContent: 'center' },
   iconBox: { height: 42, alignItems: 'center', justifyContent: 'center' },
@@ -149,13 +154,21 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
   },
   heldGlass: { borderRadius: 24 },
-  labelTrack: { position: 'absolute', top: -20, alignItems: 'center' },
+  // Just above the tab row, overlapping the composer's bottom edge by a few points: it floats
+  // over it (with a shadow) rather than sitting on it.
+  labelTrack: {
+    position: 'absolute',
+    top: -16,
+    width: LABEL_TRACK,
+    alignItems: 'center',
+  },
   labelPill: {
     height: 24,
     paddingHorizontal: 10,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.18)',
   },
   labelText: { fontSize: 12, fontWeight: '600' },
 });
