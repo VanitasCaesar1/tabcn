@@ -7,9 +7,9 @@
                          rows (every design, panels included)
 
 With --panels, panels are cut too, from a taller box (PANEL_BOX, 804 x 460 out), with the
-poster taken at PANEL_POSTER_AT[id], a moment the panel is open: pick it from the contact
-sheet <dir>/_panels.png. Until a panel has its own crop, its thumbnail comes from its second
-still (public/stills/<id>-2.jpg).
+poster taken when the panel is open: the seconds in panel-open-at.json (og-images.py reads it
+too). Pick a new panel's moment from the contact sheet <dir>/_panels.png. Until a panel has its
+own crop, its thumbnail comes from its second still (public/stills/<id>-2.jpg).
 
 They are cut from the full-resolution simulator recordings (1206 x 2622, the same takes the
 site's videos and og-images.py use), so re-run this whenever a design's look changes:
@@ -46,7 +46,8 @@ POSTER_AT = '0.6'
 PANEL_BOX = (0, 1882, 1206, 2572)
 PANEL_SIZE = (804, 460)
 # When each panel is open in its recording (seconds); read off <dir>/_panels.png.
-PANEL_POSTER_AT = {}
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'panel-open-at.json')) as f:
+    PANEL_POSTER_AT = {k: str(v) for k, v in json.load(f).items()}
 THUMB_SIZE = (138, 48)
 THUMB_QUALITY = 72
 STILLS = os.path.join(SITE, 'public', 'stills')

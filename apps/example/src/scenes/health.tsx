@@ -1,7 +1,8 @@
 /**
  * A health and wellbeing app: today's three rings (steps, water, mindful minutes), the week's
- * steps, today's plan and a few audio sessions. Shown behind trackers (Glass Expand and Context
- * Tray's Steps / Water / Plan) and CHANI's Mono Type (Grow, Charts, Audio).
+ * steps, today's plan and a few audio sessions. No photos: every mark is drawn. Shown behind
+ * trackers (Glass Expand and Context Tray's Steps / Water / Plan) and CHANI's Mono Type (Grow,
+ * Charts, Audio).
  *
  * The rings and bars are drawn in the scene's text and accent tones, not activity colours, so the
  * bar on top stays the only strong colour on screen.
@@ -15,14 +16,12 @@ import {
   ICONS,
   num,
   type Palette,
-  Photo,
   RoundButton,
   type SceneProps,
   SceneScroll,
   SectionHeader,
   scenePalette,
 } from './kit';
-import { PLACES } from './photos';
 
 const RINGS = [
   { label: 'Steps', value: '8,412', goal: 'of 10,000', share: 0.84 },
@@ -49,10 +48,24 @@ const PLAN = [
   { title: 'Wind down', detail: '21:30 · no screens', done: false },
 ];
 
+// Each session's tile: a sun, a leaf and a moon, drawn in the scene's tones.
 const SESSIONS = [
-  { title: 'Slow morning', detail: 'Breath · 9 min' },
-  { title: 'Walking meditation', detail: 'Outdoors · 15 min' },
-  { title: 'Evening wind-down', detail: 'Sleep · 12 min' },
+  {
+    title: 'Slow morning',
+    detail: 'Breath · 9 min',
+    glyph:
+      'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM12 3v2M12 19v2M5.6 5.6 7 7M17 17l1.4 1.4M3 12h2M19 12h2M5.6 18.4 7 17M17 7l1.4-1.4',
+  },
+  {
+    title: 'Walking meditation',
+    detail: 'Outdoors · 15 min',
+    glyph: 'M5 19c0-8 6-13.5 14-14 0 8.5-5.5 14-14 14ZM5 19l7.5-7.5',
+  },
+  {
+    title: 'Evening wind-down',
+    detail: 'Sleep · 12 min',
+    glyph: 'M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5Z',
+  },
 ];
 
 export function HealthScene(props: SceneProps) {
@@ -216,9 +229,11 @@ function Sessions({ palette }: { palette: Palette }) {
     <View>
       <SectionHeader title="Listen" palette={palette} action="See all" />
       <View style={styles.sessions}>
-        {SESSIONS.map((s, i) => (
+        {SESSIONS.map((s) => (
           <View key={s.title} style={styles.sessionRow}>
-            <Photo source={PLACES[i % PLACES.length]} palette={palette} style={styles.thumb} />
+            <View style={[styles.thumb, { backgroundColor: palette.surface }]}>
+              <Glyph d={s.glyph} size={28} color={palette.text} strokeWidth={1.6} />
+            </View>
             <View style={styles.middle}>
               <Text style={[styles.name, { color: palette.text }]}>{s.title}</Text>
               <Text style={[styles.sub, { color: palette.subtle }]}>{s.detail}</Text>
@@ -267,7 +282,14 @@ const styles = StyleSheet.create({
   sub: { fontSize: 13 },
   sessions: { paddingHorizontal: 16, gap: 14 },
   sessionRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  thumb: { width: 64, height: 64, borderRadius: 12 },
+  thumb: {
+    width: 64,
+    height: 64,
+    borderRadius: 14,
+    borderCurve: 'continuous',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   play: {
     width: 36,
     height: 36,
