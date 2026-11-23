@@ -20,6 +20,7 @@
         "@expo/ui": "~58.0.29",
         "@expo/vector-icons": "^15.0.2",
         "@lodev09/react-native-true-sheet": "^4.1.2",
+        "@react-native-masked-view/masked-view": "0.3.2",
         "@react-navigation/bottom-tabs": "^7.22.0",
         "@react-navigation/native": "^7.5.2",
         "expo": "~58.0.26",
@@ -81,7 +82,7 @@
     },
     "packages/tabcn": {
       "name": "react-native-tabcn",
-      "version": "0.2.0",
+      "version": "0.4.0",
       "devDependencies": {
         "@react-navigation/bottom-tabs": "7.22.0",
         "@react-navigation/native": "7.5.2",

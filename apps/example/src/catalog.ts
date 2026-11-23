@@ -418,6 +418,16 @@ export const catalog: DesignEntry[] = [
     status: 'ready',
   },
   {
+    id: 'ambient-bar',
+    ref: 0,
+    title: 'Ambient Bar',
+    kind: 'bar',
+    layout: 'docked-bar',
+    summary:
+      'A bar with no colour of its own: a deep blur of the screen scrolling behind it, so content’s colours glow through, and a lens that brightens what is under the active tab.',
+    status: 'ready',
+  },
+  {
     id: 'mini-player',
     ref: 0,
     title: 'Mini Player',
