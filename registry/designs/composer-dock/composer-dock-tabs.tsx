@@ -100,10 +100,11 @@ export function ScrubLabel({ tab, colors }: { tab: TabItem | null; colors: Compo
   useEffect(() => {
     shown.value = withTiming(tab ? 1 : 0, fade);
   }, [tab, shown]);
+  // A zero-width track moved to the tab's centre: the pill centres on it with no layout per
+  // frame (animating the track's width re-laid it out on every frame of a scrub).
   const style = useAnimatedStyle(() => ({
     opacity: shown.value,
-    width: width.value,
-    transform: [{ translateX: x.value }],
+    transform: [{ translateX: x.value + width.value / 2 }],
   }));
   return (
     <Animated.View
@@ -149,7 +150,13 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
   },
   heldGlass: { borderRadius: 24 },
-  labelTrack: { position: 'absolute', top: -20, alignItems: 'center' },
+  labelTrack: {
+    position: 'absolute',
+    top: -20,
+    width: 0,
+    alignItems: 'center',
+    overflow: 'visible',
+  },
   labelPill: {
     height: 24,
     paddingHorizontal: 10,

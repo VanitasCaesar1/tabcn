@@ -327,15 +327,19 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: BadgeDockCo
       pointerEvents="none"
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
-      style={[styles.count, { backgroundColor: colors.badge }]}
+      // A zero-size box at the badge's centre: a wider count ("99+") grows both ways from
+      // there, instead of only rightwards, where on the last tab it reached the screen's edge.
+      style={styles.countAnchor}
     >
-      {typeof badge === 'number' ? (
-        <BadgeCount value={badge} textStyle={textStyle} />
-      ) : (
-        <Text numberOfLines={1} style={textStyle}>
-          {text}
-        </Text>
-      )}
+      <View style={[styles.count, { backgroundColor: colors.badge }]}>
+        {typeof badge === 'number' ? (
+          <BadgeCount value={badge} textStyle={textStyle} />
+        ) : (
+          <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={textStyle}>
+            {text}
+          </Text>
+        )}
+      </View>
     </Animated.View>
   );
 }
@@ -375,10 +379,17 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
-  count: {
+  countAnchor: {
     position: 'absolute',
-    top: BADGE_TOP,
-    left: BADGE_LEFT,
+    top: BADGE_TOP + BADGE / 2,
+    left: BADGE_LEFT + BADGE / 2,
+    width: 0,
+    height: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+  },
+  count: {
     minWidth: BADGE,
     height: BADGE,
     paddingHorizontal: 5,

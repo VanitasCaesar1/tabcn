@@ -345,7 +345,7 @@ function Filters({
 
   /**
    * The card starts as the capsule and folds back into it, so the two match exactly at rest:
-   * the round buttons beside it fade with the chips instead of being swallowed.
+   * the capsule widens over the round buttons while they fade with the chips.
    */
   const capsuleRect = (): Rect => ({
     x: capsule.current.x,
@@ -460,7 +460,7 @@ function Filters({
   // as far as the panel moves up). Its chips and round buttons fade while the capsule widens
   // under them, and come back inside the full-width pill before it narrows.
   const stripStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.2], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(progress.value, [0, 0.1], [1, 0], Extrapolation.CLAMP),
     transform: [{ translateY: progress.value * lift.value }],
   }));
 
@@ -703,7 +703,7 @@ function SheetBody({
   const clipStyle = useAnimatedStyle(() => {
     const p = progress.value;
     return {
-      opacity: shown ? interpolate(rise(p), [0.35, 0.85], [0, 1], Extrapolation.CLAMP) : 0,
+      opacity: shown ? interpolate(rise(p), [0.2, 0.75], [0, 1], Extrapolation.CLAMP) : 0,
       transform: [{ translateY: -(1 - p) * lift.value }],
     };
   });

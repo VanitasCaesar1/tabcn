@@ -23,6 +23,7 @@
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
+import { useEffect } from 'react';
 import { ScrollView, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
@@ -32,6 +33,8 @@ import Animated, {
   interpolateColor,
   ReduceMotion,
   useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 import {
   BadgeCount,
@@ -201,7 +204,8 @@ function Rail({
           style={[styles.menu, { marginTop: fromScreenTop(MENU_TOP) }]}
         >
           {({ pressed }) => (
-            <View style={[styles.menuLayer, pressed && { backgroundColor: colors.pressed }]}>
+            <View style={styles.menuLayer}>
+              <StateLayer pressed={pressed} color={colors.pressed} shape={styles.menuLayer} />
               <View style={styles.menuGlyph}>
                 {[0, 5, 10].map((top) => (
                   <View
@@ -230,15 +234,7 @@ function Rail({
         >
           {({ pressed }) => (
             <>
-              {pressed ? (
-                <View
-                  style={[
-                    StyleSheet.absoluteFill,
-                    styles.fabLayer,
-                    { backgroundColor: colors.pressed },
-                  ]}
-                />
-              ) : null}
+              <StateLayer pressed={pressed} color={colors.pressed} shape={styles.fabLayer} />
               <View style={styles.plus}>
                 <View style={[styles.plusBar, { backgroundColor: colors.actionIcon }]} />
                 <View
@@ -334,11 +330,7 @@ function Tab({
                 pill,
               ]}
             />
-            {pressed ? (
-              <View
-                style={[StyleSheet.absoluteFill, styles.round, { backgroundColor: colors.pressed }]}
-              />
-            ) : null}
+            <StateLayer pressed={pressed} color={colors.pressed} shape={styles.round} />
             <View style={styles.icon}>
               <Animated.View style={[StyleSheet.absoluteFill, outlined]}>
                 {tab.renderIcon?.({ focused: false, color: colors.inactive, size: ICON })}
@@ -393,6 +385,32 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SideRailCol
         </Text>
       )}
     </Animated.View>
+  );
+}
+
+/**
+ * Material's pressed state layer: fades in while pressed and out after, on tabcnTiming (instant
+ * with reduce motion on). It used to appear and vanish in a single frame.
+ */
+function StateLayer({
+  pressed,
+  color,
+  shape,
+}: {
+  pressed: boolean;
+  color: string;
+  shape: StyleProp<ViewStyle>;
+}) {
+  const opacity = useSharedValue(0);
+  useEffect(() => {
+    opacity.value = withTiming(pressed ? 1 : 0, tabcnTiming);
+  }, [pressed, opacity]);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, shape, { backgroundColor: color }, style]}
+    />
   );
 }
 

@@ -144,7 +144,10 @@ function Tab({
             entering={badgeIn}
             exiting={badgeOut}
             pointerEvents="none"
-            style={[styles.badge, { backgroundColor: colors.badge }]}
+            style={[
+              styles.badge,
+              { backgroundColor: colors.badge, borderColor: colors.background },
+            ]}
           />
         ) : null}
       </View>
@@ -200,5 +203,15 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: 10.5, lineHeight: 14 },
   systemWeight: { fontWeight: '800' },
-  badge: { position: 'absolute', top: 2, right: 0, width: 9, height: 9, borderRadius: 5 },
+  // A ring in the bar's colour separates the dot from the icon's ink; the coloured dot keeps
+  // its size inside it.
+  badge: {
+    position: 'absolute',
+    top: 0.5,
+    right: -1.5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.5,
+  },
 });

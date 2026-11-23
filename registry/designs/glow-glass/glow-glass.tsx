@@ -8,7 +8,7 @@
  * crossfade in colour. Presses give haptics only, with no scale or lift.
  *
  * Tabs keep their measured 62 pt where the row fits; on a narrow screen (or with many tabs)
- * they narrow to fit, down to 48 pt. The glow is a radial gradient: `experimental_backgroundImage`
+ * they narrow to fit, down to 40 pt. The glow is a radial gradient: `experimental_backgroundImage`
  * on iOS and Android, CSS `backgroundImage` on the web.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */

@@ -162,8 +162,15 @@ function useOverride(override: ReactNode | null) {
     });
   }, [active, progress]);
 
-  const childrenStyle = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
-  const overlayStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
+  // Staggered, not a plain crossfade: at the midpoint of a crossfade both are half visible and
+  // the tabs show through the override. The tabs clear in the first half; the override comes
+  // in over the last 70%, so they overlap only lightly.
+  const childrenStyle = useAnimatedStyle(() => ({
+    opacity: Math.max(0, 1 - progress.value * 2),
+  }));
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, Math.max(0, (progress.value - 0.3) / 0.7)),
+  }));
   return {
     active,
     element: active ? override : fadingOut ? last.current : null,

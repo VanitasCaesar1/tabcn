@@ -300,6 +300,7 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: CartPillColors; h
     opacity: interpolate(progress.value, [0.8, 1], [1, 0], 'clamp'),
   }));
 
+  const idle = splitAlpha(colors.inactive);
   return (
     <TabButton
       tab={tab}
@@ -308,7 +309,9 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: CartPillColors; h
     >
       <View style={styles.icon}>
         <Animated.View style={[StyleSheet.absoluteFill, inactiveIcon]}>
-          {tab.renderIcon?.({ focused: false, color: colors.inactive, size: ICON })}
+          <View style={[StyleSheet.absoluteFill, { opacity: idle.alpha }]}>
+            {tab.renderIcon?.({ focused: false, color: idle.color, size: ICON })}
+          </View>
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, activeIcon]}>
           {tab.renderIcon?.({ focused: true, color: colors.active, size: ICON })}
@@ -492,6 +495,24 @@ function Chevron({ color }: { color: string }) {
       />
     </Svg>
   );
+}
+
+/**
+ * A translucent colour as its opaque colour and its alpha. An icon drawn in a translucent
+ * colour darkens wherever its strokes and fills overlap; drawn opaque under an opacity of the
+ * same alpha, it reads evenly.
+ */
+function splitAlpha(color: string): { color: string; alpha: number } {
+  const parts = /^rgba\(([^)]+)\)$/i
+    .exec(color)?.[1]
+    ?.split(/[\s,/]+/)
+    .filter(Boolean);
+  if (parts?.length === 4 && !parts.some((p) => p.endsWith('%'))) {
+    return { color: `rgb(${parts.slice(0, 3).join(', ')})`, alpha: Number(parts[3]) };
+  }
+  const hex = /^#([0-9a-f]{8})$/i.exec(color)?.[1];
+  if (hex) return { color: `#${hex.slice(0, 6)}`, alpha: Number.parseInt(hex.slice(6), 16) / 255 };
+  return { color, alpha: 1 };
 }
 
 const styles = StyleSheet.create({

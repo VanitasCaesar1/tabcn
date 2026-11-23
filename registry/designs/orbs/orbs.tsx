@@ -251,7 +251,16 @@ function Orb({
         <Animated.View
           entering={badgeIn}
           exiting={badgeOut}
-          style={[styles.badge, { backgroundColor: colors.badge }]}
+          style={[
+            styles.badge,
+            // Placed on the orb's rim, not the slot's corner: the slot is the large orb's size,
+            // so on a smaller orb the badge moves in along the diagonal by the gap between them.
+            {
+              backgroundColor: colors.badge,
+              top: 2 + ((slot - size) / 2) * (1 - Math.SQRT1_2),
+              right: 2 + ((slot - size) / 2) * (1 - Math.SQRT1_2),
+            },
+          ]}
         >
           <Animated.View style={[styles.gloss, { backgroundColor: colors.gloss }]} />
         </Animated.View>

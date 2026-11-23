@@ -243,7 +243,10 @@ function Tab({
           <Animated.View
             entering={FadeIn.duration(160).easing(BADGE_EASING)}
             exiting={FadeOut.duration(120).easing(BADGE_EASING)}
-            style={[styles.badge, { backgroundColor: colors.badge }]}
+            style={[
+              styles.badge,
+              { backgroundColor: colors.badge, borderColor: opaque(colors.background) },
+            ]}
           />
         ) : null}
       </View>
@@ -253,6 +256,10 @@ function Tab({
     </TabButton>
   );
 }
+
+/** The bar's colour without its translucency, for the badge's ring (red would show through). */
+const opaque = (color: string) =>
+  color.replace(/^rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)$/i, 'rgb($1,$2,$3)');
 
 const styles = StyleSheet.create({
   row: {
@@ -300,11 +307,13 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    top: -1,
-    right: -3,
-    width: 9,
-    height: 9,
-    borderRadius: 5,
+    // Clear of the burst's top-right ray, with a ring in the bar's colour.
+    top: -4,
+    right: -6.5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.5,
   },
   action: {
     width: BAR,

@@ -77,7 +77,11 @@ export function BadgeCount({
           textStyle={textStyle}
         />
       ))}
-      {over ? <Text style={[styles.digit, textStyle]}>+</Text> : null}
+      {over ? (
+        <Text maxFontSizeMultiplier={BADGE_TEXT_MAX} style={[styles.digit, textStyle]}>
+          +
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -125,6 +129,7 @@ function Digit({
   return (
     <View style={styles.slot} onLayout={(e) => setHeight(e.nativeEvent.layout.height)}>
       <Animated.Text
+        maxFontSizeMultiplier={BADGE_TEXT_MAX}
         style={[
           styles.digit,
           textStyle,
@@ -137,8 +142,16 @@ function Digit({
       {shown.previous ? (
         <>
           {/* Holds the slot at the wider of the two digits, so neither is clipped. */}
-          <Text style={[styles.digit, textStyle, styles.spacer]}>{shown.previous}</Text>
-          <Animated.Text style={[styles.digit, styles.previous, textStyle, outgoing]}>
+          <Text
+            maxFontSizeMultiplier={BADGE_TEXT_MAX}
+            style={[styles.digit, textStyle, styles.spacer]}
+          >
+            {shown.previous}
+          </Text>
+          <Animated.Text
+            maxFontSizeMultiplier={BADGE_TEXT_MAX}
+            style={[styles.digit, styles.previous, textStyle, outgoing]}
+          >
             {shown.previous}
           </Animated.Text>
         </>
@@ -146,6 +159,12 @@ function Digit({
     </View>
   );
 }
+
+/**
+ * Badges are a fixed height in every design, so their digits stop growing with the system text
+ * size at 1.3x, as the designs' labels do; larger, they would be clipped.
+ */
+const BADGE_TEXT_MAX = 1.3;
 
 const styles = StyleSheet.create({
   slot: { overflow: 'hidden', alignItems: 'center' },

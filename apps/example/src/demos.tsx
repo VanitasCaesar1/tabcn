@@ -203,6 +203,12 @@ export interface Demo {
   extra?: ComponentType<DemoExtraProps>;
   /** Draw the bar as a rail on the left (`tabBarPosition: 'left'`) when the window is wide. */
   railWhenWide?: boolean;
+  /**
+   * Crossfade the screens when the tab changes (the navigator's `animation: 'fade'`), for a
+   * bar that takes each screen's colour (Colour Flood, Offset Plus): screen and bar change
+   * together instead of the screen cutting while the bar fades.
+   */
+  fadeScreens?: boolean;
   /** Hide the bar while the keyboard is up (`tabBarHideOnKeyboard`). */
   hideOnKeyboard?: boolean;
   /**
@@ -644,6 +650,7 @@ export const demos: Record<string, Demo> = {
     ],
   },
   'color-flood': {
+    fadeScreens: true,
     // Cash App: on the Pay tab (the second route) the whole screen and the bar are Cash green;
     // the other tabs fall back to white. The reference shows Pay active.
     render: ({ routes }) => <ColorFlood surfaces={{ [routes[1] ?? 't2']: colorFloodGreen }} />,
@@ -695,6 +702,7 @@ export const demos: Record<string, Demo> = {
     ],
   },
   'offset-plus': {
+    fadeScreens: true,
     // Inbox and Profile are white pages in TikTok, and the bar fades to its light colours there.
     render: ({ onActionPress, routes }) => (
       <OffsetPlus

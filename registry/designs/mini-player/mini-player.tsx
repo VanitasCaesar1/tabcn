@@ -436,7 +436,8 @@ function Progress({
         <View style={styles.times}>
           <Text style={[styles.time, { color: colors.muted }]}>{clock(fraction * duration)}</Text>
           <Text style={[styles.time, { color: colors.muted }]}>
-            -{clock(duration - fraction * duration)}
+            {/* Rounded up, so elapsed and remaining always add up to the length. */}-
+            {clock(Math.ceil(duration - fraction * duration))}
           </Text>
         </View>
       ) : null}

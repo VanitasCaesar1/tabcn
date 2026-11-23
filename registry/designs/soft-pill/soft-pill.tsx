@@ -96,13 +96,19 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: SoftPillColors; h
 function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SoftPillColors }) {
   if (badge == null) return null;
   const text = String(badge).trim();
-  if (!text) return <View style={[styles.dot, { backgroundColor: colors.badge }]} />;
+  if (!text) {
+    return (
+      <View
+        style={[styles.dot, { backgroundColor: colors.badge, borderColor: colors.background }]}
+      />
+    );
+  }
   const textStyle = [styles.badgeText, { color: colors.badgeText }];
   return (
     <View
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
-      style={[styles.count, { backgroundColor: colors.badge }]}
+      style={[styles.count, { backgroundColor: colors.badge, borderColor: colors.background }]}
     >
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
@@ -153,14 +159,26 @@ const styles = StyleSheet.create({
   // 10.5 pt (the reference's is 9.5) with a fixed line height, so the tab's content is the
   // same height on every platform and font scale up to the 1.3 cap stays inside the tab.
   label: { fontSize: 10.5, lineHeight: 13 },
-  dot: { position: 'absolute', top: -1, right: -3, width: 7, height: 7, borderRadius: 3.5 },
+  // A ring in the bar's colour separates the dot from the icon's ink; the coloured dot keeps
+  // its size inside it.
+  dot: {
+    position: 'absolute',
+    top: -2.5,
+    right: -4.5,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+  },
   count: {
     position: 'absolute',
-    top: -6,
-    left: ICON - 6,
-    minWidth: 15,
-    height: 15,
-    borderRadius: 7.5,
+    // Nudged out so it covers less of the icon, with the same ring as the dot.
+    top: -7.5,
+    left: ICON - 4.5,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
     paddingHorizontal: 3.5,
     alignItems: 'center',
     justifyContent: 'center',

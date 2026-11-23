@@ -1,8 +1,9 @@
 /**
- * Ambient Bar: a bar with no colour of its own. The screen runs under it, and the bar is a deep,
- * dark blur of whatever is scrolling behind: a red logo passing under a tab glows red there,
- * green figures on the right glow green, and over a black list the bar is black. The blur builds
- * up from above the bar to the bottom edge, so content melts into it instead of meeting an edge.
+ * Ambient Bar: a bar with no colour of its own. The screen runs under it, and the bar is a light
+ * blur of whatever is scrolling behind, under a dark overlay: a red logo passing under a tab
+ * glows red there, green figures on the right glow green, and over a black list the bar is black.
+ * Blur and overlay share one soft shape, a slab set into the bottom of the screen whose top
+ * corners curve down at the screen's sides; the row above the bar stays sharp.
  * Icons only (each tab's label is still read by screen readers). The active tab sits on a lens:
  * Liquid Glass where iOS has it (26 and later), which refracts and saturates what passes under
  * it, so it lights up in a logo's colour; elsewhere a blur of its own lifted with a faint white.
@@ -13,10 +14,10 @@
  *
  * Made for dark, colourful screens that scroll under the bar. The lens slides on `tabcnSpring`;
  * icons crossfade on the tab's focus progress; reduce motion makes both instant.
- * The blur is one strong expo-blur, faded in from the top of its area by a gradient mask
- * (@react-native-masked-view/masked-view), so content melts into it; the web gets the same
- * from CSS backdrop-filter. Android,
- * where expo-blur is costly and uneven, gets a dark fade instead, as Mini Player does.
+ * The blur is one light expo-blur under the overlay, both inside one mask
+ * (@react-native-masked-view/masked-view, the slab drawn with react-native-svg); the web gets the
+ * blur from CSS backdrop-filter. Android, where expo-blur is costly and uneven, gets the overlay
+ * alone, stronger, as Mini Player does.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import MaskedViewClass from '@react-native-masked-view/masked-view';
@@ -104,7 +105,6 @@ export function AmbientBar({ reach = 12, colors: custom, haptics = true }: Ambie
   // The bar's area, from `reach` above the row down past the home indicator.
   const height = reach + ROW + insets.bottom;
   const frame = { top: -reach, bottom: -insets.bottom, left: -insets.left, right: -insets.right };
-  const areaWidth = width;
 
   return (
     // Floating, edge to edge and flush with the safe area, so the screen runs under the bar;
@@ -116,7 +116,7 @@ export function AmbientBar({ reach = 12, colors: custom, haptics = true }: Ambie
             so the bar reads as a slab set into the bottom of the screen. */}
         <MaskedView
           style={StyleSheet.absoluteFill}
-          maskElement={<SlabMask width={areaWidth} height={height} fullAt={reach + RAMP} />}
+          maskElement={<SlabMask width={width} height={height} fullAt={reach + RAMP} />}
         >
           {BLUR ? (
             <BlurView intensity={BLUR_INTENSITY} tint={TINT} style={StyleSheet.absoluteFill} />
@@ -244,8 +244,9 @@ function SlabMask({ width, height, fullAt }: { width: number; height: number; fu
 }
 
 /**
- * The dark overlay, from the bottom edge up: half black at the bottom, clear at the top of the
- * area, so the bar is near black and the icons read. On Android, with no blur, it is stronger.
+ * The dark overlay, from the bottom edge up: half black at the bottom, about a fifth at the
+ * slab's top, so the bar is near black, the slab's shape reads on a coloured screen, and the
+ * icons read. On Android, with no blur, it is stronger.
  */
 function shadeStyle(shade: string) {
   const strength = BLUR ? 1 : 1.25;

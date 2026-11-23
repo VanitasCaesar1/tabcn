@@ -226,7 +226,7 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: MaterialPil
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} max={999} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} style={textStyle}>
+        <Text maxFontSizeMultiplier={1.3} numberOfLines={1} style={textStyle}>
           {text}
         </Text>
       )}

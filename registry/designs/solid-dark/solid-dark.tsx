@@ -1,6 +1,6 @@
 /**
- * Solid Dark: a black bar with icons only. On focus the active (filled) icon fades in over
- * the inactive one, which stays put underneath so the glyph never dims mid-change. Nothing
+ * Solid Dark: a black bar with icons only. On focus the active icon (the same glyph, white)
+ * fades in over the dimmed one, which stays put underneath so the glyph never dims mid-change. Nothing
  * moves or scales: there is no indicator, and a press only gives a haptic tick.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
@@ -26,7 +26,7 @@ import {
 const defaultColors = {
   /** The bar, which also fills the home-indicator area. */
   background: '#131313',
-  /** The active tab's (filled) icon. */
+  /** The active tab's icon. */
   active: '#ffffff',
   /** The other tabs' icons. */
   inactive: 'rgba(255, 255, 255, 0.55)',

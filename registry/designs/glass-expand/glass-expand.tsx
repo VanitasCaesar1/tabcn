@@ -358,7 +358,16 @@ function Tab({
 function Badge({ badge, colors }: { badge: TabItem['badge']; colors: GlassExpandColors }) {
   if (badge == null) return null;
   const text = String(badge).trim();
-  if (!text) return <View style={[styles.dot, { backgroundColor: colors.badge }]} />;
+  if (!text) {
+    return (
+      <View
+        style={[
+          styles.dot,
+          { backgroundColor: colors.badge, borderColor: opaque(colors.background) },
+        ]}
+      />
+    );
+  }
   const textStyle = [styles.badgeText, { color: colors.badgeText }];
   return (
     <View
@@ -391,6 +400,10 @@ const PHYSICAL_LEFT =
   I18nManager.isRTL && (I18nManager.getConstants?.().doLeftAndRightSwapInRTL ?? true)
     ? { right: 0 }
     : { left: 0 };
+
+/** The bar's colour without its translucency, for the badge's ring (red would show through). */
+const opaque = (color: string) =>
+  color.replace(/^rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)$/i, 'rgb($1,$2,$3)');
 
 const styles = StyleSheet.create({
   pill: { borderRadius: 999, paddingVertical: INSET },
@@ -428,13 +441,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // A ring in the bar's colour separates the dot from the icon's ink; the coloured dot keeps
+  // its size inside it.
   dot: {
     position: 'absolute',
-    top: 1,
-    right: 1,
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
+    top: -0.5,
+    right: -0.5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.5,
   },
   count: {
     position: 'absolute',

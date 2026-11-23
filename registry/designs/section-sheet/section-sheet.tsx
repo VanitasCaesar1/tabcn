@@ -68,7 +68,12 @@ import {
   Text,
   View,
 } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import {
   BadgeCount,
   type SnapPoint,
@@ -408,6 +413,10 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SectionShee
   );
 }
 
+/** A changing body fades out in 90 ms, then the new one in over 160 ms. */
+const BODY_OUT = 90;
+const BODY_IN = 160;
+
 /**
  * One section's body. Hidden bodies stay mounted but fade out, take no touches and are
  * hidden from screen readers; `display: 'none'` would drop their scroll position on Android.
@@ -424,8 +433,11 @@ function Body({
   children?: ReactNode;
 }) {
   const opacity = useSharedValue(shown ? 1 : 0);
+  // Out quickly, then in: crossfading both at once showed the old body through the new one.
   useEffect(() => {
-    opacity.value = withTiming(shown ? 1 : 0, tabcnTiming);
+    opacity.value = shown
+      ? withDelay(BODY_OUT, withTiming(1, { ...tabcnTiming, duration: BODY_IN }))
+      : withTiming(0, { ...tabcnTiming, duration: BODY_OUT });
   }, [shown, opacity]);
   const fade = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (

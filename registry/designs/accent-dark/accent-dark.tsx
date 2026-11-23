@@ -283,7 +283,7 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: AccentDarkC
       {typeof badge === 'number' ? (
         <BadgeCount value={badge} textStyle={textStyle} />
       ) : (
-        <Text numberOfLines={1} style={textStyle}>
+        <Text maxFontSizeMultiplier={1.3} numberOfLines={1} style={textStyle}>
           {text}
         </Text>
       )}

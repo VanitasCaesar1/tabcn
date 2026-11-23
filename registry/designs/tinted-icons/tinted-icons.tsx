@@ -349,7 +349,9 @@ function Badge({ tab, colors }: { tab: TabItem; colors: TintedIconsColors }) {
       {typeof tab.badge === 'number' ? (
         <BadgeCount value={tab.badge} textStyle={textStyle} />
       ) : (
-        <Text style={textStyle}>{text}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={textStyle}>
+          {text}
+        </Text>
       )}
     </Animated.View>
   );

@@ -46,11 +46,16 @@ export function MapIcon({ color, size }: TabIconProps) {
 /** The avatar stadium inside the 40-unit box: 30.6 x 38.9 units (21.4 x 27.2 pt). */
 const AVATAR = { x: 4.7, y: 0.55, width: 30.6, height: 38.9, rx: 15.3 };
 
+/** Width of the rim drawn inside the avatar while its tab is active, in the box's units. */
+const RIM = 2.6;
+
 /**
  * A placeholder for the user's photo, after the one in the app's screenshot: a warm room
  * with a dark sofa, candles and a vase of flowers. Use `createAvatarIcon` for a real photo.
+ * A photo can't change colour, so while its tab is active a rim in the active colour runs
+ * inside its edge; without it nothing in the bar would show that the tab is selected.
  */
-export function AvatarIcon({ size }: TabIconProps) {
+export function AvatarIcon({ size, focused, color }: TabIconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 40 40">
       <Defs>
@@ -110,6 +115,18 @@ export function AvatarIcon({ size }: TabIconProps) {
       <Circle clipPath="url(#pill-plus-avatar-clip)" cx={30.6} cy={15.6} r={2.1} fill="#d8b05a" />
       <Circle clipPath="url(#pill-plus-avatar-clip)" cx={33.2} cy={13.4} r={1.9} fill="#c9a24f" />
       <Circle cx={12.2} cy={29.9} r={2.1} fill="#d79a44" />
+      {focused ? (
+        <Rect
+          x={AVATAR.x + RIM / 2}
+          y={AVATAR.y + RIM / 2}
+          width={AVATAR.width - RIM}
+          height={AVATAR.height - RIM}
+          rx={AVATAR.rx - RIM / 2}
+          stroke={color}
+          strokeWidth={RIM}
+          fill="none"
+        />
+      ) : null}
     </Svg>
   );
 }
@@ -119,7 +136,7 @@ export function AvatarIcon({ size }: TabIconProps) {
  * `tabBarIcon: createAvatarIcon(require('./me.jpg'))` or `createAvatarIcon({ uri })`.
  */
 export function createAvatarIcon(source: ImageSourcePropType) {
-  return function PhotoAvatarIcon({ size }: TabIconProps) {
+  return function PhotoAvatarIcon({ size, focused, color }: TabIconProps) {
     const unit = size / 40;
     return (
       <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
@@ -130,6 +147,9 @@ export function createAvatarIcon(source: ImageSourcePropType) {
             width: AVATAR.width * unit,
             height: AVATAR.height * unit,
             borderRadius: AVATAR.rx * unit,
+            // The active rim, as on the placeholder.
+            borderWidth: focused ? RIM * unit : 0,
+            borderColor: color,
           }}
         />
       </View>

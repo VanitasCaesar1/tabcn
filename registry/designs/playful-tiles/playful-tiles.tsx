@@ -94,7 +94,7 @@ function Tab({
       style={styles.tab}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
-      {tab.renderIcon?.({ focused: true, color, size: 36 })}
+      {tab.renderIcon?.({ focused: tab.focused, color, size: 36 })}
       {tab.badge != null ? (
         <Animated.View
           entering={badgeIn}

@@ -171,7 +171,12 @@ function LiveTab({
     showLive.value = withTiming(text ? 1 : 0, tabcnTiming);
   }, [text, showLive]);
   const labelStyle = useAnimatedStyle(() => ({ opacity: 1 - showLive.value }));
-  const liveStyle = useAnimatedStyle(() => ({ opacity: showLive.value }));
+  const muted = splitAlpha(colors.muted);
+  // The live line stands in for the label, so it carries the focus cue too: a little faded
+  // while the tab isn't active, full while it is.
+  const liveStyle = useAnimatedStyle(() => ({
+    opacity: showLive.value * interpolate(focus.value, [0, 1], [0.7, 1]),
+  }));
 
   return (
     <TabButton
@@ -206,7 +211,9 @@ function LiveTab({
           </Svg>
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, mutedIcon]}>
-          {tab.renderIcon?.({ focused: false, color: colors.muted, size: ICON })}
+          <View style={[StyleSheet.absoluteFill, styles.center, { opacity: muted.alpha }]}>
+            {tab.renderIcon?.({ focused: false, color: muted.color, size: ICON })}
+          </View>
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, styles.center, focusedIcon]}>
           {tab.renderIcon?.({ focused: true, color: colors.foreground, size: ICON })}
@@ -268,6 +275,24 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: LiveTabsCol
       )}
     </View>
   );
+}
+
+/**
+ * A translucent colour as its opaque colour and its alpha. An icon drawn in a translucent
+ * colour darkens wherever its strokes and fills overlap; drawn opaque under an opacity of the
+ * same alpha, it reads evenly.
+ */
+function splitAlpha(color: string): { color: string; alpha: number } {
+  const parts = /^rgba\(([^)]+)\)$/i
+    .exec(color)?.[1]
+    ?.split(/[\s,/]+/)
+    .filter(Boolean);
+  if (parts?.length === 4 && !parts.some((p) => p.endsWith('%'))) {
+    return { color: `rgb(${parts.slice(0, 3).join(', ')})`, alpha: Number(parts[3]) };
+  }
+  const hex = /^#([0-9a-f]{8})$/i.exec(color)?.[1];
+  if (hex) return { color: `#${hex.slice(0, 6)}`, alpha: Number.parseInt(hex.slice(6), 16) / 255 };
+  return { color, alpha: 1 };
 }
 
 const styles = StyleSheet.create({
