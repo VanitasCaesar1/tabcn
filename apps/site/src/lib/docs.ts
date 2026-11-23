@@ -103,6 +103,7 @@ const GUIDE_FOR: Record<string, string> = {
   'bar-sheet': '/docs/sheets/',
   'filter-chips': '/docs/panels/',
   'slider-sheet': '/docs/sheets/',
+  'selection-toolbar': '/docs/panels/',
   'split-search': '/docs/minimize-on-scroll/',
   'side-rail': '/docs/minimize-on-scroll/',
   'companion-chip': '/docs/companions/',

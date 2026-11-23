@@ -117,6 +117,7 @@ import {
   QuickCreateBar,
   QuickCreatePanel,
   SectionRows,
+  SelectionToolbarExtra,
   SliderSheetActions,
   SliderSheetPanel,
   SubTabsBar,
@@ -970,6 +971,22 @@ export const demos: Record<string, Demo> = {
     background: SOCIAL_LIGHT,
     fullScreen: true,
     initialTab: 2,
+    barHeight: 58.5,
+    tabs: [
+      { label: 'Home', icon: SoftPillIcons.HomeIcon },
+      { label: 'Ideas', icon: SoftPillIcons.IdeasIcon },
+      { label: 'Explore', icon: SoftPillIcons.ExploreIcon },
+      { label: 'History', icon: SoftPillIcons.HistoryIcon },
+      { label: 'Trends', icon: SoftPillIcons.TrendsIcon },
+    ],
+  },
+  'selection-toolbar': {
+    // Paired with Soft Pill on a file list: Select (or a long-press on a file) turns the pill
+    // into the toolbar, taps check files and roll its count, and an action or Done turns it back.
+    render: () => <SoftPill />,
+    extra: SelectionToolbarExtra,
+    background: FILES_LIGHT,
+    initialTab: 0,
     barHeight: 58.5,
     tabs: [
       { label: 'Home', icon: SoftPillIcons.HomeIcon },

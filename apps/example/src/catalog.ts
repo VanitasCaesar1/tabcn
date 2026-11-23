@@ -498,6 +498,16 @@ export const catalog: DesignEntry[] = [
     status: 'ready',
   },
   {
+    id: 'selection-toolbar',
+    ref: 0,
+    title: 'Selection Toolbar',
+    kind: 'panel',
+    layout: 'panel',
+    summary:
+      'While a screen is selecting, the bar turns into an action bar: a rolling count, Share, Move and Delete, and a done button; the items rise in as the tabs fade.',
+    status: 'ready',
+  },
+  {
     id: 'companion-chip',
     ref: 0,
     title: 'Companion Chip',

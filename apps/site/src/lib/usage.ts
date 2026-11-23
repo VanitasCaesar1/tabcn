@@ -333,6 +333,7 @@ export const PANEL_USAGE: Record<
 /** Panels with no PANEL_USAGE entry, and the bar their demo draws them with. */
 export const PANEL_BARS: Record<string, string> = {
   'context-tray': 'glass-expand',
+  'selection-toolbar': 'soft-pill',
   'sub-tabs': 'soft-pill',
 };
 
@@ -464,11 +465,54 @@ const LIVE_TABS_SNIPPET = `${[
   "timer.setText(remaining > 0 ? format(remaining) : undefined); // replaces the label",
 ].join('\n')}\n`;
 
+/** Selection Toolbar is set by the selecting screen with `useTabBarOverride`, while it selects. */
+const SELECTION_TOOLBAR_SNIPPET = `${[
+  '// app/(tabs)/_layout.tsx: the provider lets screens drive the bar',
+  "import { Tabs } from 'expo-router/js-tabs';",
+  "import { TabBarProvider } from 'react-native-tabcn';",
+  "import { tabBar } from 'react-native-tabcn/expo-router';",
+  "import { SoftPill } from '@/components/tabcn/soft-pill';",
+  '',
+  'export default function TabLayout() {',
+  '  return (',
+  '    <TabBarProvider>',
+  '      <Tabs tabBar={tabBar(<SoftPill />)} screenOptions={{ headerShown: false }} />',
+  '    </TabBarProvider>',
+  '  );',
+  '}',
+  '',
+  '// app/(tabs)/files.tsx: the toolbar takes the bar’s place while the screen selects',
+  "import { useTabBarOverride } from 'react-native-tabcn/expo-router'; // or 'react-native-tabcn/react-navigation'",
+  "import { SelectionToolbar } from '@/components/tabcn/selection-toolbar';",
+  "import { DeleteIcon, MoveIcon, ShareIcon } from '@/components/tabcn/selection-toolbar-icons';",
+  '',
+  'export default function FilesScreen() {',
+  '  const [selecting, setSelecting] = useState(false);',
+  '  const [selected, setSelected] = useState(new Set<string>());',
+  '  useTabBarOverride(',
+  '    selecting ? (',
+  '      <SelectionToolbar',
+  '        count={selected.size}',
+  '        actions={[',
+  "          { id: 'share', label: 'Share', icon: ShareIcon, onPress: share },",
+  "          { id: 'move', label: 'Move', icon: MoveIcon, onPress: move },",
+  "          { id: 'delete', label: 'Delete', icon: DeleteIcon, onPress: remove, destructive: true },",
+  '        ]}',
+  '        onDone={() => setSelecting(false)}',
+  '      />',
+  '    ) : null,',
+  '  );',
+  '  // …',
+  '}',
+].join('\n')}\n`;
+
 /**
  * Panels need a `TabBarProvider` around the navigator. Mini Player and Quick Create are
- * declared beside `<Tabs>`; Context Tray is set by a screen with `useTabBarOverride`.
+ * declared beside `<Tabs>`; Context Tray and Selection Toolbar are set by a screen with
+ * `useTabBarOverride`.
  */
 function panelSnippet(d: UsageDesign) {
+  if (d.id === 'selection-toolbar') return SELECTION_TOOLBAR_SNIPPET;
   if (d.id === 'context-tray') {
     return `${[
       '// app/(tabs)/_layout.tsx: the provider lets screens drive the bar',
