@@ -23,7 +23,7 @@
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode, useState } from 'react';
 import { type LayoutChangeEvent, Platform, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
@@ -394,13 +394,14 @@ interface IndicatorFrame {
  * these take colour from the indicator, so tabs it passes over on a long move stay unlit.
  */
 function useMovingBetween(activeIndex: number) {
-  const last = useRef(activeIndex);
-  const previous = useRef(activeIndex);
-  if (last.current !== activeIndex) {
-    previous.current = last.current;
-    last.current = activeIndex;
+  // State, not refs written during render: React can throw a render away, and a ref written
+  // in it would keep a "previous" tab that never showed.
+  const [tabs, setTabs] = useState({ active: activeIndex, previous: activeIndex });
+  if (tabs.active !== activeIndex) {
+    setTabs({ active: activeIndex, previous: tabs.active });
+    return tabs.active;
   }
-  return previous.current;
+  return tabs.previous;
 }
 
 /**
