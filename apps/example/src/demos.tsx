@@ -68,6 +68,8 @@ import * as SolidDarkIcons from '@registry/solid-dark/icons';
 import { SolidDark as SolidDarkDesign } from '@registry/solid-dark/solid-dark';
 import * as SplitSearchIcons from '@registry/split-search/icons';
 import { SplitSearch as SplitSearchDesign } from '@registry/split-search/split-search';
+import * as StickerPillsIcons from '@registry/sticker-pills/icons';
+import { StickerPills } from '@registry/sticker-pills/sticker-pills';
 import * as StickerTilesIcons from '@registry/sticker-tiles/icons';
 import { StickerTiles as StickerTilesDesign } from '@registry/sticker-tiles/sticker-tiles';
 import * as ThumbArcIcons from '@registry/thumb-arc/icons';
@@ -907,6 +909,20 @@ export const demos: Record<string, Demo> = {
       { label: 'Saved', icon: ThumbArcIcons.BookmarkIcon, badge: 2 },
       { label: 'Guides', icon: ThumbArcIcons.GuideIcon, badge: '' },
       { label: 'Profile', icon: ThumbArcIcons.PersonIcon },
+    ],
+  },
+  'sticker-pills': {
+    // A group chat with a daily photo: Today, Chat (where it opens), Wall and Me. Each tab's
+    // pill takes its own colour when active; Wall carries a count and Me a dot.
+    render: () => <StickerPills colors={{ scrim: CHAT_DARK }} />,
+    background: CHAT_DARK,
+    initialTab: 1,
+    barHeight: 48,
+    tabs: [
+      { label: 'Today', icon: StickerPillsIcons.SunIcon },
+      { label: 'Chat', icon: StickerPillsIcons.ChatIcon },
+      { label: 'Wall', icon: StickerPillsIcons.PhotosIcon, badge: 3 },
+      { label: 'Me', icon: StickerPillsIcons.SmileyIcon, badge: '' },
     ],
   },
   'live-tabs': {

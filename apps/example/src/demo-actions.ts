@@ -96,6 +96,18 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
   ],
   // Each tab change draws the new stroke and wipes the old one: forward through the tabs, then
   // back to the first (a long move, so both strokes show at once).
+  // Opens on Chat; each new tab's pill pops in its own colour. Left, then right, then back.
+  'sticker-pills': [
+    { wait: 900 },
+    { tab: 0 },
+    { wait: 1300 },
+    { tab: 2 },
+    { wait: 1300 },
+    { tab: 3 },
+    { wait: 1300 },
+    { tab: 1 },
+    { wait: 1300 },
+  ],
   'ink-underline': [
     { wait: 900 },
     { tab: 1 },

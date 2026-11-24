@@ -22,7 +22,7 @@ export interface DemoControls {
  * Every design's controls. `accent` is listed only where one colour clearly marks the active tab
  * and the demo passes the design straight to the tab bar; `minTabs` where the demo's feature sits
  * on a later tab (Sub-Tabs' Library, Context Tray's Plan, Glass Badges' Chats, Live Tabs' Timer
- * and Downloads), or needs the bar's full width (Selection Toolbar's labels fill Soft Pill's five
+ * and Downloads, Sticker Pills' Chat), or needs the bar's full width (Selection Toolbar's labels fill Soft Pill's five
  * tabs).
  */
 export const DEMO_CONTROLS: Record<string, DemoControls> = {
@@ -70,6 +70,7 @@ export const DEMO_CONTROLS: Record<string, DemoControls> = {
   'soft-pill': { maxTabs: 5 },
   'solid-dark': { accent: 'colors.active', maxTabs: 5 },
   'split-search': { accent: 'colors.active', maxTabs: 5 },
+  'sticker-pills': { minTabs: 2, maxTabs: 4 },
   'sticker-tiles': { maxTabs: 6 },
   'sub-tabs': { minTabs: 3, maxTabs: 5 },
   'thumb-arc': { accent: 'colors.accent', maxTabs: 5 },

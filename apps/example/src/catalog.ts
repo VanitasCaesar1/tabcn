@@ -448,6 +448,16 @@ export const catalog: DesignEntry[] = [
     status: 'ready',
   },
   {
+    id: 'sticker-pills',
+    ref: 0,
+    title: 'Sticker Pills',
+    kind: 'bar',
+    layout: 'floating-pill',
+    summary:
+      "Glossy sticker icons on small label pills over a dark fade; the active pill fills with its tab's colour, pops a little larger and springs level from a tilt.",
+    status: 'ready',
+  },
+  {
     id: 'mini-player',
     ref: 0,
     title: 'Mini Player',

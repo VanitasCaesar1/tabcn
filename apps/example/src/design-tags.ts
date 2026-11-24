@@ -66,6 +66,7 @@ export const DESIGN_TAGS: Record<string, DesignTags> = {
   'offset-plus': { style: 'dark', scene: 'social', scheme: 'dark' },
   'tinted-icons': { style: 'dark', scene: 'social', scheme: 'light' },
   'badge-dock': { style: 'dark', scene: 'chat', scheme: 'dark' },
+  'sticker-pills': { style: 'playful', scene: 'chat', scheme: 'dark' },
   'cart-pill': { style: 'minimal', scene: 'shop', scheme: 'light' },
   'glass-badges': { style: 'glass', scene: 'chat', scheme: 'light' },
   'section-sheet': { style: 'minimal', scene: 'maps', scheme: 'light' },
