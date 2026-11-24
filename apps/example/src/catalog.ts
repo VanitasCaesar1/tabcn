@@ -434,7 +434,7 @@ export const catalog: DesignEntry[] = [
     kind: 'bar',
     layout: 'docked-bar',
     summary:
-      'An editorial bar of serif text tabs on paper; a hand-drawn ink stroke draws itself under the active label while the last one wipes away.',
+      'An editorial bar of serif text tabs on paper; a brush stroke under the active label, and the ink flows the way you tap: the old stroke is pulled toward the new tab as the new one draws in.',
     status: 'ready',
   },
   {
