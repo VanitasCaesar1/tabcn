@@ -1045,3 +1045,31 @@ describe('ink-underline', () => {
     expect(selected.map((t) => t.props.accessibilityLabel)).toEqual(['Sessions, tab, 3 of 3']);
   });
 });
+
+// Sticker Pills --------------------------------------------------------------------------
+
+describe('sticker-pills', () => {
+  const { StickerPills } = require('../../../../registry/designs/sticker-pills/sticker-pills') as {
+    StickerPills: ComponentType<{ haptics?: boolean }>;
+  };
+
+  function stickerState(badges: (string | number | undefined)[], activeIndex = 0) {
+    const { state } = makeState(badges.length, activeIndex, []);
+    return {
+      ...state,
+      tabs: state.tabs.map((tab) => ({ ...tab, badge: badges[tab.index] })),
+    };
+  }
+
+  it('reads each badge with its label, and draws a count or a dot on the sticker', async () => {
+    await render(
+      <TabBarStateProvider value={stickerState([undefined, 3, ''])}>
+        <StickerPills haptics={false} />
+      </TabBarStateProvider>,
+    );
+    expect(screen.getByRole('tab', { name: 'Tab 2, 3, tab, 2 of 3' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Tab 3, tab, 3 of 3' })).toBeTruthy();
+    expect(screen.queryByText('3')).toBeNull();
+    expect(screen.getByText('3', { includeHiddenElements: true })).toBeTruthy();
+  });
+});

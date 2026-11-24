@@ -6,7 +6,7 @@ export const site = {
   name: 'tabcn',
   tagline: 'Animated tab bars for React Native and Expo',
   description:
-    '41 animated tab bars and nine panels for React Native and Expo. Install a small foundation package, copy in a design with the shadcn CLI, and make it yours.',
+    '42 animated tab bars and nine panels for React Native and Expo. Install a small foundation package, copy in a design with the shadcn CLI, and make it yours.',
   repo: 'https://github.com/VanitasCaesar1/tabcn',
   /** The author's X handle, without the @. */
   x: 'phantommenace_x',

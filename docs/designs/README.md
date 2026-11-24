@@ -16,6 +16,7 @@ Write the design here before building anything that changes the public API of `t
 | [`ambient-bar.md`](ambient-bar.md): Ambient Bar, a bar with no colour of its own that blurs the content scrolling behind it                                                                | Approved 2026-11-23    |
 | [`ink-underline.md`](ink-underline.md): Ink Underline, serif text tabs with a hand-drawn underline that draws itself under the active tab                                                  | Approved 2026-11-24    |
 | [`thumb-arc.md`](thumb-arc.md): Thumb Arc, a round corner button whose tabs fan out on an arc for one thumb                                                                                | Proposed 2026-11-24    |
+| [`sticker-pills.md`](sticker-pills.md): Sticker Pills, glossy sticker icons on label pills that pop in their own colour                                                                    | Implemented 2026-11-24 |
 | [`selection-toolbar.md`](selection-toolbar.md): Selection Toolbar, the tab bar turned into an action bar while a screen selects                                                            | Implemented 2026-11-24 |
 
 The npm package is published as `react-native-tabcn`: npm turned down `tabcn` as too close to `table`. Docs written before that (2026-11-21) say `tabcn` for the package and `tabcn/<entry>` for its entry points; read those as `react-native-tabcn` and `react-native-tabcn/<entry>`.
