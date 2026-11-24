@@ -1,20 +1,21 @@
 /**
  * Ink Underline: an editorial tab bar. Serif text tabs on a paper-coloured bar docked to the
  * bottom edge, a hairline above it and no icons. The active label is full ink, the others grey.
- * Under the active label a hand-drawn ink stroke draws itself from the leading edge when the tab
- * becomes active, while the previous tab's stroke wipes away in the same direction.
+ * Under the active label sits a brush stroke: it presses in, swells and flicks up at its tail.
+ * The ink flows the way you move: tap a tab to the right and the old stroke is pulled off to the
+ * right while the new one draws in from its left; tap back and both run the other way.
  * Badges: an empty badge is a small ink dot after the label, a count is a superscript numeral
  * in the same serif.
  *
- * Motion (soft, as for a reading app): the stroke draws in 340 ms, easing out; the old one wipes
- * away in 240 ms (70% of that), accelerating out. Only the stroke's dash offset animates, on the
- * UI thread. A tab change interrupted half-way reverses from where the stroke is, so nothing
- * jumps. Labels crossfade grey to ink on tabcnTiming. With reduce motion on, strokes appear and
- * disappear at once. Right to left, the stroke draws from the right.
+ * Motion (soft, as for a reading app): the new stroke draws in 420 ms, easing out; the old one
+ * is pulled away in 290 ms (70% of that), accelerating out. Only two transforms per stroke
+ * animate, on the UI thread. A tab change interrupted half-way turns back from where the stroke
+ * is, so nothing jumps. Labels crossfade grey to ink on tabcnTiming and dim while pressed. With
+ * reduce motion on, strokes appear and disappear at once.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   I18nManager,
   type LayoutChangeEvent,
@@ -30,7 +31,6 @@ import Animated, {
   interpolateColor,
   ReduceMotion,
   type SharedValue,
-  useAnimatedProps,
   useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
@@ -87,18 +87,18 @@ const LABEL_SIZE = 16;
 /** How far the stroke runs past each end of its label. */
 const OVERHANG = 3;
 /** The box the stroke is drawn in, under the label. */
-const STROKE_BOX = 8;
-const STROKE_WIDTH = 2.4;
-/** A thinner second pass over the middle of the stroke gives it a brush's uneven weight. */
-const PASS_WIDTH = 1.1;
-const PASS_FROM = 0.1;
-const PASS_TO = 0.86;
+const STROKE_BOX = 10;
+/** The brush's widest point. */
+const BRUSH = 3.4;
+/** Where along the stroke its tail starts to flick up, and how far it rises. */
+const FLICK_FROM = 0.84;
+const FLICK = 1.7;
 
-const DRAW_MS = 460;
+const DRAW_MS = 420;
 const WIPE_MS = Math.round(DRAW_MS * 0.7);
 const draw = {
   duration: DRAW_MS,
-  easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+  easing: Easing.bezier(0.22, 1, 0.36, 1),
   reduceMotion: ReduceMotion.System,
 };
 const wipe = {
@@ -106,14 +106,16 @@ const wipe = {
   easing: Easing.bezier(0.4, 0, 1, 1),
   reduceMotion: ReduceMotion.System,
 };
+/** The label dims as the finger lands and comes back when it lifts. */
+const pressIn = { duration: 70, reduceMotion: ReduceMotion.System };
+const pressOut = { duration: 180, reduceMotion: ReduceMotion.System };
+const PRESSED_OPACITY = 0.55;
 
 const serif = Platform.select({ android: 'serif', default: 'Georgia' });
 
-const AnimatedPath = Animated.createAnimatedComponent(Path);
-
 export function InkUnderline({ colors: custom, fontFamily, haptics = true }: InkUnderlineProps) {
   const colors = useColors(custom);
-  const { tabs } = useTabBar();
+  const { tabs, activeIndex } = useTabBar();
   return (
     <TabBarRoot placement="docked" style={{ backgroundColor: colors.background }}>
       <View pointerEvents="none" style={[styles.hairline, { backgroundColor: colors.hairline }]} />
@@ -122,6 +124,7 @@ export function InkUnderline({ colors: custom, fontFamily, haptics = true }: Ink
           <Tab
             key={tab.key}
             tab={tab}
+            activeIndex={activeIndex}
             colors={colors}
             fontFamily={fontFamily ?? serif}
             haptics={haptics}
@@ -152,21 +155,25 @@ function useColors(custom: Partial<InkUnderlineColors> | undefined): InkUnderlin
 
 function Tab({
   tab,
+  activeIndex,
   colors,
   fontFamily,
   haptics,
 }: {
   tab: TabItem;
+  activeIndex: number;
   colors: InkUnderlineColors;
   fontFamily: string | undefined;
   haptics: boolean;
 }) {
   const progress = useFocusProgress(tab);
+  const pressed = useSharedValue(1);
   const { ink, muted } = colors;
   const label = useAnimatedStyle(() => ({
     color: interpolateColor(progress.value, [0, 1], [muted, ink]),
+    opacity: pressed.value,
   }));
-  const stroke = useStroke(tab.focused);
+  const edge = useInk(tab, activeIndex);
 
   // The label's width, measured once it lays out (and again only if it changes), sizes the
   // stroke under it.
@@ -180,7 +187,13 @@ function Tab({
     <TabButton
       tab={tab}
       style={styles.tab}
-      onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
+      onPressIn={() => {
+        pressed.value = withTiming(PRESSED_OPACITY, pressIn);
+        if (haptics) Haptics.selectionAsync();
+      }}
+      onPressOut={() => {
+        pressed.value = withTiming(1, pressOut);
+      }}
     >
       <View style={styles.labelBox}>
         <Animated.Text
@@ -195,7 +208,7 @@ function Tab({
         </Animated.Text>
         <View style={styles.strokeBox}>
           {width > 0 ? (
-            <Stroke width={width} seed={tab.index} color={colors.ink} ink={stroke} />
+            <Stroke width={width} seed={tab.index} color={colors.ink} edge={edge} />
           ) : null}
         </View>
         {width > 0 ? (
@@ -206,93 +219,77 @@ function Tab({
   );
 }
 
+/** A change of the tab's focus, and which way the active tab moved on screen (1 is right). */
+interface InkSignal {
+  on: boolean;
+  dir: 1 | -1;
+}
+
 /**
- * Where the tab's stroke is, as a share of its dash: 1 not drawn, 0 fully drawn, -1 wiped away.
- * It draws in (1 to 0) when the tab becomes active and wipes away (0 to -1) when it stops being
- * active. Stopped half-way, it turns back from where it is instead of jumping.
+ * Where the visible part of the tab's stroke is, as a share of its width on screen: 0 all of it,
+ * -1 none (cut back to its left end), 1 none (cut back to its right end). Becoming active, it
+ * draws in (-1 or 1 to 0) from the side the active tab came from; losing focus, it is pulled
+ * away (0 to 1 or -1) toward the new tab. Stopped half-way, it turns back from where it is.
  */
-function useStroke(focused: boolean): SharedValue<number> {
-  const target = useSharedValue(focused ? 1 : 0);
-  const ink = useSharedValue(focused ? 0 : 1);
+function useInk(tab: TabItem, activeIndex: number): SharedValue<number> {
+  const edge = useSharedValue(tab.focused ? 0 : -1);
+  const signal = useSharedValue<InkSignal>({ on: tab.focused, dir: 1 });
+  const last = useRef({ focused: tab.focused, active: activeIndex });
   useEffect(() => {
-    target.value = focused ? 1 : 0;
-  }, [focused, target]);
+    const before = last.current;
+    last.current = { focused: tab.focused, active: activeIndex };
+    if (before.focused === tab.focused) return;
+    // Tabs mirror right to left, so a higher index is further left there.
+    const forward = activeIndex >= before.active;
+    const dir = forward !== I18nManager.isRTL ? 1 : -1;
+    signal.value = { on: tab.focused, dir };
+  }, [tab.focused, activeIndex, signal]);
   useAnimatedReaction(
-    () => target.value,
+    () => signal.value,
     (now, before) => {
       if (before === null || now === before) return;
-      if (now === 1) {
-        // A stroke that finished wiping away starts over from the leading edge.
-        if (ink.value <= -0.999) ink.value = 1;
-        ink.value = withTiming(0, draw);
-      } else if (ink.value > 0.001) {
-        // Still drawing in: it draws back out the way it came.
-        ink.value = withTiming(1, wipe);
+      const at = edge.value;
+      if (now.on) {
+        // A stroke that's gone starts over at the side the ink comes from.
+        if (Math.abs(at) >= 0.999) edge.value = -now.dir;
+        edge.value = withTiming(0, draw);
       } else {
-        ink.value = withTiming(-1, wipe);
+        // Still drawing in, it goes back the way it came; drawn, it's pulled toward the new tab.
+        edge.value = withTiming(Math.abs(at) > 0.001 ? Math.sign(at) : now.dir, wipe);
       }
     },
   );
-  return ink;
+  return edge;
 }
 
 /**
- * Dash offset for a stroke at `ink` (see useStroke), with the dash pattern `[dash, dash]`. Drawing
- * in, the dash slides in from the start of the path; wiping away, the gap after it follows it in.
- * Offsets stay positive (a wiped stroke is a whole period on), since Android's dash effect
- * doesn't take negative ones.
+ * The stroke, shown up to `edge` (see useInk): a window as wide as the stroke slides across it
+ * while the stroke inside slides back the same distance, so the stroke stays put and only the
+ * window's edge moves. Two transforms, no re-render or relayout per frame.
  */
-function dashOffset(ink: number, dash: number) {
-  'worklet';
-  return ink >= 0 ? ink * dash : (2 + ink) * dash;
-}
-
 const Stroke = memo(function Stroke({
   width,
   seed,
   color,
-  ink,
+  edge,
 }: {
   width: number;
   seed: number;
   color: string;
-  ink: SharedValue<number>;
+  edge: SharedValue<number>;
 }) {
   const box = width + OVERHANG * 2;
-  const { main, pass } = useMemo(() => brushStroke(box, seed, I18nManager.isRTL), [box, seed]);
-  const mainProps = useAnimatedProps(() => ({
-    strokeDashoffset: dashOffset(ink.value, main.dash),
-  }));
-  // The second pass covers PASS_FROM to PASS_TO of the stroke, so its own share follows the
-  // main stroke's tip (or the wipe's edge) across that stretch.
-  const passProps = useAnimatedProps(() => {
-    const at = ink.value >= 0 ? 1 - ink.value : -ink.value;
-    const share = Math.min(1, Math.max(0, (at - PASS_FROM) / (PASS_TO - PASS_FROM)));
-    return { strokeDashoffset: dashOffset(ink.value >= 0 ? 1 - share : -share, pass.dash) };
-  });
+  const d = useMemo(() => brushStroke(box, seed, I18nManager.isRTL), [box, seed]);
+  const slide = useAnimatedStyle(() => ({ transform: [{ translateX: edge.value * box }] }));
+  const held = useAnimatedStyle(() => ({ transform: [{ translateX: -edge.value * box }] }));
   return (
-    <Svg width={box} height={STROKE_BOX} style={styles.stroke} pointerEvents="none">
-      <AnimatedPath
-        d={main.d}
-        stroke={color}
-        strokeWidth={STROKE_WIDTH}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-        strokeDasharray={[main.dash, main.dash]}
-        animatedProps={mainProps}
-      />
-      <AnimatedPath
-        d={pass.d}
-        stroke={color}
-        strokeWidth={PASS_WIDTH}
-        strokeLinecap="round"
-        fill="none"
-        opacity={0.85}
-        strokeDasharray={[pass.dash, pass.dash]}
-        animatedProps={passProps}
-      />
-    </Svg>
+    <Animated.View pointerEvents="none" style={[styles.stroke, { width: box }, slide]}>
+      <Animated.View style={held}>
+        <Svg width={box} height={STROKE_BOX}>
+          <Path d={d} fill={color} />
+        </Svg>
+      </Animated.View>
+    </Animated.View>
   );
 });
 
@@ -302,64 +299,65 @@ function wobble(seed: number, i: number) {
   return (v - Math.floor(v)) * 2 - 1;
 }
 
+const f = (n: number) => Math.round(n * 100) / 100;
+const pt = ([x, y]: [number, number]) => `${f(x)} ${f(y)}`;
+
 /**
- * A smooth curve through points (quadratic segments between their midpoints), and a dash long
- * enough to cover it: the length of the line through the points, which the curve never exceeds.
+ * Commands for a smooth curve from `points[0]` (the current point) through the rest: quadratic
+ * segments between the points' midpoints, ending on the last point.
  */
-function curve(points: [number, number][], rtl: boolean, box: number) {
-  const pts = points.map(([x, y]): [number, number] => [rtl ? box - x : x, y]);
-  const f = (n: number) => Math.round(n * 100) / 100;
-  const [first, ...rest] = pts;
-  if (!first) return { d: '', dash: 1 };
-  let d = `M${f(first[0])} ${f(first[1])}`;
-  for (let i = 0; i < rest.length; i++) {
-    const p = rest[i] as [number, number];
-    const next = rest[i + 1];
-    if (!next) {
-      d += i === 0 ? ` L${f(p[0])} ${f(p[1])}` : '';
-      break;
-    }
-    const end = i === rest.length - 2 ? next : [(p[0] + next[0]) / 2, (p[1] + next[1]) / 2];
-    d += ` Q${f(p[0])} ${f(p[1])} ${f(end[0] as number)} ${f(end[1] as number)}`;
+function smooth(points: [number, number][]) {
+  let d = '';
+  for (let i = 1; i < points.length - 1; i++) {
+    const p = points[i] as [number, number];
+    const next = points[i + 1] as [number, number];
+    const end: [number, number] =
+      i === points.length - 2 ? next : [(p[0] + next[0]) / 2, (p[1] + next[1]) / 2];
+    d += ` Q${pt(p)} ${pt(end)}`;
   }
-  let dash = 1;
-  for (let i = 1; i < pts.length; i++) {
-    const a = pts[i - 1] as [number, number];
-    const b = pts[i] as [number, number];
-    dash += Math.hypot(b[0] - a[0], b[1] - a[1]);
-  }
-  return { d, dash };
+  return d;
 }
 
 /**
- * The hand-drawn stroke for a box `box` wide: a line that rises slightly as it goes, wavers a
- * little (differently on each tab) and lifts at its end, as a pen does, plus a thinner second
- * pass that crosses it through the middle. Drawn from the leading edge: the right, right to left.
+ * The brush stroke for a box `box` wide, as a filled outline: the brush presses in quickly,
+ * swells, and thins to a tail that flicks up as the pen lifts. Its line rises a little and
+ * wavers differently on each tab (`seed`). Right to left, it's mirrored, so the flick is on
+ * the left.
  */
 function brushStroke(box: number, seed: number, rtl: boolean) {
-  const cap = STROKE_WIDTH / 2;
-  const from = cap;
-  const to = box - cap;
-  const mid = STROKE_BOX / 2 + 0.4;
-  const segments = Math.max(3, Math.round((to - from) / 16));
-  const main: [number, number][] = [];
-  for (let i = 0; i <= segments; i++) {
-    const t = i / segments;
-    const lift = i === segments ? 1.1 : 0;
-    const waver = i === 0 || i === segments ? 0 : wobble(seed, i) * 0.7;
-    main.push([from + (to - from) * t, mid + 0.6 - 1.2 * t + waver - lift]);
+  const from = 2;
+  const to = box - 2.5;
+  const mid = STROKE_BOX / 2 + 0.6;
+  const n = Math.max(6, Math.round((to - from) / 6));
+  const top: [number, number][] = [];
+  const bottom: [number, number][] = [];
+  const widths: number[] = [];
+  const centre: number[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const flick = t > FLICK_FROM ? ((t - FLICK_FROM) / (1 - FLICK_FROM)) ** 2 * FLICK : 0;
+    const y = mid + 0.7 - 1.4 * t + wobble(seed, i) * 0.35 * Math.sin(Math.PI * t) - flick;
+    const press = t < 0.12 ? 0.45 + 0.55 * Math.sin(((t / 0.12) * Math.PI) / 2) : 1;
+    const tail = t > 0.55 ? 1 - 0.82 * ((t - 0.55) / 0.45) ** 1.5 : 1;
+    const w = BRUSH * press * tail * (1 + wobble(seed + 3, i) * 0.08);
+    const x = from + (to - from) * t;
+    const mx = rtl ? box - x : x;
+    top.push([mx, y - w / 2]);
+    bottom.push([mx, y + w / 2]);
+    widths.push(w);
+    centre.push(y);
   }
-  const pass: [number, number][] = [];
-  const passFrom = from + (to - from) * PASS_FROM;
-  const passTo = from + (to - from) * PASS_TO;
-  const passSegments = Math.max(2, segments - 1);
-  for (let i = 0; i <= passSegments; i++) {
-    const t = i / passSegments;
-    const x = passFrom + (passTo - passFrom) * t;
-    const along = PASS_FROM + (PASS_TO - PASS_FROM) * t;
-    pass.push([x, mid + 0.6 - 1.2 * along + 1.4 - 2.6 * t + wobble(seed + 7, i) * 0.3]);
-  }
-  return { main: curve(main, rtl, box), pass: curve(pass, rtl, box) };
+  // Round caps: a curve around each end, bulging by about the brush's width there.
+  const out = rtl ? -1 : 1;
+  const endX = (rtl ? box - to : to) + out * (widths[n] as number);
+  const startX = (rtl ? box - from : from) - out * (widths[0] as number) * 0.9;
+  const first = top[0] as [number, number];
+  const back = [...bottom].reverse();
+  return (
+    `M${pt(first)}${smooth(top)}` +
+    ` Q${pt([endX, centre[n] as number])} ${pt(back[0] as [number, number])}` +
+    `${smooth(back)} Q${pt([startX, centre[0] as number])} ${pt(first)} Z`
+  );
 }
 
 // Badges fade in and out on tabcnTiming, with no pop; at once with reduce motion on.
@@ -419,9 +417,10 @@ const styles = StyleSheet.create({
   // As wide as the label, so the stroke and the badge hang off the label, not the tab.
   labelBox: { alignSelf: 'center' },
   label: { fontSize: LABEL_SIZE, lineHeight: 21, letterSpacing: 0.1, includeFontPadding: false },
-  strokeBox: { height: STROKE_BOX, marginTop: 1 },
-  // In the flow under the label, running OVERHANG past both ends.
-  stroke: { marginHorizontal: -OVERHANG },
+  // Tucked up under the label, as a pen's underline sits close to the words.
+  strokeBox: { height: STROKE_BOX, marginTop: -1 },
+  // In the flow under the label, running OVERHANG past both ends; clips the stroke to its window.
+  stroke: { height: STROKE_BOX, marginHorizontal: -OVERHANG, overflow: 'hidden' },
   // Hangs after the label's end so the label stays centred in its tab.
   badge: { position: 'absolute', top: 1 },
   superscript: { fontSize: 11, lineHeight: 13, fontVariant: ['tabular-nums'] },
