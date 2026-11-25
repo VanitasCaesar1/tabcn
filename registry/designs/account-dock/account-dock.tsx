@@ -60,6 +60,7 @@ import {
   Text,
   useWindowDimensions,
   View,
+  type ViewStyle,
 } from 'react-native';
 import Animated, {
   interpolate,
@@ -1509,6 +1510,14 @@ function StatusMenu({
 
 const shadow = '0 10px 28px rgba(40, 40, 60, 0.14)';
 
+/**
+ * A fixed layout direction. React Native Web spells it `writingDirection` (CSS `direction`): in
+ * development it drops `direction` with an error, so the web would follow the app's direction.
+ */
+function layoutDirection(direction: 'ltr' | 'rtl'): ViewStyle {
+  return Platform.OS === 'web' ? ({ writingDirection: direction } as ViewStyle) : { direction };
+}
+
 const styles = StyleSheet.create({
   // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
   badgeTextCap: { maxWidth: 56 },
@@ -1558,7 +1567,7 @@ const styles = StyleSheet.create({
   roundSlot: { width: H, height: H },
   wsSlot: { flex: 1, height: H },
   acctSlot: { flex: 1, height: H },
-  ltr: { direction: 'ltr' },
+  ltr: layoutDirection('ltr'),
   group: { position: 'absolute', left: 0, top: 0, right: 0, height: H },
   cap: { position: 'absolute', left: 0, top: 0, width: H, height: H, borderRadius: H / 2 },
   strip: { position: 'absolute', left: 0, top: 0, width: STRIP, height: H },

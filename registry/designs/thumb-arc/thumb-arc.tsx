@@ -862,10 +862,18 @@ function Badge({
 
 const FILL = { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 } as const;
 
+/**
+ * A fixed layout direction. React Native Web spells it `writingDirection` (CSS `direction`): in
+ * development it drops `direction` with an error, so the web would follow the app's direction.
+ */
+function layoutDirection(direction: 'ltr' | 'rtl'): ViewStyle {
+  return Platform.OS === 'web' ? ({ writingDirection: direction } as ViewStyle) : { direction };
+}
+
 const styles = StyleSheet.create({
   box: { marginHorizontal: EDGE },
   // Physical left and right inside: the corner and the arc don't flip in right-to-left apps.
-  anchor: { width: BUTTON, height: BUTTON, direction: 'ltr' },
+  anchor: { width: BUTTON, height: BUTTON, ...layoutDirection('ltr') },
   scrim: { position: 'absolute' },
   button: {
     width: BUTTON,
