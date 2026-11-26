@@ -67,6 +67,7 @@ export const DEMO_CONTROLS: Record<string, DemoControls> = {
   'side-rail': { maxTabs: 4 },
   'slider-sheet': { maxTabs: 5 },
   'sliding-capsule': { maxTabs: 4 },
+  'reply-stack': { minTabs: 3, maxTabs: 5 },
   'soft-pill': { maxTabs: 5 },
   'solid-dark': { accent: 'colors.active', maxTabs: 5 },
   'split-search': { accent: 'colors.active', maxTabs: 5 },

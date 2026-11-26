@@ -96,6 +96,19 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
   ],
   // Each tab change draws the new stroke and wipes the old one: forward through the tabs, then
   // back to the first (a long move, so both strokes show at once).
+  // Home has the reply row: leave it for Explore (the row slides down and out), come back
+  // (it slides up), then to Alerts and Home again.
+  'reply-stack': [
+    { wait: 1100 },
+    { tab: 2 },
+    { wait: 1300 },
+    { tab: 0 },
+    { wait: 1300 },
+    { tab: 3 },
+    { wait: 1300 },
+    { tab: 0 },
+    { wait: 1300 },
+  ],
   // Opens on Chat; each new tab's pill pops in its own colour. Left, then right, then back.
   'sticker-pills': [
     { wait: 900 },

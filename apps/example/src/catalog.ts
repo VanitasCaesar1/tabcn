@@ -458,6 +458,16 @@ export const catalog: DesignEntry[] = [
     status: 'ready',
   },
   {
+    id: 'reply-stack',
+    ref: 0,
+    title: 'Reply Stack',
+    kind: 'bar',
+    layout: 'floating-pill',
+    summary:
+      "X's frosted-glass bar: five icon-only tabs on a wide glass capsule with a round lens behind the active one, and a reply field on a second capsule that slides up above it.",
+    status: 'ready',
+  },
+  {
     id: 'mini-player',
     ref: 0,
     title: 'Mini Player',
