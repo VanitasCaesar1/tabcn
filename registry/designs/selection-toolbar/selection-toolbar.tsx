@@ -35,14 +35,18 @@
  * It fills the bar's area: the pill of a floating bar (keep `radius` at its default) or the strip
  * of a docked one (`radius={0}` and the bar's own colour as `colors.surface`). On a floating pill
  * narrower than the labels need, the labels hide and the icons stay; under about 260 pt it is too
- * cramped. On a rail it stacks.
+ * cramped. On a rail it stacks. On iOS 26 the surface is Liquid Glass (`material`, default
+ * `'auto'`), dark under light `colors.foreground` and light otherwise; `material="solid"` keeps
+ * the fill.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { type ComponentType, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BackHandler,
   Platform,
+  processColor,
   type StyleProp,
   StyleSheet,
   Text,
@@ -63,9 +67,12 @@ import { BadgeCount, PressableScale, tabcnTiming, useTabBar } from 'react-native
 const defaultColors = {
   /** The toolbar's surface. Defaults suit light floating pills (Soft Pill). */
   surface: '#fafafa',
-  /** 1 pt rim around the surface. */
+  /** 1 pt rim around the surface. Not drawn over Liquid Glass. */
   border: 'rgba(17, 17, 19, 0.06)',
-  /** The surface's soft shadow; `'transparent'` for none, as on a docked bar. */
+  /**
+   * The surface's soft shadow; `'transparent'` for none, as on a docked bar. Not drawn over
+   * Liquid Glass.
+   */
   shadow: 'rgba(40, 32, 24, 0.14)',
   /** The count, the actions' icons and labels, and the done glyph. */
   foreground: '#151517',
@@ -75,6 +82,12 @@ const defaultColors = {
   control: '#ececee',
   /** The done button's fill while pressed. */
   controlPressed: '#dedee2',
+  /**
+   * Tint over the Liquid Glass (iOS 26). Unset, with light `foreground` (the dark palette),
+   * `surface` at 60%, so the light icons and labels keep their contrast over light screens; with
+   * dark `foreground`, clear. `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type SelectionToolbarColors = typeof defaultColors;
@@ -88,6 +101,7 @@ export const selectionToolbarDarkColors: SelectionToolbarColors = {
   destructive: '#ff6b61',
   control: '#2c2c31',
   controlPressed: '#38383e',
+  glassTint: undefined,
 };
 
 const defaultLabels = {
@@ -140,6 +154,12 @@ export interface SelectionToolbarProps {
   radius?: number;
   /** Light haptic on an action, selection tick on the done button. Default true. */
   haptics?: boolean;
+  /**
+   * The toolbar's surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (`colors.surface` with a
+   * 1 pt rim and a soft shadow), or `'auto'` (glass where the system has it, solid elsewhere).
+   * Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
 }
 
 /** The entry: each item rises this far, over RISE_MS, STAGGER_MS after the one before. */
@@ -185,7 +205,9 @@ export function SelectionToolbar({
   labels: customLabels,
   radius = 999,
   haptics = true,
+  material = 'auto',
 }: SelectionToolbarProps) {
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   // Merged once per change of the colours themselves, not per render: a themed wrapper hands
   // over a new object every time.
   const colorKey = custom ? JSON.stringify(custom) : '';
@@ -200,6 +222,8 @@ export function SelectionToolbar({
 
   // Labels show when the bar's area is wide enough for them; measured once per size change.
   const [width, setWidth] = useState<number | null>(null);
+  // The glass's corners are laid out from the toolbar's height, so a capsule's ends are round.
+  const [height, setHeight] = useState<number | null>(null);
   const wide = rail || width === null || width >= FIXED_W + actions.length * ACTION_W;
 
   // One clock for the whole entry; each item reads its own stretch of it on the UI thread and
@@ -217,6 +241,7 @@ export function SelectionToolbar({
     if (haptics) Haptics.selectionAsync();
     onDone();
   };
+  const corner = rail ? Math.min(radius, 24) : radius;
 
   return (
     <View
@@ -225,18 +250,40 @@ export function SelectionToolbar({
       onLayout={(e) => {
         const next = Math.round(e.nativeEvent.layout.width);
         setWidth((current) => (current === next ? current : next));
+        if (glass) {
+          const tall = Math.round(e.nativeEvent.layout.height);
+          setHeight((current) => (current === tall ? current : tall));
+        }
       }}
       style={[
         styles.toolbar,
         rail && styles.railToolbar,
-        {
-          borderRadius: rail ? Math.min(radius, 24) : radius,
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          boxShadow: `0 8px 24px ${colors.shadow}`,
-        },
+        glass
+          ? { borderRadius: corner, borderColor: 'transparent' }
+          : {
+              borderRadius: corner,
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              boxShadow: `0 8px 24px ${colors.shadow}`,
+            },
       ]}
     >
+      {glass ? (
+        // Over the (clear) rim to the surface's outer edge, so the content keeps its place.
+        <GlassView
+          glassEffectStyle="regular"
+          // Dark glass over a light screen turns near-white: it carries the dark surface's colour.
+          tintColor={
+            colors.glassTint ??
+            (isLight(colors.foreground) ? withAlpha(colors.surface, 0.6) : undefined)
+          }
+          colorScheme={isLight(colors.foreground) ? 'dark' : 'light'}
+          style={[
+            styles.glass,
+            { borderRadius: height === null ? corner : Math.min(corner, height / 2) },
+          ]}
+        />
+      ) : null}
       <Item
         index={0}
         enter={enter}
@@ -403,6 +450,32 @@ function Action({
   );
 }
 
+/**
+ * Whether a colour is light (text on a dark surface): `#rgb`, `#rrggbb` (with or without
+ * alpha) and `rgb()`/`rgba()`. Anything else counts as dark.
+ */
+function isLight(color: string): boolean {
+  let rgb: number[] | null = null;
+  const hex = /^#([0-9a-f]{3,8})$/i.exec(color.trim())?.[1];
+  if (hex) {
+    const full = hex.length <= 4 ? [...hex].map((c) => c + c).join('') : hex;
+    rgb = [0, 2, 4].map((i) => Number.parseInt(full.slice(i, i + 2), 16));
+  } else {
+    const parts = /^rgba?\(([^)]+)\)$/i.exec(color.trim())?.[1]?.split(/[\s,/]+/);
+    if (parts && parts.length >= 3) rgb = parts.slice(0, 3).map((v) => Number.parseFloat(v));
+  }
+  if (!rgb || rgb.some((v) => Number.isNaN(v))) return false;
+  const [r = 0, g = 0, b = 0] = rgb;
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.5;
+}
+
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const value = processColor(color);
+  if (typeof value !== 'number') return color;
+  return `rgba(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255}, ${alpha})`;
+}
+
 /** Android back and Escape on the web end selection while the toolbar is up. */
 function useEndOnEscape(onDone: () => void) {
   const latest = useRef(onDone);
@@ -439,6 +512,8 @@ const styles = StyleSheet.create({
     paddingRight: 8,
     gap: 6,
   },
+  // The glass reaches over the (clear) 1 pt rim to the surface's outer edge.
+  glass: { position: 'absolute', top: -1, left: -1, right: -1, bottom: -1 },
   count: { flex: 1, minWidth: 0 },
   countRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   countText: { fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.2 },

@@ -50,8 +50,12 @@
  *
  * Screen readers find the slider as an adjustable control ("Amount", "50 percent"): swipe up or
  * down to move it a step. The button reads its current label.
+ *
+ * On iOS 26 the card is dark Liquid Glass (`material`, default `'auto'`); elsewhere, or with
+ * `material="solid"`, it is the near-black `colors.surface` with a hairline edge.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
@@ -60,6 +64,7 @@ import {
   type LayoutChangeEvent,
   Platform,
   Pressable,
+  processColor,
   StyleSheet,
   Text,
   type TextProps,
@@ -89,7 +94,7 @@ import { PanelDragArea } from 'react-native-tabcn/gestures';
 const defaultColors = {
   /** The card. */
   surface: '#0d0d0f',
-  /** Hairline around the card, so it reads on a black screen. */
+  /** Hairline around the card, so it reads on a black screen. Not drawn over Liquid Glass. */
   border: 'rgba(255, 255, 255, 0.06)',
   /** The grabber at the top. */
   grabber: '#5c5c60',
@@ -127,6 +132,11 @@ const defaultColors = {
   buttonText: '#000000',
   /** Dims the screen behind the open card. */
   backdrop: 'rgba(0, 0, 0, 0.55)',
+  /**
+   * Tint over the Liquid Glass (iOS 26). Unset, `surface` at 60%, so the light text keeps its
+   * contrast over light screens; `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type SliderSheetColors = typeof defaultColors;
@@ -184,6 +194,12 @@ export interface SliderSheetProps {
   labels?: Partial<SliderSheetLabels>;
   /** A selection haptic as the drag crosses each step, on release and on the button. Default true. */
   haptics?: boolean;
+  /**
+   * The card's surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (the near-black
+   * `colors.surface` with a hairline edge), or `'auto'` (glass where the system has it, solid
+   * elsewhere). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
 }
 
 /** Declares the sheet. Renders nothing here: the card is drawn above the tab bar. */
@@ -222,6 +238,13 @@ const snapValue = (value: number, steps: number) => {
 const resolve = <T,>(by: ByValue<T>, value: number): T =>
   typeof by === 'function' ? (by as (value: number) => T)(value) : by;
 
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const value = processColor(color);
+  if (typeof value !== 'number') return color;
+  return `rgba(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255}, ${alpha})`;
+}
+
 /** A linear gradient as a style: CSS `backgroundImage` on the web, its native twin elsewhere. */
 function gradient(deep: string, light: string) {
   // "to bottom left" on a wide, short pill is nearly vertical, lit at the top and trailing end.
@@ -249,12 +272,14 @@ function Card({
   radius = 32,
   labels: customLabels,
   haptics = true,
+  material = 'auto',
 }: Omit<SliderSheetProps, 'id' | 'colors'> & {
   id: string;
   colors: SliderSheetColors;
   onHeight: (height: number) => void;
 }) {
   const labels = { ...defaultLabels, ...customLabels };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const steps = Math.max(1, Math.round(rawSteps));
   const { hide, state } = useTabPanel(id);
   const { fontScale } = useWindowDimensions();
@@ -477,9 +502,20 @@ function Card({
       onLayout={(event) => onHeight(Math.ceil(event.nativeEvent.layout.height))}
       style={[
         styles.card,
-        { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius },
+        glass
+          ? { borderColor: 'transparent', borderRadius: radius }
+          : { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius },
       ]}
     >
+      {glass ? (
+        // Over the (clear) hairline to the card's outer edge, so the content keeps its place.
+        <GlassView
+          glassEffectStyle="regular"
+          tintColor={colors.glassTint ?? withAlpha(colors.surface, 0.6)}
+          colorScheme="dark"
+          style={[styles.glass, { borderRadius: radius }]}
+        />
+      ) : null}
       <PanelDragArea>
         <View style={styles.header}>
           <Pressable
@@ -712,6 +748,13 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderCurve: 'continuous',
     overflow: 'hidden',
+  },
+  glass: {
+    position: 'absolute',
+    top: -StyleSheet.hairlineWidth,
+    right: -StyleSheet.hairlineWidth,
+    bottom: -StyleSheet.hairlineWidth,
+    left: -StyleSheet.hairlineWidth,
   },
   header: { alignItems: 'center', paddingBottom: 4 },
   // A 44 pt tall target around the small bar.

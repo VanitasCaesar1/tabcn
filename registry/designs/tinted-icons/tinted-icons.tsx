@@ -28,10 +28,13 @@
  * bar is #1e1e1c with #b9c0c8 icons. That phone has no home indicator, so the triangle is cut
  * by the screen's bottom edge; here it stays at the bottom of the 48 pt row, and the bar's
  * colour runs on under the home indicator.
+ * Glass is opt-in: `material="glass"` (or `"auto"`) turns the bar into Liquid Glass on iOS 26
+ * (expo-glass-effect), dark under a dark surface and light under a light one.
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
-import { I18nManager, StyleSheet, Text, View } from 'react-native';
+import { I18nManager, processColor, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -66,6 +69,12 @@ const defaultColors = {
   /** Badges: the screenshots show none, so this borrows Snapchat's red. */
   badge: '#f23d58',
   badgeText: '#ffffff',
+  /**
+   * Tint over the Liquid Glass (iOS 26), when `material` asks for glass. Unset, the active
+   * surface's colour at 60% on a dark surface (clear on a light one), so light icons keep
+   * their contrast over light screens; `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type TintedIconsColors = typeof defaultColors;
@@ -97,6 +106,11 @@ export const tintedIconsDark: TintedIconsSurface = {
 
 export interface TintedIconsProps {
   colors?: Partial<TintedIconsColors>;
+  /**
+   * The bar's surface: `'solid'` (the black bar it copies), `'glass'` (Liquid Glass, iOS 26),
+   * or `'auto'` (glass where the system has it, solid elsewhere). Default `'solid'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /**
    * Each tab's colour: a list by position (the first entry is the first tab's; with more tabs
    * than colours it starts over), or a map keyed by route name, which follows a tab when tabs
@@ -133,11 +147,13 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 export function TintedIcons({
   colors: custom,
+  material = 'solid',
   tints = tintedIconsTints,
   surfaces = NO_SURFACES,
   haptics = true,
 }: TintedIconsProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const { tabs, activeIndex } = useTabBar();
   const surface = surfaces[tabs[activeIndex]?.routeName ?? ''];
   const background = surface?.background ?? colors.background;
@@ -165,8 +181,22 @@ export function TintedIcons({
     // The root holds the active surface's colour, so it covers the bottom safe area too (the
     // bar's colour runs on under the home indicator) and stays put when a screen swaps the
     // tabs out. The fill drawn over it crossfades from the old colour to the new one.
-    <TabBarRoot placement="docked" style={{ backgroundColor: background }}>
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, fillStyle]} />
+    <TabBarRoot placement="docked" style={glass ? undefined : { backgroundColor: background }}>
+      {glass ? (
+        // The glass fills the bar and the home-indicator area under it, as the colour did.
+        <GlassView
+          pointerEvents="none"
+          glassEffectStyle="regular"
+          colorScheme={glassScheme(background)}
+          tintColor={
+            colors.glassTint ??
+            (glassScheme(background) === 'dark' ? withAlpha(background, 0.6) : undefined)
+          }
+          style={StyleSheet.absoluteFill}
+        />
+      ) : (
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, fillStyle]} />
+      )}
       <TabList style={styles.bar}>
         <Mark color={activeTint} />
         {tabs.map((tab) => (
@@ -184,6 +214,25 @@ export function TintedIcons({
       </TabList>
     </TabBarRoot>
   );
+}
+
+/**
+ * The glass's scheme from the bar colour it replaces: light glass under a light bar (dark ink),
+ * dark glass under a dark one, so icons and labels keep their contrast.
+ */
+function glassScheme(background: string): 'light' | 'dark' {
+  const value = processColor(background);
+  if (typeof value !== 'number') return 'dark';
+  const luma =
+    0.299 * ((value >>> 16) & 255) + 0.587 * ((value >>> 8) & 255) + 0.114 * (value & 255);
+  return luma > 140 ? 'light' : 'dark';
+}
+
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const v = processColor(color);
+  if (typeof v !== 'number') return color;
+  return `rgba(${(v >>> 16) & 255}, ${(v >>> 8) & 255}, ${v & 255}, ${alpha})`;
 }
 
 /** An old grey fading out over the new one. */

@@ -1,10 +1,13 @@
 /**
  * Sticker Tiles: a teal bar of sticker icons with bold labels. The active tab
  * sits on a light tile that slides between tabs; badges are red dots.
+ * Glass is opt-in: `material="glass"` (or `"auto"`) turns the teal bar into dark Liquid Glass
+ * on iOS 26 (expo-glass-effect), under the same tile; the default stays the solid bar.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-import { StyleSheet, Text, View } from 'react-native';
+import { processColor, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
 import {
   TabBarRoot,
@@ -27,24 +30,54 @@ const defaultColors = {
   badge: '#ff4d57',
   /** The ring round the badge dot. */
   badgeRing: '#ffffff',
+  /**
+   * Tint over the Liquid Glass (iOS 26), when `material` asks for glass. Unset, `background`
+   * at 60%, so the bar keeps its teal and the white labels their contrast over light screens
+   * (the glass follows what is behind it); `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type StickerTilesColors = typeof defaultColors;
 
 export interface StickerTilesProps {
   colors?: Partial<StickerTilesColors>;
+  /**
+   * The bar's surface: `'solid'` (the teal bar it copies), `'glass'` (Liquid Glass, iOS 26),
+   * or `'auto'` (glass where the system has it, solid elsewhere). Default `'solid'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /** Label font, e.g. a rounded bold sans. Default: system font, weight 700. */
   fontFamily?: string;
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
 
-export function StickerTiles({ colors: custom, fontFamily, haptics = true }: StickerTilesProps) {
+export function StickerTiles({
+  colors: custom,
+  material = 'solid',
+  fontFamily,
+  haptics = true,
+}: StickerTilesProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const { tabs } = useTabBar();
   return (
-    <TabBarRoot placement="docked" style={[styles.dock, { backgroundColor: colors.background }]}>
-      <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
+    <TabBarRoot
+      placement="docked"
+      style={glass ? styles.dock : [styles.dock, { backgroundColor: colors.background }]}
+    >
+      {glass ? (
+        // The glass fills the bar and the home-indicator area under it, as the colour did.
+        <GlassView
+          pointerEvents="none"
+          glassEffectStyle="regular"
+          colorScheme="dark"
+          tintColor={colors.glassTint ?? withAlpha(colors.background, 0.6)}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
+      <TabList style={glass ? styles.bar : [styles.bar, { backgroundColor: colors.background }]}>
         <TabIndicator
           inset={{ x: 0, y: 3.9 }}
           style={[styles.tile, { backgroundColor: colors.tile }]}
@@ -113,6 +146,13 @@ const badgeOut = FadeOut.duration(BADGE_FADE_MS)
 
 /** The traced stickers' 40-unit box, in points, at the reference's scale. */
 const ICON = 33.5;
+
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const v = processColor(color);
+  if (typeof v !== 'number') return color;
+  return `rgba(${(v >>> 16) & 255}, ${(v >>> 8) & 255}, ${v & 255}, ${alpha})`;
+}
 
 const styles = StyleSheet.create({
   // Docked like the app it comes from: full width and flush with the bottom edge, with the

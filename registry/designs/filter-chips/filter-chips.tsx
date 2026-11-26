@@ -27,10 +27,14 @@
  * circles; everything moves by transforms and opacity on the UI thread, on `tabcnSpring` in
  * step with the panel's own slide, so nothing is laid out per frame. With "reduce motion" on,
  * it is all instant. `colors.surface` must be opaque: the card's pieces overlap. Not drawn as
- * a rail: on a tablet rail, panels aren't drawn.
+ * a rail: on a tablet rail, panels aren't drawn. On iOS 26 the strip, the round buttons and the
+ * card are dark Liquid Glass (`material`, default `'auto'`): the card is then one glass view laid
+ * out to the growing shape each frame (glass can't be stretched), which takes over from the
+ * capsule's own glass as the card leaves the strip; `material="solid"` keeps the dark fill.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import {
   type ComponentRef,
@@ -49,6 +53,7 @@ import {
   type NativeSyntheticEvent,
   Platform,
   Pressable,
+  processColor,
   ScrollView,
   StyleSheet,
   Text,
@@ -63,11 +68,15 @@ import Animated, {
   interpolate,
   LinearTransition,
   ReduceMotion,
+  runOnJS,
   type SharedValue,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
+  useReducedMotion,
   useSharedValue,
   withSpring,
+  withTiming,
   ZoomIn,
   ZoomOut,
 } from 'react-native-reanimated';
@@ -86,7 +95,8 @@ import { CrossIcon, type FilterIconProps, SlidersIcon } from './filter-chips-ico
 const defaultColors = {
   /**
    * The strip, the round buttons, the sheet and the shape that grows between them. Must be
-   * opaque: the shape is drawn from overlapping pieces.
+   * opaque: the shape is drawn from overlapping pieces. Over Liquid Glass it only rings the
+   * round button's dot.
    */
   surface: '#17171b',
   /** Clear's fill. */
@@ -105,10 +115,15 @@ const defaultColors = {
   chosen: 'rgba(92, 178, 255, 0.14)',
   /** Around options not chosen. */
   optionBorder: 'rgba(255, 255, 255, 0.16)',
-  /** The card's hairline edge. */
+  /** The card's hairline edge. Not drawn over Liquid Glass. */
   rim: 'rgba(255, 255, 255, 0.08)',
   /** Over the screen behind the open card, on top of the blur. */
   backdrop: 'rgba(12, 12, 16, 0.22)',
+  /**
+   * Tint over the Liquid Glass (iOS 26). Unset, `surface` at 60%, so the light labels and glyphs
+   * keep their contrast over light screens; `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type FilterChipsColors = typeof defaultColors;
@@ -177,6 +192,12 @@ export interface FilterChipsProps {
    * blurring there is costly and uneven). Default true.
    */
   blur?: boolean;
+  /**
+   * The strip's, round buttons' and card's surface: `'glass'` (Liquid Glass, iOS 26), `'solid'`
+   * (the opaque `colors.surface` fill with a soft shadow), or `'auto'` (glass where the system
+   * has it, solid elsewhere). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
 }
 
 /** Whether the backdrop blurs: iOS and the web (CSS backdrop-filter); Android dims only. */
@@ -189,6 +210,8 @@ const STRIP_SHADOW = '0 4px 14px rgba(0, 0, 0, 0.18)';
 const GAP = 8;
 /** Between the round buttons and the capsule. */
 const STRIP_GAP = 6;
+/** How long a round button's glass takes to come or go, in seconds. */
+const GLASS_FADE = 0.2;
 /** The sheet's corner radius; the corner circles are drawn this size and scaled. */
 const RADIUS = 26;
 /** Side of the unit square the bands are scaled from. */
@@ -300,8 +323,14 @@ function Filters({
   colors: custom,
   labels: customLabels,
   haptics = true,
+  material = 'auto',
 }: Omit<FilterChipsProps, 'initialState' | 'blur'> & { id: string; tuck: number }) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
+  // Glass follows the screen behind it and turns near-white over a light one: the dark surface
+  // goes with it, so the light labels keep their contrast.
+  const glassTint = colors.glassTint ?? withAlpha(colors.surface, 0.6);
+  const reduceMotion = useReducedMotion();
   const labels = { ...defaultLabels, ...customLabels };
   const panel = useTabPanel(id);
   const open = panel.state === 'open';
@@ -339,6 +368,37 @@ function Filters({
   const contentHeight = Math.max(peekBlock, ...views.map((key) => (heights[key] ?? 0) + below));
   const ready = width > 0 && views.every((key) => (heights[key] ?? 0) > 0);
   const appliedCount = groups.filter((group) => (value[group.id] ?? []).length > 0).length;
+
+  // With glass, where the motion is: 0 at rest, 1 while the strip shows (it fades over p 0.1 to
+  // 0), 2 beyond. Glass can't fade, so it is switched on and off at these points instead.
+  const [phase, setPhase] = useState(0);
+  useAnimatedReaction(
+    () => {
+      if (!glass) return 0;
+      const p = progress.value;
+      return p < 0.002 ? 0 : p < 0.1 ? 1 : 2;
+    },
+    (next, previous) => {
+      if (next !== previous) runOnJS(setPhase)(next);
+    },
+  );
+  // The capsule's glass at rest; the card's glass from the moment it opens until it is back.
+  // Both are at the capsule's frame when they swap, so the swap doesn't show.
+  const capsuleGlass = !open && phase === 0;
+  // The round buttons' glass comes and goes with the strip's content.
+  const roundGlass = !open && phase < 2;
+  // With glass, the clear-all button stays a moment after the last filter is cleared, while
+  // its glass goes (glass can't fade out with the button).
+  const showClear = appliedCount > 0;
+  const [clearMounted, setClearMounted] = useState(showClear);
+  useEffect(() => {
+    if (showClear) {
+      setClearMounted(true);
+      return;
+    }
+    const timer = setTimeout(() => setClearMounted(false), reduceMotion ? 0 : GLASS_FADE * 1000);
+    return () => clearTimeout(timer);
+  }, [showClear, reduceMotion]);
 
   const haptic = () => {
     if (haptics) Haptics.selectionAsync();
@@ -466,6 +526,13 @@ function Filters({
     opacity: interpolate(progress.value, [0, 0.1], [1, 0], Extrapolation.CLAMP),
     transform: [{ translateY: progress.value * lift.value }],
   }));
+  // With glass the strip only moves; its content fades on its own, over its glass.
+  const stripMove = useAnimatedStyle(() => ({
+    transform: [{ translateY: progress.value * lift.value }],
+  }));
+  const stripFade = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.1], [1, 0], Extrapolation.CLAMP),
+  }));
 
   const chipRef = (key: string) => (node: ViewRef | null) => {
     chipRefs.current.set(key, node);
@@ -478,6 +545,77 @@ function Filters({
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     scrollX.current = event.nativeEvent.contentOffset.x;
   };
+
+  const appliedDot =
+    appliedCount > 0 ? (
+      <Animated.View
+        entering={ZoomIn.duration(220).reduceMotion(ReduceMotion.System)}
+        exiting={ZoomOut.duration(160).reduceMotion(ReduceMotion.System)}
+        style={[styles.dot, { backgroundColor: colors.accent, borderColor: colors.surface }]}
+      />
+    ) : null;
+
+  // Laid out left to right (from the right end when the app is right to left), so scroll
+  // offsets and chip positions are physical on every platform.
+  const chipRow = (
+    <ScrollView
+      ref={scrollRef}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      scrollEventThrottle={16}
+      onScroll={onScroll}
+      onScrollBeginDrag={() => {
+        userScrolled.current = true;
+      }}
+      onLayout={(event) => {
+        viewport.current = event.nativeEvent.layout.width;
+        toStart();
+        follow();
+      }}
+      onContentSizeChange={(w) => {
+        rowWidth.current = w;
+        toStart();
+        follow();
+      }}
+      style={styles.ltr}
+      contentContainerStyle={[styles.chips, rtl ? styles.reverse : null]}
+    >
+      {groups.map((group, index) => {
+        const summary = summaryOf(group, value, labels);
+        const tint = summary ? colors.accent : colors.foreground;
+        const Icon = group.icon;
+        return (
+          <Fragment key={group.id}>
+            {index > 0 ? (
+              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+            ) : null}
+            <Pressable
+              ref={chipRef(group.id)}
+              onLayout={chipLayout(group.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`${group.label}, ${summary ?? labels.any}`}
+              accessibilityState={{ expanded: open && view === group.id }}
+              onPress={() => openView(group.id)}
+              style={({ pressed: down }) => [
+                styles.chip,
+                rtl ? styles.rtl : null,
+                { opacity: down ? 0.6 : 1 },
+              ]}
+            >
+              {Icon ? <Icon color={tint} size={17} /> : null}
+              <Text
+                numberOfLines={1}
+                maxFontSizeMultiplier={1.3}
+                style={[styles.chipText, { color: tint }]}
+              >
+                {summary ?? group.label}
+              </Text>
+            </Pressable>
+          </Fragment>
+        );
+      })}
+    </ScrollView>
+  );
 
   return (
     <View
@@ -492,7 +630,16 @@ function Filters({
         accessibilityElementsHidden
         style={[StyleSheet.absoluteFill, styles.ltr]}
       >
-        {ready ? (
+        {ready && glass ? (
+          <GlassMorph
+            progress={progress}
+            lift={lift}
+            from={strip}
+            to={card}
+            shown={!capsuleGlass}
+            tint={glassTint}
+          />
+        ) : ready ? (
           <Morph progress={progress} lift={lift} from={strip} to={card} color={colors.surface} />
         ) : null}
       </View>
@@ -501,7 +648,7 @@ function Filters({
         pointerEvents={open ? 'none' : 'box-none'}
         importantForAccessibility={open ? 'no-hide-descendants' : 'auto'}
         accessibilityElementsHidden={open}
-        style={[styles.strip, stripStyle]}
+        style={[styles.strip, glass ? stripMove : stripStyle]}
       >
         <PressableScale
           ref={chipRef(ALL)}
@@ -514,16 +661,24 @@ function Filters({
           }
           accessibilityState={{ expanded: open && view === ALL }}
           onPress={() => openView(ALL)}
-          style={[styles.round, { backgroundColor: colors.surface }]}
+          // Glass isn't scaled: it answers the press itself.
+          scale={glass ? 1 : undefined}
+          style={glass ? styles.roundGlass : [styles.round, { backgroundColor: colors.surface }]}
         >
-          <SlidersIcon color={colors.foreground} size={20} />
-          {appliedCount > 0 ? (
-            <Animated.View
-              entering={ZoomIn.duration(220).reduceMotion(ReduceMotion.System)}
-              exiting={ZoomOut.duration(160).reduceMotion(ReduceMotion.System)}
-              style={[styles.dot, { backgroundColor: colors.accent, borderColor: colors.surface }]}
-            />
-          ) : null}
+          {glass ? (
+            <>
+              <RoundGlass shown={roundGlass} tint={glassTint} reduceMotion={reduceMotion} />
+              <Animated.View style={[styles.roundContent, stripFade]}>
+                <SlidersIcon color={colors.foreground} size={20} />
+                {appliedDot}
+              </Animated.View>
+            </>
+          ) : (
+            <>
+              <SlidersIcon color={colors.foreground} size={20} />
+              {appliedDot}
+            </>
+          )}
         </PressableScale>
 
         <Animated.View
@@ -531,72 +686,54 @@ function Filters({
           onLayout={(event) => {
             const { x, width: w } = event.nativeEvent.layout;
             capsule.current = { x, w };
+            // The card's glass starts from the capsule's frame, so keep it current at rest.
+            if (glass && progress.value === 0) strip.value = capsuleRect();
             follow();
           }}
-          style={[styles.capsule, { backgroundColor: colors.surface }]}
+          style={
+            glass ? styles.capsuleGlass : [styles.capsule, { backgroundColor: colors.surface }]
+          }
         >
-          {/* Laid out left to right (from the right end when the app is right to left), so
-              scroll offsets and chip positions are physical on every platform. */}
-          <ScrollView
-            ref={scrollRef}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            scrollEventThrottle={16}
-            onScroll={onScroll}
-            onScrollBeginDrag={() => {
-              userScrolled.current = true;
-            }}
-            onLayout={(event) => {
-              viewport.current = event.nativeEvent.layout.width;
-              toStart();
-              follow();
-            }}
-            onContentSizeChange={(w) => {
-              rowWidth.current = w;
-              toStart();
-              follow();
-            }}
-            style={styles.ltr}
-            contentContainerStyle={[styles.chips, rtl ? styles.reverse : null]}
-          >
-            {groups.map((group, index) => {
-              const summary = summaryOf(group, value, labels);
-              const tint = summary ? colors.accent : colors.foreground;
-              const Icon = group.icon;
-              return (
-                <Fragment key={group.id}>
-                  {index > 0 ? (
-                    <View style={[styles.divider, { backgroundColor: colors.divider }]} />
-                  ) : null}
-                  <Pressable
-                    ref={chipRef(group.id)}
-                    onLayout={chipLayout(group.id)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${group.label}, ${summary ?? labels.any}`}
-                    accessibilityState={{ expanded: open && view === group.id }}
-                    onPress={() => openView(group.id)}
-                    style={({ pressed: down }) => [
-                      styles.chip,
-                      rtl ? styles.rtl : null,
-                      { opacity: down ? 0.6 : 1 },
-                    ]}
-                  >
-                    {Icon ? <Icon color={tint} size={17} /> : null}
-                    <Text
-                      numberOfLines={1}
-                      maxFontSizeMultiplier={1.3}
-                      style={[styles.chipText, { color: tint }]}
-                    >
-                      {summary ?? group.label}
-                    </Text>
-                  </Pressable>
-                </Fragment>
-              );
-            })}
-          </ScrollView>
+          {glass ? (
+            <GlassView
+              glassEffectStyle={capsuleGlass ? 'regular' : 'none'}
+              tintColor={glassTint}
+              colorScheme="dark"
+              style={[StyleSheet.absoluteFill, styles.stripGlassFill]}
+            />
+          ) : null}
+          {glass ? (
+            <Animated.View style={[styles.fill, stripFade]}>{chipRow}</Animated.View>
+          ) : (
+            chipRow
+          )}
         </Animated.View>
 
-        {appliedCount > 0 ? (
+        {glass ? (
+          clearMounted ? (
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel={labels.clearAll}
+              onPress={clearAll}
+              disabled={!showClear}
+              accessibilityElementsHidden={!showClear}
+              importantForAccessibility={showClear ? 'auto' : 'no-hide-descendants'}
+              scale={1}
+              style={styles.roundGlass}
+            >
+              <RoundGlass
+                shown={roundGlass && showClear}
+                tint={glassTint}
+                reduceMotion={reduceMotion}
+              />
+              <Animated.View style={[styles.roundContent, stripFade]}>
+                <Appear shown={showClear}>
+                  <CrossIcon color={colors.foreground} size={20} />
+                </Appear>
+              </Animated.View>
+            </PressableScale>
+          ) : null
+        ) : appliedCount > 0 ? (
           <Animated.View
             entering={FadeIn.duration(200).reduceMotion(ReduceMotion.System)}
             exiting={FadeOut.duration(140).reduceMotion(ReduceMotion.System)}
@@ -629,6 +766,7 @@ function Filters({
             }
             title={group ? group.label : labels.allFilters}
             colors={colors}
+            glass={glass}
             labels={labels}
             canClear={canClear}
             changed={changed}
@@ -652,7 +790,8 @@ function Filters({
                     </View>
                   ))}
                 </ScrollView>
-                <EdgeFade color={colors.surface} />
+                {/* Over glass there is no fill to fade into. */}
+                {glass ? null : <EdgeFade color={colors.surface} />}
               </View>
             )}
           </SheetBody>
@@ -677,6 +816,7 @@ function SheetBody({
   onHeight,
   title,
   colors,
+  glass,
   labels,
   canClear,
   changed,
@@ -693,6 +833,7 @@ function SheetBody({
   onHeight: (height: number) => void;
   title: string;
   colors: FilterChipsColors;
+  glass: boolean;
   labels: FilterChipsLabels;
   canClear: boolean;
   changed: boolean;
@@ -722,8 +863,11 @@ function SheetBody({
       style={[styles.body, { bottom }, clipStyle]}
     >
       <Animated.View style={[styles.bodyContent, contentStyle]}>
-        {/* A hairline edge, so the dark card reads as a surface over a dark screen too. */}
-        <View pointerEvents="none" style={[styles.rim, { borderColor: colors.rim }]} />
+        {/* A hairline edge, so the dark card reads as a surface over a dark screen too. Glass
+            brings its own edge. */}
+        {glass ? null : (
+          <View pointerEvents="none" style={[styles.rim, { borderColor: colors.rim }]} />
+        )}
         <Text
           accessibilityRole="header"
           maxFontSizeMultiplier={1.6}
@@ -888,6 +1032,89 @@ function Morph({
   );
 }
 
+/**
+ * The growing shape over Liquid Glass: one glass view laid out to the same frame as `Morph`'s
+ * each frame (glass stretched with a transform draws its edge stretched). A fixed corner radius
+ * (the strip's) stands in for `Morph`'s 24 to 26 pt. Shown, not faded: glass doesn't fade.
+ */
+function GlassMorph({
+  progress,
+  lift,
+  from,
+  to,
+  shown,
+  tint,
+}: {
+  progress: SharedValue<number>;
+  lift: SharedValue<number>;
+  from: SharedValue<Rect>;
+  to: SharedValue<Rect>;
+  shown: boolean;
+  tint: string | undefined;
+}) {
+  const frame = useAnimatedStyle(() => {
+    const p = progress.value;
+    const a = from.value;
+    const b = to.value;
+    const across = widen(p);
+    const w = lerp(a.w, b.w, across);
+    const h = lerp(a.h, b.h, rise(p));
+    const bottom = a.y + a.h + p * lift.value;
+    return { left: lerp(a.x, b.x, across), top: bottom - h, width: w, height: h };
+  });
+  return (
+    <Animated.View style={[styles.glassMorph, frame]}>
+      <GlassView
+        glassEffectStyle={shown ? 'regular' : 'none'}
+        tintColor={tint}
+        colorScheme="dark"
+        style={[StyleSheet.absoluteFill, styles.stripGlassFill]}
+      />
+    </Animated.View>
+  );
+}
+
+/** A round button's glass: it comes and goes with the strip's content, never faded. */
+function RoundGlass({
+  shown,
+  tint,
+  reduceMotion,
+}: {
+  shown: boolean;
+  tint: string | undefined;
+  reduceMotion: boolean;
+}) {
+  // Mounted clear, then shown, so a new button's glass forms rather than popping in.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return (
+    <GlassView
+      glassEffectStyle={{
+        style: shown && mounted ? 'regular' : 'none',
+        animate: !reduceMotion,
+        animationDuration: GLASS_FADE,
+      }}
+      tintColor={tint}
+      colorScheme="dark"
+      isInteractive
+      style={[StyleSheet.absoluteFill, styles.stripGlassFill]}
+    />
+  );
+}
+
+/** Fades its content in once mounted and out when `shown` turns false. */
+function Appear({ shown, children }: { shown: boolean; children: ReactNode }) {
+  const opacity = useSharedValue(0);
+  useEffect(() => {
+    opacity.value = withTiming(shown ? 1 : 0, {
+      duration: GLASS_FADE * 1000,
+      reduceMotion: ReduceMotion.System,
+    });
+  }, [shown, opacity]);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return <Animated.View style={style}>{children}</Animated.View>;
+}
+
 type Shape = SharedValue<Rect & { r: number }>;
 
 function Band({ shape, across, color }: { shape: Shape; across: boolean; color: string }) {
@@ -936,6 +1163,13 @@ function Corner({
   return <Animated.View style={[styles.corner, { backgroundColor: color }, style]} />;
 }
 
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const value = processColor(color);
+  if (typeof value !== 'number') return color;
+  return `rgba(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255}, ${alpha})`;
+}
+
 /**
  * A fixed layout direction. React Native Web spells it `writingDirection` (CSS `direction`): in
  * development it drops `direction` with an error, so the web would follow the app's direction.
@@ -974,6 +1208,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     boxShadow: STRIP_SHADOW,
   },
+  // Over Liquid Glass: no fill and no drawn shadow (glass brings its own depth).
+  roundGlass: { width: STRIP_H, height: STRIP_H },
+  roundContent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stripGlassFill: { borderRadius: STRIP_H / 2 },
+  glassMorph: { position: 'absolute' },
+  fill: { flex: 1 },
   dot: {
     position: 'absolute',
     top: 11,
@@ -989,6 +1237,12 @@ const styles = StyleSheet.create({
     borderRadius: STRIP_H / 2,
     overflow: 'hidden',
     boxShadow: STRIP_SHADOW,
+  },
+  capsuleGlass: {
+    flex: 1,
+    height: STRIP_H,
+    borderRadius: STRIP_H / 2,
+    overflow: 'hidden',
   },
   chips: { alignItems: 'center', paddingHorizontal: 4 },
   chip: {

@@ -9,6 +9,8 @@
  * fill. Android gets a near-opaque fill instead, with no blur, so it reads the same anywhere.
  * Changed from the reference for clarity: the card was a near-opaque fill with no blur on every
  * platform; it now blurs on iOS and the web, so the screen shows through softly behind it.
+ * On iOS 26 the card is dark Liquid Glass (expo-glass-effect) by default instead; `material`
+ * picks one or the other.
  *
  * Place it once under the `TabBarProvider` (beside `<Tabs>`, so it stays across tabs) and
  * drive it with `useTabPanel(id)`: `peek()` when a track starts, `hide()` when it stops.
@@ -18,6 +20,7 @@
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useEffect } from 'react';
 // 'react-native-tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
@@ -28,6 +31,7 @@ import {
   type ImageSourcePropType,
   Platform,
   Pressable,
+  processColor,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -73,6 +77,11 @@ const defaultColors = {
   control: '#ffffff',
   /** The glyph on the big play button. */
   onControl: '#151517',
+  /**
+   * Tint over the Liquid Glass (iOS 26). Unset, `background`'s colour at 60%, so the white text
+   * and glyphs keep their contrast over light screens; `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type MiniPlayerColors = typeof defaultColors;
@@ -147,6 +156,12 @@ export interface MiniPlayerProps {
   labels?: Partial<MiniPlayerLabels>;
   /** Corner radius of the card. Default 24. */
   radius?: number;
+  /**
+   * The card's surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (a frosted blur under
+   * `background`, a near-opaque fill on Android), or `'auto'` (glass where the system has it,
+   * the blur or fill elsewhere). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /** Selection haptic on every button and on tapping the strip. Default true. */
   haptics?: boolean;
 }
@@ -174,10 +189,12 @@ function Player({
   colors: custom,
   labels: customLabels,
   radius = 24,
+  material = 'auto',
   haptics = true,
   tuck,
 }: Omit<MiniPlayerProps, 'initialState'> & { id: string; tuck: number }) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const labels = { ...defaultLabels, ...customLabels };
   const panel = useTabPanel(id);
   const open = panel.state === 'open';
@@ -202,13 +219,32 @@ function Player({
 
   return (
     <PanelDragArea panel={id}>
-      <View style={[styles.card, { borderColor: colors.border, borderRadius: radius }]}>
-        {/* The blur (iOS, web), then the fill over it; the card's corners clip both. */}
-        {BLUR ? <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} /> : null}
-        <View
-          pointerEvents="none"
-          style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
-        />
+      <View
+        style={[
+          styles.card,
+          glass ? styles.glassCard : { borderColor: colors.border },
+          { borderRadius: radius },
+        ]}
+      >
+        {glass ? (
+          // Dark glass under the light text, with no drawn edge: the glass has its own.
+          <GlassView
+            pointerEvents="none"
+            glassEffectStyle="regular"
+            colorScheme="dark"
+            tintColor={colors.glassTint ?? withAlpha(colors.background, 0.6)}
+            style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
+          />
+        ) : (
+          <>
+            {/* The blur (iOS, web), then the fill over it; the card's corners clip both. */}
+            {BLUR ? <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} /> : null}
+            <View
+              pointerEvents="none"
+              style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
+            />
+          </>
+        )}
         <View style={{ height: STRIP + tuck }}>
           {/* Peek strip: the visible part of the card while the panel rests above the bar. */}
           <Animated.View
@@ -364,6 +400,13 @@ function Player({
  * the top of the screen: the artwork takes what height is left, up to 300 pt, and is dropped
  * when less than MIN_ART is left (a phone in landscape, or very large text).
  */
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const value = processColor(color);
+  if (typeof value !== 'number') return color;
+  return `rgba(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255}, ${alpha})`;
+}
+
 function useOpenArtSize(hasTimes: boolean, tuck: number) {
   const { height, fontScale } = useWindowDimensions();
   const { insets } = useTabBar();
@@ -571,6 +614,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
+  glassCard: { borderWidth: 0 },
   strip: {
     position: 'absolute',
     top: 0,

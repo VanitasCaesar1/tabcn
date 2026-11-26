@@ -2,11 +2,14 @@
  * Solid Dark: a black bar with icons only. On focus the active icon (the same glyph, white)
  * fades in over the dimmed one, which stays put underneath so the glyph never dims mid-change. Nothing
  * moves or scales: there is no indicator, and a press only gives a haptic tick.
+ * Glass is opt-in: `material="glass"` (or `"auto"`) turns the black bar into dark Liquid Glass
+ * on iOS 26 (expo-glass-effect); the default stays the solid bar.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { processColor, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -35,23 +38,48 @@ const defaultColors = {
   badge: '#ff453a',
   /** A count badge's number. */
   badgeText: '#ffffff',
+  /**
+   * Tint over the Liquid Glass (iOS 26), when `material` asks for glass. Unset, `background`
+   * at 60%, so the light icons keep their contrast over light screens (the glass follows what
+   * is behind it); `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type SolidDarkColors = typeof defaultColors;
 
 export interface SolidDarkProps {
   colors?: Partial<SolidDarkColors>;
+  /**
+   * The bar's surface: `'solid'` (the black bar it copies), `'glass'` (Liquid Glass, iOS 26),
+   * or `'auto'` (glass where the system has it, solid elsewhere). Default `'solid'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
 
-export function SolidDark({ colors: custom, haptics = true }: SolidDarkProps) {
+export function SolidDark({ colors: custom, material = 'solid', haptics = true }: SolidDarkProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
 
   return (
-    <TabBarRoot placement="docked" style={[styles.dock, { backgroundColor: colors.background }]}>
-      <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
+    <TabBarRoot
+      placement="docked"
+      style={glass ? styles.dock : [styles.dock, { backgroundColor: colors.background }]}
+    >
+      {glass ? (
+        // The glass fills the bar and the home-indicator area under it, as the colour did.
+        <GlassView
+          pointerEvents="none"
+          glassEffectStyle="regular"
+          colorScheme="dark"
+          tintColor={colors.glassTint ?? withAlpha(colors.background, 0.6)}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
+      <TabList style={glass ? styles.bar : [styles.bar, { backgroundColor: colors.background }]}>
         {tabs.map((tab) => (
           <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
         ))}
@@ -129,6 +157,13 @@ function Tab({
       </View>
     </TabButton>
   );
+}
+
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const v = processColor(color);
+  if (typeof v !== 'number') return color;
+  return `rgba(${(v >>> 16) & 255}, ${(v >>> 8) & 255}, ${v & 255}, ${alpha})`;
 }
 
 const styles = StyleSheet.create({

@@ -172,6 +172,41 @@ test('every panel has a smoke test', () => {
   expect([...panels].sort()).toEqual([...PANELS_WITH_TESTS].sort());
 });
 
+/**
+ * Designs with the shared `material?: 'auto' | 'glass' | 'solid'` prop
+ * (docs/designs/glass-material.md): glass by default, then opt-in.
+ */
+const MATERIAL_DESIGNS = new Set([
+  'composer-dock',
+  'soft-pill',
+  'gradient-stickers',
+  'scrub-pill',
+  'pill-plus',
+  'segment-search',
+  'search-dock',
+  'button-row',
+  'thumb-arc',
+  'sticker-pills',
+  'glow-glass',
+  'reply-stack',
+  'top-notch',
+  'solid-dark',
+  'outline-dark',
+  'dark-capsule',
+  'badge-dock',
+  'accent-dark',
+  'mono-type',
+  'tile-plus',
+  'offset-plus',
+  'tinted-icons',
+  'live-tabs',
+  'sticker-tiles',
+  'playful-tiles',
+  'center-cta',
+  'chip-rail',
+]);
+const hasMaterial = (id: string) => MATERIAL_DESIGNS.has(id);
+
 // Every bar renders inside gesture handler's root view, as in an app: Scrub Pill and Section
 // Sheet use 'react-native-tabcn/gestures', which needs it.
 
@@ -233,6 +268,33 @@ describe.each(barCases)('%s', (_name, id, position) => {
     await fireEvent.press(last);
     expect(press).toHaveBeenCalledWith(count - 1);
   });
+
+  // Designs with the shared `material` prop (docs/designs/glass-material.md) work with glass
+  // forced on and off. (Under Jest, Expo's native-module mock reports Liquid Glass as available,
+  // so `'auto'` in the tests above already takes the glass path.)
+  (hasMaterial(id) ? it.each(['glass', 'solid'] as const) : it.skip.each(['none']))(
+    'works with material="%s"',
+    async (material) => {
+      if (!Component) return;
+      const { state, press } = makeState(count, 0, iconList, position);
+      await render(
+        <GestureHandlerRootView>
+          <TabBarProvider>
+            <TabBarStateProvider value={state}>
+              <Component onActionPress={jest.fn()} {...REQUIRED_PROPS[id]} material={material} />
+            </TabBarStateProvider>
+          </TabBarProvider>
+        </GestureHandlerRootView>,
+      );
+      await OPEN_TABS[id]?.();
+      const tabs = screen.getAllByRole('tab');
+      expect(tabs).toHaveLength(count);
+      const second = tabs[1];
+      if (!second) throw new Error('expected a second tab');
+      await fireEvent.press(second);
+      expect(press).toHaveBeenCalledWith(1);
+    },
+  );
 
   it('re-renders when the active tab changes', async () => {
     if (!Component) return;
@@ -763,10 +825,11 @@ describe('search-dock', () => {
     return StyleSheet.flatten(home?.props.style).boxShadow;
   };
 
+  // The shadow is the solid tiles' (glass brings its own depth).
   it('lifts its white tiles off a white page with a faint neutral shadow by default', async () => {
     await render(
       <Bar>
-        <SearchDock haptics={false} />
+        <SearchDock haptics={false} material="solid" />
       </Bar>,
     );
     expect(tileShadow()).toBe('0 1px 2px rgba(0, 0, 0, 0.1), 0 4px 16px rgba(0, 0, 0, 0.1)');
@@ -776,7 +839,7 @@ describe('search-dock', () => {
     for (const shadow of [null, 'transparent']) {
       await render(
         <Bar>
-          <SearchDock haptics={false} colors={{ shadow }} />
+          <SearchDock haptics={false} material="solid" colors={{ shadow }} />
         </Bar>,
       );
       expect(tileShadow()).toBeUndefined();

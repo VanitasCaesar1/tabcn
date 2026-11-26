@@ -1,18 +1,28 @@
 /**
  * Reply Stack's glass: the frosted capsule both rows are made of, which narrows as the bar
  * minimizes, and the lens behind the active tab. Drawn once in SVG at their size, so nothing is
- * laid out or measured twice.
+ * laid out or measured twice. With `glass` (the bar's `material`, iOS 26) the capsule is Liquid
+ * Glass instead, laid out to the same shrinking frame.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
+import { GlassView } from 'expo-glass-effect';
 import { useId, useState } from 'react';
-import { I18nManager, Platform, StyleSheet, View, type ViewStyle } from 'react-native';
+import {
+  I18nManager,
+  Platform,
+  processColor,
+  StyleSheet,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import Animated, {
   runOnJS,
   type SharedValue,
   useAnimatedProps,
   useAnimatedReaction,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
 } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
@@ -92,6 +102,13 @@ export function useCapsuleFrame(progress: SharedValue<number> | undefined, shape
  * parent's, is below 1: the screen would show through sharp. So nothing above the blur fades;
  * the blur's strength rises with `presence` and the layers over it (tint, edge, shadow) fade on
  * their own.
+ *
+ * With `glass` it is Liquid Glass (iOS 26) in `tint`'s appearance and `colors.glassTint` (unset:
+ * the dark `fill` at 60% when `tint` is dark, clear when light), with no drawn edge, tint or
+ * shadow: the glass has its own. The glass itself is laid out to the
+ * shrinking frame (never scaled, which would stretch its edge). Glass stops rendering under a
+ * view faded to 0, so with `presence` it comes and goes on its own as `shown` changes, while the
+ * caller fades its content.
  */
 export function Glass({
   colors,
@@ -99,6 +116,8 @@ export function Glass({
   intensity,
   presence,
   progress,
+  glass = false,
+  shown = true,
   ...shape
 }: CapsuleShape & {
   colors: ReplyStackColors;
@@ -106,6 +125,10 @@ export function Glass({
   intensity: number;
   presence?: SharedValue<number>;
   progress?: SharedValue<number>;
+  /** Liquid Glass instead of the blur. */
+  glass?: boolean;
+  /** With `glass` and `presence`: whether the glass is there. Default true. */
+  shown?: boolean;
 }) {
   const { width, height } = shape;
   const rimId = useGradientId('rim');
@@ -143,6 +166,31 @@ export function Glass({
       if (web && next !== previous) runOnJS(setWebProgress)(next);
     },
   );
+  const reduceMotion = useReducedMotion();
+  if (glass) {
+    return (
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, LTR]}>
+        <AnimatedGlassView
+          glassEffectStyle={
+            presence
+              ? {
+                  style: shown ? 'regular' : 'none',
+                  animate: !reduceMotion,
+                  animationDuration: shown ? GLASS_IN : GLASS_OUT,
+                }
+              : 'regular'
+          }
+          colorScheme={tint}
+          // Glass follows the screen behind it: dark glass over a light screen turns near-white,
+          // so the dark tint carries its fill and the light icons keep their contrast.
+          tintColor={
+            colors.glassTint ?? (tint === 'dark' ? withAlpha(colors.fill, 0.6) : undefined)
+          }
+          style={[styles.capsule, { height, borderRadius: radius }, frame]}
+        />
+      </View>
+    );
+  }
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, LTR]}>
       <Animated.View
@@ -242,6 +290,13 @@ export const APP_DIRECTION: ViewStyle = I18nManager.isRTL
     : { direction: 'rtl' }
   : LTR;
 
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const value = processColor(color);
+  if (typeof value !== 'number') return color;
+  return `rgba(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255}, ${alpha})`;
+}
+
 function shadowFor(tint: Tint, color: string) {
   return tint === 'dark'
     ? `0 10px 28px ${color}`
@@ -294,6 +349,10 @@ export function Lens({
 }
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+const AnimatedGlassView = Animated.createAnimatedComponent(GlassView);
+/** The glass coming and going with the reply row, in seconds: its 220 ms rise, its 150 ms sink. */
+const GLASS_IN = 0.22;
+const GLASS_OUT = 0.15;
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
 
 const styles = StyleSheet.create({

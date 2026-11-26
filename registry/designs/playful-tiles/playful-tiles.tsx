@@ -1,8 +1,11 @@
 /**
  * Playful Tiles: a white bar with a colour per tab; a bordered tile slides to
  * the active tab. The tile's pale colours are kept as the reference has them.
+ * Glass is opt-in: `material="glass"` (or `"auto"`) turns the white bar into light Liquid Glass
+ * on iOS 26 (expo-glass-effect), with no drawn shadow; the default stays the solid bar.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
@@ -27,6 +30,8 @@ const defaultColors = {
   badge: '#ff4b4b',
   /** Icon colour for a tab when `tabColors` is empty. */
   tabColor: '#1cb0f6',
+  /** Tint over the Liquid Glass (iOS 26), when `material` asks for glass. Unset, the glass is clear. */
+  glassTint: undefined as string | undefined,
 };
 
 /**
@@ -40,6 +45,11 @@ export type PlayfulTilesColors = typeof defaultColors;
 export interface PlayfulTilesProps {
   colors?: Partial<PlayfulTilesColors>;
   /**
+   * The bar's surface: `'solid'` (the white bar it copies), `'glass'` (Liquid Glass, iOS 26),
+   * or `'auto'` (glass where the system has it, solid elsewhere). Default `'solid'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
+  /**
    * Each tab's icon colour, in tab order; repeats from the start when there are more tabs.
    * Passed to `tabBarIcon` as `color`. This design's own sticker icons keep their colours and
    * ignore it; it is for single-colour icons of your own.
@@ -51,14 +61,31 @@ export interface PlayfulTilesProps {
 
 export function PlayfulTiles({
   colors: custom,
+  material = 'solid',
   tabColors = defaultTabColors,
   haptics = true,
 }: PlayfulTilesProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const { tabs } = useTabBar();
   return (
-    <TabBarRoot placement="docked" style={[styles.dock, { backgroundColor: colors.background }]}>
-      <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
+    <TabBarRoot
+      placement="docked"
+      style={
+        glass ? styles.dock : [styles.dock, styles.shadow, { backgroundColor: colors.background }]
+      }
+    >
+      {glass ? (
+        // The glass fills the bar and the home-indicator area under it, as the colour did.
+        <GlassView
+          pointerEvents="none"
+          glassEffectStyle="regular"
+          colorScheme="light"
+          tintColor={colors.glassTint}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
+      <TabList style={glass ? styles.bar : [styles.bar, { backgroundColor: colors.background }]}>
         {/* The tile is its measured size (a tab less 9 pt a side, on a 402 pt phone with six
             tabs), centred on the tab and narrower only where the tab is: sized from the tab,
             it became a slab with two tabs or on an iPad, and narrower than the icon with seven. */}
@@ -129,8 +156,9 @@ const styles = StyleSheet.create({
   // background running under the home indicator. Side padding keeps the reference's tab spacing.
   dock: {
     paddingHorizontal: 16,
-    boxShadow: '0 -6px 24px rgba(0, 0, 0, 0.08)',
   },
+  // Only on the solid bar: glass brings its own depth.
+  shadow: { boxShadow: '0 -6px 24px rgba(0, 0, 0, 0.08)' },
   bar: {
     height: 66,
   },

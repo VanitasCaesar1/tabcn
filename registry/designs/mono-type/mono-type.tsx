@@ -5,6 +5,8 @@
  * magenta). Nothing moves, grows or fills: the colours change on tabcnTiming and that's it.
  * The accent icon fades in over an always-opaque plain copy, so the icon never dims mid-way;
  * the badge dot fades (no scale pop); presses show no dim or scale; reduce motion is instant.
+ * Glass is opt-in: `material="glass"` (or `"auto"`) turns the white bar into light Liquid Glass
+ * on iOS 26 (expo-glass-effect), under the same inked rule; the default stays the solid bar.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  *
  * Measured on the app's App Store screenshots (iPhone 17 Pro, 402 pt wide, 2.211 px/pt):
@@ -13,6 +15,7 @@
  * the screen ends 93.5 pt down (the labels sit 9 pt into the home-indicator area).
  * Tabs are 76.2 pt apart with a 10.5 pt inset at each side.
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
@@ -45,12 +48,19 @@ const defaultColors = {
   foreground: '#2a2a2c',
   /** The badge dot. */
   badge: '#b615a3',
+  /** Tint over the Liquid Glass (iOS 26), when `material` asks for glass. Unset, the glass is clear. */
+  glassTint: undefined as string | undefined,
 };
 
 export type MonoTypeColors = typeof defaultColors;
 
 export interface MonoTypeProps {
   colors?: Partial<MonoTypeColors>;
+  /**
+   * The bar's surface: `'solid'` (the white bar it copies), `'glass'` (Liquid Glass, iOS 26),
+   * or `'auto'` (glass where the system has it, solid elsewhere). Default `'solid'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /**
    * Label font. The app uses a regular-weight grotesque mono (IBM Plex Mono is close:
    * load `IBMPlexMono_400Regular` and pass it here). Default: Menlo on iOS, monospace elsewhere.
@@ -80,20 +90,36 @@ const RULE_PATH =
 
 const mono = Platform.select({ ios: 'Menlo', default: 'monospace' });
 
-export function MonoType({ colors: custom, fontFamily, haptics = true }: MonoTypeProps) {
+export function MonoType({
+  colors: custom,
+  material = 'solid',
+  fontFamily,
+  haptics = true,
+}: MonoTypeProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const { tabs, insets } = useTabBar();
   const bottom = Math.max(insets.bottom - INSET_OVERLAP, MIN_BOTTOM);
   return (
     <TabBarRoot
       placement="docked"
       style={{
-        backgroundColor: colors.background,
+        backgroundColor: glass ? undefined : colors.background,
         paddingBottom: bottom,
         paddingLeft: insets.left,
         paddingRight: insets.right,
       }}
     >
+      {glass ? (
+        // The glass fills the bar and the home-indicator area under it, as the colour did.
+        <GlassView
+          pointerEvents="none"
+          glassEffectStyle="regular"
+          colorScheme="light"
+          tintColor={colors.glassTint}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
       <View style={styles.rule} pointerEvents="none">
         <Svg
           width="100%"

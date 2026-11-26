@@ -14,8 +14,11 @@
  * them. Nothing scales, lifts or bounces; presses show no dim or shrink. With Reduce Motion
  * on, the swap is instant.
  *
- * Not glass: the buttons are solid white. Built on tabcn: https://github.com/VanitasCaesar1/tabcn
+ * On iOS 26 each button is light Liquid Glass (expo-glass-effect) with no drawn border or shadow;
+ * elsewhere, or with `material="solid"`, they are solid white. Choose with `material`.
+ * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import {
@@ -56,13 +59,22 @@ const defaultColors = {
   scrim: '#ffffff',
   /** Not shown in the app's screenshots; black with white text, in Uber's colours. */
   badge: '#000000',
+  /** Badge count text. */
   badgeText: '#ffffff',
+  /** Tint over the Liquid Glass (iOS 26). Unset, the glass is clear. */
+  glassTint: undefined as string | undefined,
 };
 
 export type ButtonRowColors = typeof defaultColors;
 
 export interface ButtonRowProps {
   colors?: Partial<ButtonRowColors>;
+  /**
+   * The buttons' surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (white with a hairline
+   * border and a soft shadow), or `'auto'` (glass where the system has it, solid elsewhere).
+   * Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /**
    * Index of the tab drawn as the wide pill, with its label beside its icon (the app's
    * Search). Default: the middle tab, index 2 of 5. Pass -1 to draw every tab as a circle.
@@ -132,6 +144,7 @@ const scrimStops = (button: number): readonly (readonly [number, number])[] => [
 
 export function ButtonRow({
   colors: custom,
+  material = 'auto',
   wideTab,
   fontFamily,
   scrim = true,
@@ -156,11 +169,16 @@ export function ButtonRow({
     Platform.OS === 'ios' && insets.bottom > 0
       ? insets.bottom + ABOVE_INSET
       : insets.bottom + MIN_BOTTOM;
-  const surface: ViewStyle = {
-    backgroundColor: colors.background,
-    borderColor: colors.border,
-    boxShadow: `0 3px 14px ${colors.shadow}`,
-  };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
+  // Over glass the buttons draw no fill, border or shadow (same outer size: the border was
+  // inside it); a GlassView in each is the surface.
+  const surface: ViewStyle = glass
+    ? styles.glassButton
+    : {
+        backgroundColor: colors.background,
+        borderColor: colors.border,
+        boxShadow: `0 3px 14px ${colors.shadow}`,
+      };
 
   return (
     // The offset is from the safe area, so subtract the inset to measure from the screen edge.
@@ -182,6 +200,7 @@ export function ButtonRow({
               tab={tab}
               colors={colors}
               surface={surface}
+              glass={glass}
               size={size}
               expectedWidth={pillWidth}
               fontFamily={fontFamily}
@@ -193,6 +212,7 @@ export function ButtonRow({
               tab={tab}
               colors={colors}
               surface={surface}
+              glass={glass}
               size={size}
               haptics={haptics}
             />
@@ -274,17 +294,32 @@ function Icon({ tab, colors }: { tab: TabItem; colors: ButtonRowColors }) {
   );
 }
 
+/** A button's Liquid Glass surface: light, under the grey and black glyphs. */
+function ButtonGlass({ colors, size }: { colors: ButtonRowColors; size: number }) {
+  return (
+    <GlassView
+      pointerEvents="none"
+      glassEffectStyle="regular"
+      colorScheme="light"
+      tintColor={colors.glassTint}
+      style={[StyleSheet.absoluteFill, { borderRadius: size / 2 }]}
+    />
+  );
+}
+
 /** An icon-only round button. The tab's label is its accessibility label. */
 function CircleTab({
   tab,
   colors,
   surface,
+  glass,
   size,
   haptics,
 }: {
   tab: TabItem;
   colors: ButtonRowColors;
   surface: ViewStyle;
+  glass: boolean;
   size: number;
   haptics: boolean;
 }) {
@@ -294,6 +329,7 @@ function CircleTab({
       style={[styles.button, surface, { width: size, height: size, borderRadius: size / 2 }]}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
+      {glass ? <ButtonGlass colors={colors} size={size} /> : null}
       <View style={styles.icon}>
         <Icon tab={tab} colors={colors} />
       </View>
@@ -307,6 +343,7 @@ function WideTab({
   tab,
   colors,
   surface,
+  glass,
   size,
   expectedWidth,
   fontFamily,
@@ -315,6 +352,7 @@ function WideTab({
   tab: TabItem;
   colors: ButtonRowColors;
   surface: ViewStyle;
+  glass: boolean;
   size: number;
   /** The pill's width worked out from the screen's; its measured width replaces it. */
   expectedWidth: number;
@@ -338,6 +376,7 @@ function WideTab({
       onLayout={(e) => setMeasured(e.nativeEvent.layout.width)}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
+      {glass ? <ButtonGlass colors={colors} size={size} /> : null}
       <View style={[styles.icon, !narrow && styles.pillIcon]}>
         <Icon tab={tab} colors={colors} />
       </View>
@@ -413,6 +452,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  glassButton: { borderWidth: 0 },
   pill: {
     flex: 1,
     flexDirection: 'row',

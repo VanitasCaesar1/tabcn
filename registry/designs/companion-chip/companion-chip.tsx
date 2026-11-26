@@ -20,30 +20,38 @@
  * Pressing it changes its fill (a colour change; nothing scales or moves) with a light
  * haptic tick (`haptics={false}` turns it off). Without `onPress`
  * it is plain text to screen readers, not a button. A new count crossfades in on
- * tabcnTiming. With "reduce motion" on, every change is instant. The surface is frosted on
- * iOS and the web, and a translucent fill on Android (no blur there).
+ * tabcnTiming. With "reduce motion" on, every change is instant. The surface is Liquid Glass on
+ * iOS 26 (light or dark with `tint`; pressing tints the glass), frosted on older iOS and the
+ * web, and a translucent fill on Android (no blur there); `material="solid"` keeps the frost.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useEffect, useRef } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, processColor, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { tabcnTiming } from 'react-native-tabcn';
 
 const defaultColors = {
   /** Tint over the blur (and the fill on Android, where there is no blur). */
   surface: 'rgba(250, 250, 252, 0.78)',
-  /** The fill while pressed. */
+  /** The fill while pressed (the glass's tint while pressed, over Liquid Glass). */
   pressed: 'rgba(232, 232, 236, 0.92)',
-  /** Hairline edge. */
+  /** Hairline edge. Not drawn over Liquid Glass. */
   border: 'rgba(0, 0, 0, 0.08)',
   /** Icon and label. */
   foreground: '#151517',
   /** The count in a `count` chip. */
   accent: '#2f6bff',
-  /** The soft shadow under the chip. */
+  /** The soft shadow under the chip. Not drawn over Liquid Glass. */
   shadow: 'rgba(0, 0, 0, 0.12)',
+  /**
+   * Tint over the Liquid Glass (iOS 26). Unset, with the dark `tint`, `surface`'s colour at 60%, so
+   * the white icon and label keep their contrast over light screens; with the light `tint`, clear.
+   * `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type CompanionChipColors = typeof defaultColors;
@@ -72,6 +80,12 @@ export interface CompanionChipProps {
   colors?: Partial<CompanionChipColors>;
   /** Light haptic tick on press (only when the chip has `onPress`). Default true. */
   haptics?: boolean;
+  /**
+   * The chip's surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (a frosted blur with a
+   * hairline edge, a translucent fill on Android), or `'auto'` (glass where the system has it,
+   * solid elsewhere). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
 }
 
 const darkColors: CompanionChipColors = {
@@ -81,6 +95,7 @@ const darkColors: CompanionChipColors = {
   foreground: '#ffffff',
   accent: '#8fb2ff',
   shadow: 'rgba(0, 0, 0, 0.12)',
+  glassTint: undefined,
 };
 
 export function CompanionChip({
@@ -93,8 +108,10 @@ export function CompanionChip({
   tint = 'light',
   colors: custom,
   haptics = true,
+  material = 'auto',
 }: CompanionChipProps) {
   const colors = { ...(tint === 'dark' ? darkColors : defaultColors), ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const shape =
     variant === 'round' ? styles.round : variant === 'pill' ? styles.pill : styles.count;
   const spoken =
@@ -102,19 +119,35 @@ export function CompanionChip({
   const style = [
     styles.base,
     shape,
-    { borderColor: colors.border, boxShadow: `0 6px 18px ${colors.shadow}` },
+    glass ? styles.glass : { borderColor: colors.border, boxShadow: `0 6px 18px ${colors.shadow}` },
   ];
   const content = (pressed: boolean) => (
     <>
-      {Platform.OS !== 'android' ? (
-        <BlurView intensity={28} tint={tint} style={StyleSheet.absoluteFill} />
-      ) : null}
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          { backgroundColor: pressed ? colors.pressed : colors.surface },
-        ]}
-      />
+      {glass ? (
+        // Pressing tints the glass: still a fill change, with the glass kept.
+        <GlassView
+          glassEffectStyle="regular"
+          tintColor={
+            pressed
+              ? colors.pressed
+              : (colors.glassTint ?? (tint === 'dark' ? withAlpha(colors.surface, 0.6) : undefined))
+          }
+          colorScheme={tint}
+          style={[StyleSheet.absoluteFill, { borderRadius: shape.borderRadius }]}
+        />
+      ) : (
+        <>
+          {Platform.OS !== 'android' ? (
+            <BlurView intensity={28} tint={tint} style={StyleSheet.absoluteFill} />
+          ) : null}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              { backgroundColor: pressed ? colors.pressed : colors.surface },
+            ]}
+          />
+        </>
+      )}
       {/* An element, not a call: icon components may use hooks (or the React Compiler's). */}
       {Icon ? <Icon color={colors.foreground} size={variant === 'count' ? 14 : 20} /> : null}
       {variant === 'count' && count !== undefined ? (
@@ -181,6 +214,13 @@ function Count({ value, color }: { value: number; color: string }) {
   );
 }
 
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const value = processColor(color);
+  if (typeof value !== 'number') return color;
+  return `rgba(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255}, ${alpha})`;
+}
+
 const styles = StyleSheet.create({
   base: {
     flexDirection: 'row',
@@ -189,6 +229,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
     borderCurve: 'continuous',
+  },
+  // Liquid Glass brings its own edge and depth: no hairline, no drawn shadow.
+  glass: {
+    borderWidth: 0,
   },
   round: {
     width: 48,

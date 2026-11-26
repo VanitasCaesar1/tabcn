@@ -33,8 +33,11 @@
  * The ring fades in and out on tabcnTiming and fills as the progress is written; the live
  * line crossfades with the label; a tab's icon and label colours crossfade as it gains or
  * loses focus; nothing scales, bounces or turns. With "reduce motion" on the fades are instant.
+ * Glass is opt-in: `material="glass"` (or `"auto"`) turns the white bar into light Liquid Glass
+ * on iOS 26 (expo-glass-effect), under the same top hairline; the default stays the solid bar.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
 import { processColor, StyleSheet, Text, View } from 'react-native';
@@ -77,26 +80,53 @@ const defaultColors = {
   badge: '#ff3b30',
   /** The count on a badge. */
   badgeText: '#ffffff',
+  /** Tint over the Liquid Glass (iOS 26), when `material` asks for glass. Unset, the glass is clear. */
+  glassTint: undefined as string | undefined,
 };
 
 export type LiveTabsColors = typeof defaultColors;
 
 export interface LiveTabsProps {
   colors?: Partial<LiveTabsColors>;
+  /**
+   * The bar's surface: `'solid'` (the white bar it copies), `'glass'` (Liquid Glass, iOS 26),
+   * or `'auto'` (glass where the system has it, solid elsewhere). Default `'solid'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /** Label and live-text font. Default: the system font at weight 600. */
   fontFamily?: string;
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
 
-export function LiveTabs({ colors: custom, fontFamily, haptics = true }: LiveTabsProps) {
+export function LiveTabs({
+  colors: custom,
+  material = 'solid',
+  fontFamily,
+  haptics = true,
+}: LiveTabsProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const { tabs } = useTabBar();
   return (
     <TabBarRoot
       placement="docked"
-      style={[styles.bar, { backgroundColor: colors.background, borderTopColor: colors.border }]}
+      style={
+        glass
+          ? [styles.bar, { borderTopColor: colors.border }]
+          : [styles.bar, { backgroundColor: colors.background, borderTopColor: colors.border }]
+      }
     >
+      {glass ? (
+        // The glass fills the bar and the home-indicator area under it, as the colour did.
+        <GlassView
+          pointerEvents="none"
+          glassEffectStyle="regular"
+          colorScheme="light"
+          tintColor={colors.glassTint}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
       <TabList style={styles.row}>
         {tabs.map((tab) => (
           <LiveTab

@@ -19,5 +19,6 @@ Write the design here before building anything that changes the public API of `t
 | [`sticker-pills.md`](sticker-pills.md): Sticker Pills, glossy sticker icons on label pills that pop in their own colour                                                                    | Implemented 2026-11-24 |
 | [`reply-stack.md`](reply-stack.md): Reply Stack, X's frosted-glass bar, a reply field above it, a compose button; minimizes on scroll                                                      | Implemented 2026-11-25 |
 | [`selection-toolbar.md`](selection-toolbar.md): Selection Toolbar, the tab bar turned into an action bar while a screen selects                                                            | Implemented 2026-11-24 |
+| [`glass-material.md`](glass-material.md): one `material` prop for Liquid Glass across the designs; glass by default for floating designs and panels, opt-in for docked bars                | Implemented 2026-11-27 |
 
 The npm package is published as `react-native-tabcn`: npm turned down `tabcn` as too close to `table`. Docs written before that (2026-11-21) say `tabcn` for the package and `tabcn/<entry>` for its entry points; read those as `react-native-tabcn` and `react-native-tabcn/<entry>`.

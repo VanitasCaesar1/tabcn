@@ -30,14 +30,23 @@
  * The panel slides on `tabcnSpring` (critically damped, no overshoot) and its content fades
  * in and out on `tabcnTiming`; nothing scales, bounces or turns. With "reduce motion" on,
  * both are instant. Defaults match Labeled + Plus's light surface; pass `colors` for others.
+ * On iOS 26 the menu's surface is light Liquid Glass (expo-glass-effect) by default, which
+ * comes and goes with the menu while its actions fade; `material="solid"` keeps the fill.
  * Not drawn while the bar is a rail (Side Rail on tablets): `TabBarRoot` leaves panels out
  * there, so opening it changes its state but shows nothing.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { TabPanel, tabcnTiming, useTabPanel } from 'react-native-tabcn';
 
 const defaultColors = {
@@ -49,6 +58,8 @@ const defaultColors = {
   foreground: '#1a1a1a',
   /** The round highlight behind an action while it is pressed (Labeled + Plus's capsule). */
   pressed: 'rgba(0, 0, 0, 0.065)',
+  /** Tint over the Liquid Glass (iOS 26). Unset, the glass is clear. */
+  glassTint: undefined as string | undefined,
 };
 
 export type QuickCreateColors = typeof defaultColors;
@@ -85,6 +96,12 @@ export interface QuickCreateProps {
   spacing?: number;
   /** Selection haptic when an action is pressed. Default true. */
   haptics?: boolean;
+  /**
+   * The menu's surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (a near-opaque light fill
+   * with a hairline edge), or `'auto'` (glass where the system has it, the fill elsewhere).
+   * Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
 }
 
 /**
@@ -106,11 +123,20 @@ export function QuickCreate({
   colors: custom,
   spacing = SPACING,
   haptics = true,
+  material = 'auto',
 }: QuickCreateProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   return (
     <TabPanel id={id} anchor={{ name: anchor }}>
-      <ActionList id={id} actions={actions} colors={colors} spacing={spacing} haptics={haptics} />
+      <ActionList
+        id={id}
+        actions={actions}
+        colors={colors}
+        spacing={spacing}
+        haptics={haptics}
+        glass={glass}
+      />
     </TabPanel>
   );
 }
@@ -130,12 +156,14 @@ function ActionList({
   colors,
   spacing,
   haptics,
+  glass,
 }: {
   id: string;
   actions: readonly QuickCreateAction[];
   colors: QuickCreateColors;
   spacing: number;
   haptics: boolean;
+  glass: boolean;
 }) {
   const { state, hide } = useTabPanel(id);
   const open = state === 'open';
@@ -147,53 +175,80 @@ function ActionList({
     shown.value = withTiming(open ? 1 : 0, tabcnTiming);
   }, [open, shown]);
   const fade = useAnimatedStyle(() => ({ opacity: shown.value }));
+  // Liquid Glass stops rendering under a view faded to 0, so over glass the menu itself never
+  // fades: the glass materializes and dissolves on its own while the actions fade.
+  const reduceMotion = useReducedMotion();
+
+  const items = actions.map((action, index) => (
+    <Pressable
+      // A fixed list from props: labels may repeat, positions can't.
+      key={index}
+      accessibilityRole="button"
+      accessibilityLabel={action.accessibilityLabel ?? action.label}
+      onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
+      onPress={() => {
+        hide();
+        action.onPress();
+      }}
+      style={styles.cell}
+    >
+      {({ pressed }) => (
+        <>
+          <View
+            style={[
+              styles.highlight,
+              { backgroundColor: pressed ? colors.pressed : 'transparent' },
+            ]}
+          />
+          <View style={styles.icon}>{action.icon({ color: colors.foreground, size: ICON })}</View>
+          <Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.3}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+            style={[styles.label, { color: colors.foreground }]}
+          >
+            {action.label}
+          </Text>
+        </>
+      )}
+    </Pressable>
+  ));
+
+  if (glass) {
+    return (
+      <View style={{ paddingBottom: spacing }}>
+        <View style={[styles.surface, styles.glassSurface]}>
+          <GlassView
+            pointerEvents="none"
+            glassEffectStyle={{
+              style: open ? 'regular' : 'none',
+              animate: !reduceMotion,
+              animationDuration: GLASS_SECONDS,
+            }}
+            colorScheme="light"
+            tintColor={colors.glassTint}
+            style={[StyleSheet.absoluteFill, styles.glassRound]}
+          />
+          <Animated.View style={fade}>{items}</Animated.View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <Animated.View style={[{ paddingBottom: spacing }, fade]}>
       <View
         style={[styles.surface, { backgroundColor: colors.surface, borderColor: colors.border }]}
       >
-        {actions.map((action, index) => (
-          <Pressable
-            // A fixed list from props: labels may repeat, positions can't.
-            key={index}
-            accessibilityRole="button"
-            accessibilityLabel={action.accessibilityLabel ?? action.label}
-            onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
-            onPress={() => {
-              hide();
-              action.onPress();
-            }}
-            style={styles.cell}
-          >
-            {({ pressed }) => (
-              <>
-                <View
-                  style={[
-                    styles.highlight,
-                    { backgroundColor: pressed ? colors.pressed : 'transparent' },
-                  ]}
-                />
-                <View style={styles.icon}>
-                  {action.icon({ color: colors.foreground, size: ICON })}
-                </View>
-                <Text
-                  numberOfLines={1}
-                  maxFontSizeMultiplier={1.3}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.8}
-                  style={[styles.label, { color: colors.foreground }]}
-                >
-                  {action.label}
-                </Text>
-              </>
-            )}
-          </Pressable>
-        ))}
+        {items}
       </View>
     </Animated.View>
   );
 }
+
+/** How long the glass takes to come and go, in seconds: tabcnTiming's 200 ms. */
+const GLASS_SECONDS = 0.2;
 
 const styles = StyleSheet.create({
   surface: {
@@ -202,6 +257,9 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     overflow: 'hidden',
   },
+  // Over Liquid Glass there is no drawn edge: the glass has its own.
+  glassSurface: { borderWidth: 0 },
+  glassRound: { borderRadius: CELL / 2 },
   cell: {
     height: CELL,
     alignItems: 'center',

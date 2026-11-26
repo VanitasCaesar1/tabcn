@@ -19,12 +19,22 @@
  *
  * The tray draws its own surface (the bar's material fades with its tabs). The progress bar
  * glides to a new value on `tabcnSpring`, with no overshoot; a new label crossfades in on
- * `tabcnTiming`. With "reduce motion" on, both are instant.
+ * `tabcnTiming`. With "reduce motion" on, both are instant. On iOS 26 the pill and the close
+ * button are light Liquid Glass (expo-glass-effect) by default; `material="solid"` keeps the fill.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
-import { I18nManager, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  I18nManager,
+  type LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -47,8 +57,10 @@ const defaultColors = {
   track: 'rgba(60, 50, 140, 0.1)',
   /** The progress bar's fill. */
   progress: '#5b4fd6',
-  /** The close button's fill while pressed. */
+  /** The close button's fill while pressed. Over Liquid Glass, the glass's tint while pressed. */
   closePressed: '#e6e4f4',
+  /** Tint over the Liquid Glass (iOS 26). Unset, the glass is clear. */
+  glassTint: undefined as string | undefined,
 };
 
 export type ContextTrayColors = typeof defaultColors;
@@ -65,6 +77,12 @@ export interface ContextTrayProps {
   closeLabel?: string;
   /** Selection haptic on pressing the close button. Default true. */
   haptics?: boolean;
+  /**
+   * The pill's and the close button's surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (a
+   * near-white fill with a 1 pt rim), or `'auto'` (glass where the system has it, the fill
+   * elsewhere). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
 }
 
 /** Space between the pill and the close button. */
@@ -77,6 +95,12 @@ const LINE = 20;
 const GLYPH = 16;
 const STROKE = 2;
 
+/** The rim around both shapes. */
+const BORDER = 1;
+/** A fully round end, and the pill's corners on a rail. */
+const ROUND = 999;
+const RAIL_RADIUS = 24;
+
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
 const RTL = I18nManager.isRTL;
 
@@ -87,8 +111,10 @@ export function ContextTray({
   colors: custom,
   closeLabel = 'Close',
   haptics = true,
+  material = 'auto',
 }: ContextTrayProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   // The override slot is the bar's own box: a wide strip at the bottom, or a tall column on
   // a rail, where a circle "as tall as the bar" would be as wide as the screen is tall.
   const rail = useTabBar().position === 'left';
@@ -108,7 +134,10 @@ export function ContextTray({
     transform: [{ translateX: (fill.value - 1) * trackWidth.value * (RTL ? -1 : 1) }],
   }));
 
-  const surface = { backgroundColor: colors.surface, borderColor: colors.border };
+  // Over Liquid Glass the shapes draw no fill or rim: the glass is the surface.
+  const surface = glass
+    ? styles.glassBox
+    : { backgroundColor: colors.surface, borderColor: colors.border };
 
   return (
     <View style={[styles.tray, rail && styles.railTray]}>
@@ -119,6 +148,7 @@ export function ContextTray({
         accessibilityValue={hasProgress ? { min: 0, max: 100, now: percent } : undefined}
         style={[styles.pill, rail && styles.railPill, surface]}
       >
+        {glass ? <Glass radius={rail ? RAIL_RADIUS : ROUND} tint={colors.glassTint} /> : null}
         <View style={[styles.row, rail && styles.railRow]}>
           <Label text={label} color={colors.foreground} rail={rail} />
           {hasProgress ? (
@@ -147,17 +177,48 @@ export function ContextTray({
           styles.close,
           rail && styles.railClose,
           surface,
-          pressed && { backgroundColor: colors.closePressed },
+          pressed && !glass && { backgroundColor: colors.closePressed },
         ]}
       >
-        <View style={styles.glyph}>
-          <View
-            style={[styles.stroke, styles.strokeDown, { backgroundColor: colors.foreground }]}
-          />
-          <View style={[styles.stroke, styles.strokeUp, { backgroundColor: colors.foreground }]} />
-        </View>
+        {({ pressed }) => (
+          <>
+            {glass ? (
+              <Glass radius={ROUND} tint={pressed ? colors.closePressed : colors.glassTint} />
+            ) : null}
+            <View style={styles.glyph}>
+              <View
+                style={[styles.stroke, styles.strokeDown, { backgroundColor: colors.foreground }]}
+              />
+              <View
+                style={[styles.stroke, styles.strokeUp, { backgroundColor: colors.foreground }]}
+              />
+            </View>
+          </>
+        )}
       </Pressable>
     </View>
+  );
+}
+
+/**
+ * Light Liquid Glass filling its parent, under dark text. Its corners are laid out from its
+ * measured size, so a round end is exactly half its height whatever height the bar gives it.
+ */
+function Glass({ radius, tint }: { radius: number; tint: string | undefined }) {
+  const [half, setHalf] = useState(radius);
+  const onLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setHalf(Math.min(width, height) / 2);
+  };
+  return (
+    <GlassView
+      pointerEvents="none"
+      glassEffectStyle="regular"
+      colorScheme="light"
+      tintColor={tint}
+      onLayout={onLayout}
+      style={[styles.glass, { borderRadius: Math.min(radius, half) }]}
+    />
   );
 }
 
@@ -254,10 +315,14 @@ const styles = StyleSheet.create({
   stroke: { position: 'absolute', width: GLYPH * Math.SQRT2, height: STROKE, borderRadius: 1 },
   // On a rail: stacked at the top of the column, each as wide as the rail.
   railTray: { flexDirection: 'column', justifyContent: 'flex-start' },
-  railPill: { flex: 0, borderRadius: 24, paddingHorizontal: 12, paddingVertical: 14 },
+  railPill: { flex: 0, borderRadius: RAIL_RADIUS, paddingHorizontal: 12, paddingVertical: 14 },
   railRow: { flexDirection: 'column', alignItems: 'stretch', gap: 2 },
   railLabelBox: { flex: 0 },
   railClose: { width: '100%', height: undefined },
+  // Over Liquid Glass the rim is not drawn; its width stays, so the content keeps its place.
+  glassBox: { borderColor: 'transparent' },
+  // The glass reaches over the (clear) rim to the shape's outer edge.
+  glass: { position: 'absolute', top: -BORDER, left: -BORDER, right: -BORDER, bottom: -BORDER },
   strokeDown: { transform: [{ rotate: '45deg' }] },
   strokeUp: { transform: [{ rotate: '-45deg' }] },
 });

@@ -3,8 +3,11 @@
  * the top edge to the active tab, and icon and label colours crossfade.
  * The default active and inactive colours are kept as the reference has them, even where the
  * inactive labels are low in contrast; pass `colors` to raise it.
+ * Glass is opt-in: `material="glass"` (or `"auto"`) turns the white bar into light Liquid Glass
+ * on iOS 26 (expo-glass-effect), with no drawn shadow; the default stays the solid bar.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import { I18nManager, type LayoutChangeEvent, StyleSheet, View } from 'react-native';
@@ -42,12 +45,19 @@ const defaultColors = {
   badge: '#ff3b30',
   /** The soft shadow the bar casts upward over the screen. */
   shadow: 'rgba(30, 20, 120, 0.14)',
+  /** Tint over the Liquid Glass (iOS 26), when `material` asks for glass. Unset, the glass is clear. */
+  glassTint: undefined as string | undefined,
 };
 
 export type TopNotchColors = typeof defaultColors;
 
 export interface TopNotchProps {
   colors?: Partial<TopNotchColors>;
+  /**
+   * The bar's surface: `'solid'` (the white bar it copies), `'glass'` (Liquid Glass, iOS 26),
+   * or `'auto'` (glass where the system has it, solid elsewhere). Default `'solid'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /** Label font, e.g. a heavy geometric sans. Default: system font, weight 800. */
   fontFamily?: string;
   /** Icon box size in points. Default 38. */
@@ -58,20 +68,36 @@ export interface TopNotchProps {
 
 export function TopNotch({
   colors: custom,
+  material = 'solid',
   fontFamily,
   iconSize = 38,
   haptics = true,
 }: TopNotchProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   return (
     <TabBarRoot
       placement="docked"
-      style={[
-        styles.dock,
-        { backgroundColor: colors.background, boxShadow: `0 -6px 24px ${colors.shadow}` },
-      ]}
+      style={
+        glass
+          ? styles.dock
+          : [
+              styles.dock,
+              { backgroundColor: colors.background, boxShadow: `0 -6px 24px ${colors.shadow}` },
+            ]
+      }
     >
-      <TabList style={[styles.card, { backgroundColor: colors.background }]}>
+      {glass ? (
+        // The glass fills the bar and the home-indicator area under it, as the colour did.
+        <GlassView
+          pointerEvents="none"
+          glassEffectStyle="regular"
+          colorScheme="light"
+          tintColor={colors.glassTint}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
+      <TabList style={glass ? styles.card : [styles.card, { backgroundColor: colors.background }]}>
         <Row colors={colors} fontFamily={fontFamily} iconSize={iconSize} haptics={haptics} />
       </TabList>
     </TabBarRoot>

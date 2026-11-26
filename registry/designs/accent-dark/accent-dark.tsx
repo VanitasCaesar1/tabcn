@@ -14,9 +14,11 @@
  * Motion: the app swaps tint and glyph at once, as a UITabBar does. Here the outline and
  * solid glyphs crossfade and the label colour fades, both on tabcnTiming shortened to 150 ms.
  * Pass `duration={0}` for the app's instant swap. Reduce motion makes it instant too. Presses
- * show no dim or scale. The bar is opaque: no glass, blur or shadow. (The App Store preview
+ * show no dim or scale. By default the bar is opaque: no glass, blur or shadow. (The App Store preview
  * video slides the bar off the bottom while a page scrolls. That looks like a marketing edit,
  * and a docked bar can't leave the space it holds, so it isn't reproduced.)
+ * Glass is opt-in: `material="glass"` (or `"auto"`) turns the bar into Liquid Glass on iOS 26
+ * (expo-glass-effect), dark or light to match `colors`, under the same hairline.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  *
  * Measured on the app's dark App Store screenshots. The phone screen in them is 749 px wide
@@ -29,9 +31,10 @@
  * screen behind it #141414, orange #fc5300 sampled (Strava's brand orange, #fc5200).
  * The orange is kept as Strava has it, though on the light bar it is only 3.3:1 for labels.
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { processColor, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
@@ -63,6 +66,12 @@ const defaultColors = {
   /** Badge fill and text (iOS's system badge; the app showed none). */
   badge: '#ff3b30',
   badgeText: '#ffffff',
+  /**
+   * Tint over the Liquid Glass (iOS 26), when `material` asks for glass. Unset, `background`
+   * at 60% on a dark bar (clear on a light one, such as `accentDarkLightColors`), so light icons
+   * keep their contrast over light screens; `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type AccentDarkColors = typeof defaultColors;
@@ -78,10 +87,16 @@ export const accentDarkLightColors: AccentDarkColors = {
   foreground: '#000000',
   badge: '#ff3b30',
   badgeText: '#ffffff',
+  glassTint: undefined,
 };
 
 export interface AccentDarkProps {
   colors?: Partial<AccentDarkColors>;
+  /**
+   * The bar's surface: `'solid'` (the charcoal bar it copies), `'glass'` (Liquid Glass, iOS 26),
+   * or `'auto'` (glass where the system has it, solid elsewhere). Default `'solid'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /**
    * Runs when the middle slot (Record) is pressed. With it, the middle slot is an action
    * drawn like a tab, between the first and second halves of your tabs: give the navigator
@@ -123,6 +138,7 @@ const LABEL_TRACKING = -0.4;
 
 export function AccentDark({
   colors: custom,
+  material = 'solid',
   onActionPress,
   actionLabel = 'Record',
   actionIcon,
@@ -131,6 +147,7 @@ export function AccentDark({
   haptics = true,
 }: AccentDarkProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const { tabs } = useTabBar();
   const timing = useMemo<WithTimingConfig>(() => ({ ...tabcnTiming, duration }), [duration]);
   // With an action, it takes the middle slot: two tabs on each side of four.
@@ -143,7 +160,25 @@ export function AccentDark({
 
   return (
     // Docked: the root pads the bottom safe area, so the bar colour runs under the home indicator.
-    <TabBarRoot placement="docked" style={{ backgroundColor: colors.background }}>
+    <TabBarRoot
+      placement="docked"
+      style={glass ? undefined : { backgroundColor: colors.background }}
+    >
+      {glass ? (
+        // The glass fills the bar and the home-indicator area under it, as the colour did.
+        <GlassView
+          pointerEvents="none"
+          glassEffectStyle="regular"
+          colorScheme={glassScheme(colors.background)}
+          tintColor={
+            colors.glassTint ??
+            (glassScheme(colors.background) === 'dark'
+              ? withAlpha(colors.background, 0.6)
+              : undefined)
+          }
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
       <View style={[styles.hairline, { backgroundColor: colors.hairline }]} />
       <TabList style={styles.bar}>
         {tabs.slice(0, half).map(tab)}
@@ -161,6 +196,25 @@ export function AccentDark({
       </TabList>
     </TabBarRoot>
   );
+}
+
+/**
+ * The glass's scheme from the bar colour it replaces: light glass under a light bar (dark ink),
+ * dark glass under a dark one, so icons and labels keep their contrast.
+ */
+function glassScheme(background: string): 'light' | 'dark' {
+  const value = processColor(background);
+  if (typeof value !== 'number') return 'dark';
+  const luma =
+    0.299 * ((value >>> 16) & 255) + 0.587 * ((value >>> 8) & 255) + 0.114 * (value & 255);
+  return luma > 140 ? 'light' : 'dark';
+}
+
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const v = processColor(color);
+  if (typeof v !== 'number') return color;
+  return `rgba(${(v >>> 16) & 255}, ${(v >>> 8) & 255}, ${v & 255}, ${alpha})`;
 }
 
 type LabelFont = { fontFamily: string; fontWeight: 'normal' } | null;

@@ -12,14 +12,20 @@
  * On a narrow screen the gap between the pill and the button narrows first, then the tabs,
  * so the row always fits; where there is room the sizes are exactly as measured.
  * The white labels on the light blue are kept as the reference draws them (low contrast).
+ * On iOS 26 the pill and the round button are dark Liquid Glass (expo-glass-effect) tinted with
+ * the body blue at 70%, so they keep their colour and the white labels read over light screens,
+ * with no drawn shadow;
+ * elsewhere, or with `material="solid"`, they are the blue gradient. Choose with `material`.
  *
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import {
   Platform,
+  processColor,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -52,6 +58,12 @@ const defaultColors = {
   highlight: '#ffffff',
   /** The soft grey shadow the pill and button sit in. */
   shadow: 'rgba(100, 120, 150, 0.34)',
+  /**
+   * Tint over the Liquid Glass (iOS 26). Unset, the gradient's body blue at 70%, so the pill keeps
+   * its colour and the white labels keep their contrast over light screens; `'transparent'` for
+   * clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type SegmentSearchColors = typeof defaultColors;
@@ -68,6 +80,12 @@ export interface SegmentSearchProps {
    */
   actionIcon?: ReactNode | ((props: { color: string; size: number }) => ReactNode);
   colors?: Partial<SegmentSearchColors>;
+  /**
+   * The pill's and the round button's surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (the
+   * blue gradient with its soft shadow), or `'auto'` (glass where the system has it, solid
+   * elsewhere). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /** Selection haptic on tabs, a light impact on the round button. Default true. */
   haptics?: boolean;
 }
@@ -77,9 +95,11 @@ export function SegmentSearch({
   actionLabel = 'Search',
   actionIcon,
   colors: custom,
+  material = 'auto',
   haptics = true,
 }: SegmentSearchProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const { tabs, insets } = useTabBar();
   const window = useWindowDimensions();
   const anchor = usePanelAnchor('action');
@@ -94,25 +114,58 @@ export function SegmentSearch({
   const fit = (room - fixed - gap) / count;
   // Never wider than what fits: a floor here pushed the row off narrow screens with many tabs.
   const tabWidth = Math.min(TAB, fit);
+  const list = (
+    <TabList style={styles.list}>
+      <TabIndicator
+        inset={{ x: 0.3, y: 4.5 }}
+        style={[
+          styles.capsule,
+          { backgroundColor: colors.capsule, borderColor: colors.capsuleBorder },
+        ]}
+      />
+      {tabs.map((tab) => (
+        <Tab key={tab.key} tab={tab} color={colors.text} width={tabWidth} haptics={haptics} />
+      ))}
+    </TabList>
+  );
+  const action = (
+    <>
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.highlight, { backgroundColor: colors.highlight }, highlightStyle]}
+      />
+      {typeof actionIcon === 'function'
+        ? actionIcon({ color: colors.text, size: ACTION_ICON })
+        : (actionIcon ?? <Magnifier color={colors.text} />)}
+    </>
+  );
+  // Dark glass under the white labels; the glass brings its own depth, so no drawn shadow.
+  const surface = glass ? (
+    <GlassView
+      pointerEvents="none"
+      glassEffectStyle="regular"
+      colorScheme="dark"
+      tintColor={
+        colors.glassTint ?? withAlpha(colors.gradient[colors.gradient.length - 1] ?? '#86c1fb', 0.7)
+      }
+      style={[StyleSheet.absoluteFill, styles.glass]}
+    />
+  ) : null;
   return (
     <TabBarRoot placement="floating" style={[styles.row, { gap }]}>
-      <View style={[styles.well, wellShadow(colors.shadow)]}>
-        <LinearGradient colors={colors.gradient} locations={GRADIENT_STOPS} style={styles.pill}>
-          <TabList style={styles.list}>
-            <TabIndicator
-              inset={{ x: 0.3, y: 4.5 }}
-              style={[
-                styles.capsule,
-                { backgroundColor: colors.capsule, borderColor: colors.capsuleBorder },
-              ]}
-            />
-            {tabs.map((tab) => (
-              <Tab key={tab.key} tab={tab} color={colors.text} width={tabWidth} haptics={haptics} />
-            ))}
-          </TabList>
-        </LinearGradient>
+      <View style={glass ? styles.well : [styles.well, wellShadow(colors.shadow)]}>
+        {glass ? (
+          <View style={styles.glassPill}>
+            {surface}
+            {list}
+          </View>
+        ) : (
+          <LinearGradient colors={colors.gradient} locations={GRADIENT_STOPS} style={styles.pill}>
+            {list}
+          </LinearGradient>
+        )}
       </View>
-      <View style={[styles.well, wellShadow(colors.shadow)]}>
+      <View style={glass ? styles.well : [styles.well, wellShadow(colors.shadow)]}>
         <PressableScale
           {...anchor}
           scale={1}
@@ -126,15 +179,20 @@ export function SegmentSearch({
             highlight.value = withTiming(0, tabcnTiming);
           }}
         >
-          <LinearGradient colors={colors.gradient} locations={GRADIENT_STOPS} style={styles.round}>
-            <Animated.View
-              pointerEvents="none"
-              style={[styles.highlight, { backgroundColor: colors.highlight }, highlightStyle]}
-            />
-            {typeof actionIcon === 'function'
-              ? actionIcon({ color: colors.text, size: ACTION_ICON })
-              : (actionIcon ?? <Magnifier color={colors.text} />)}
-          </LinearGradient>
+          {glass ? (
+            <View style={styles.round}>
+              {surface}
+              {action}
+            </View>
+          ) : (
+            <LinearGradient
+              colors={colors.gradient}
+              locations={GRADIENT_STOPS}
+              style={styles.round}
+            >
+              {action}
+            </LinearGradient>
+          )}
         </PressableScale>
       </View>
     </TabBarRoot>
@@ -208,6 +266,10 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   well: { borderRadius: 999 },
   pill: { height: HEIGHT, borderRadius: 999, overflow: 'hidden' },
+  // Over glass nothing is clipped: the glass draws its own rounded edge.
+  glassPill: { height: HEIGHT, borderRadius: HEIGHT / 2 },
+  // The pill's and the button's radius, set exactly: the glass draws its corners from it.
+  glass: { borderRadius: HEIGHT / 2 },
   list: { flex: 1, alignItems: 'stretch', paddingHorizontal: LIST_PADDING },
   capsule: { borderRadius: 999, borderWidth: 0.8 },
   tab: { justifyContent: 'center', alignItems: 'center' },
@@ -249,3 +311,10 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '45deg' }],
   },
 });
+
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const value = processColor(color);
+  if (typeof value !== 'number') return color;
+  return `rgba(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255}, ${alpha})`;
+}

@@ -5,10 +5,13 @@
  * (outline lock to solid lock, as in the app). Docked and flush with the
  * bottom; the outer icons sit 70 pt in from the edges and the rest are spread
  * evenly between them.
+ * Glass is opt-in: `material="glass"` (or `"auto"`) lays dark Liquid Glass (iOS 26,
+ * expo-glass-effect) under the icons; the default stays the plain black.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-import { StyleSheet, View } from 'react-native';
+import { processColor, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -36,21 +39,50 @@ const defaultColors = {
   inactive: '#8e8e93',
   /** The badge dot; it is ringed in `background`. */
   badge: '#ff453a',
+  /**
+   * Tint over the Liquid Glass (iOS 26), when `material` asks for glass. Unset, `background`
+   * at 60%, so the light icons keep their contrast over light screens (the glass follows what
+   * is behind it); `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type OutlineDarkColors = typeof defaultColors;
 
 export interface OutlineDarkProps {
   colors?: Partial<OutlineDarkColors>;
+  /**
+   * The bar's surface: `'solid'` (the black bar it copies), `'glass'` (Liquid Glass, iOS 26),
+   * or `'auto'` (glass where the system has it, solid elsewhere). Default `'solid'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
 
-export function OutlineDark({ colors: custom, haptics = true }: OutlineDarkProps) {
+export function OutlineDark({
+  colors: custom,
+  material = 'solid',
+  haptics = true,
+}: OutlineDarkProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   return (
-    <TabBarRoot placement="docked" style={{ backgroundColor: colors.background }}>
+    <TabBarRoot
+      placement="docked"
+      style={glass ? undefined : { backgroundColor: colors.background }}
+    >
+      {glass ? (
+        // The glass fills the bar and the home-indicator area under it, as the colour did.
+        <GlassView
+          pointerEvents="none"
+          glassEffectStyle="regular"
+          colorScheme="dark"
+          tintColor={colors.glassTint ?? withAlpha(colors.background, 0.6)}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
       <TabList style={styles.bar}>
         {tabs.map((tab) => (
           <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
@@ -124,6 +156,13 @@ const BAR_HEIGHT = 80;
 const TAB_WIDTH = 64;
 /** The outer icon centres sit 70 pt from the screen edges. */
 const EDGE_TO_CENTRE = 70;
+
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const v = processColor(color);
+  if (typeof v !== 'number') return color;
+  return `rgba(${(v >>> 16) & 255}, ${(v >>> 8) & 255}, ${v & 255}, ${alpha})`;
+}
 
 const styles = StyleSheet.create({
   // Side padding lives on the row: TabBarRoot sets the dock's left/right padding to the safe area.
