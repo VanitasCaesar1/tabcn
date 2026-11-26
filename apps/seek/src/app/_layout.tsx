@@ -5,13 +5,24 @@
  */
 import '../global.css';
 
+import {
+  InstrumentSerif_400Regular,
+  InstrumentSerif_400Regular_Italic,
+  useFonts,
+} from '@expo-google-fonts/instrument-serif';
 import { Toaster } from 'expo-hot-toast';
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { PanelUIProvider } from 'panelui-native';
+import { useEffect } from 'react';
 import { Uniwind } from 'uniwind';
 
 Uniwind.setTheme('seek');
+
+// Hold the splash until the display face loads, so no title draws in the fallback first (text
+// that rendered before the font arrived would keep the fallback until it re-rendered).
+SplashScreen.preventAutoHideAsync();
 
 const theme = {
   ...DarkTheme,
@@ -19,6 +30,11 @@ const theme = {
 };
 
 export default function RootLayout() {
+  const [loaded] = useFonts({ InstrumentSerif_400Regular, InstrumentSerif_400Regular_Italic });
+  useEffect(() => {
+    if (loaded) SplashScreen.hideAsync();
+  }, [loaded]);
+  if (!loaded) return null;
   return (
     <PanelUIProvider background={false}>
       <ThemeProvider value={theme}>

@@ -4,11 +4,11 @@
  */
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { EmptyState, Item, Swipe, Typography } from 'panelui-native';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { LinearTransition, ReduceMotion } from 'react-native-reanimated';
-import { AppHeader, Sky } from '@/components/chrome';
+import { AppHeader, EdgeFade, Sky, useDockTop } from '@/components/chrome';
+import { Display } from '@/components/display';
 import { ChevronIcon, CloseIcon } from '@/components/icons';
 import { film } from '@/lib/films';
 import { forget, type Past, useSeek } from '@/lib/search';
@@ -17,7 +17,7 @@ const RECENT = new Set(['Just now', 'Today']);
 
 export default function History() {
   const { history } = useSeek();
-  const bottom = useBottomTabBarHeight();
+  const bottom = useDockTop(false);
   const sections = [
     { title: 'Today', items: history.filter((p) => RECENT.has(p.when)) },
     { title: 'Earlier', items: history.filter((p) => !RECENT.has(p.when)) },
@@ -26,38 +26,40 @@ export default function History() {
     <View className="flex-1">
       <Sky />
       <AppHeader />
-      <ScrollView
-        contentContainerStyle={{
-          gap: 10,
-          paddingHorizontal: 20,
-          paddingTop: 8,
-          paddingBottom: bottom + 16,
-        }}
-      >
-        <Typography type="h2" weight="bold" className="mb-1 tracking-tighter">
-          History
-        </Typography>
-        {sections.length === 0 ? (
-          <EmptyState className="mt-16">
-            <EmptyState.Title>No searches yet</EmptyState.Title>
-            <EmptyState.Description>
-              Films you find on Discover show up here.
-            </EmptyState.Description>
-          </EmptyState>
-        ) : null}
-        <Swipe.Group className="gap-2.5">
-          {sections.map((section) => (
-            <View key={section.title} className="gap-2.5">
-              <Typography type="small" muted className="mt-2 uppercase tracking-wider">
-                {section.title}
-              </Typography>
-              {section.items.map((past) => (
-                <Row key={`${past.query}-${past.when}`} past={past} />
-              ))}
-            </View>
-          ))}
-        </Swipe.Group>
-      </ScrollView>
+      <EdgeFade bottom={bottom}>
+        <ScrollView
+          contentContainerStyle={{
+            gap: 10,
+            paddingHorizontal: 20,
+            paddingTop: 8,
+            paddingBottom: bottom + 56,
+          }}
+        >
+          <Display size={44} className="mb-1">
+            History
+          </Display>
+          {sections.length === 0 ? (
+            <EmptyState className="mt-16">
+              <EmptyState.Title>No searches yet</EmptyState.Title>
+              <EmptyState.Description>
+                Films you find on Discover show up here.
+              </EmptyState.Description>
+            </EmptyState>
+          ) : null}
+          <Swipe.Group className="gap-2.5">
+            {sections.map((section) => (
+              <View key={section.title} className="gap-2.5">
+                <Typography type="small" muted className="mt-2 uppercase tracking-wider">
+                  {section.title}
+                </Typography>
+                {section.items.map((past) => (
+                  <Row key={`${past.query}-${past.when}`} past={past} />
+                ))}
+              </View>
+            ))}
+          </Swipe.Group>
+        </ScrollView>
+      </EdgeFade>
     </View>
   );
 }

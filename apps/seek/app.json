@@ -7,9 +7,26 @@
     "scheme": "seek",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#02040f",
-    "ios": { "bundleIdentifier": "dev.tabcn.seek" },
-    "android": { "package": "dev.tabcn.seek", "predictiveBackGestureEnabled": false },
-    "plugins": ["expo-router"],
-    "experiments": { "typedRoutes": true, "reactCompiler": true }
+    "ios": {
+      "bundleIdentifier": "dev.tabcn.seek"
+    },
+    "android": {
+      "package": "dev.tabcn.seek",
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#02040f"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
   }
 }

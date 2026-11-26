@@ -26,6 +26,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sky } from '@/components/chrome';
+import { Display } from '@/components/display';
 import {
   ArrowRightIcon,
   BackIcon,
@@ -115,13 +116,9 @@ export default function FilmPage() {
           />
         </Animated.View>
         <View className="-mt-24 gap-5 px-5">
-          <Typography
-            type="h1"
-            align="center"
-            className="text-[42px] leading-[46px] tracking-tighter"
-          >
+          <Display size={58} align="center">
             {f.title}
-          </Typography>
+          </Display>
           <View className="flex-row flex-wrap justify-center gap-1.5">
             {[String(f.year), f.runtime, f.rating, f.genre].map((tag) => (
               <Chip key={tag} size="lg" className="border-white/10 bg-white/10">
@@ -214,9 +211,9 @@ export default function FilmPage() {
           <BackIcon />
         </GlassButton>
         <Animated.View style={[styles.barTitle, barTitle]} pointerEvents="none">
-          <Typography type="large" numberOfLines={1}>
+          <Display size={24} numberOfLines={1}>
             {f.title}
-          </Typography>
+          </Display>
         </Animated.View>
         <GlassButton label="Share" onPress={() => toast.island('Link copied', { type: 'success' })}>
           <ShareIcon />

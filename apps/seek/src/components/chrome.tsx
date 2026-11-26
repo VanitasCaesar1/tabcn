@@ -3,10 +3,11 @@
  * mark and the viewer's photo, or a back button and a title). Built from PanelUI's Avatar,
  * Button and Typography.
  */
+import MaskedViewClass from '@react-native-masked-view/masked-view';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar, Button, Typography } from 'panelui-native';
-import { type ReactNode, useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { type ComponentType, type ReactElement, type ReactNode, useEffect } from 'react';
+import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   ReduceMotion,
@@ -16,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ME } from '@/lib/films';
+import { Display } from './display';
 import { BackIcon, Mark } from './icons';
 
 /**
@@ -80,6 +82,13 @@ const STARS = (() => {
   }));
 })();
 
+// The package's class typings predate React 19's JSX types; this is the same component.
+const MaskedView = MaskedViewClass as unknown as ComponentType<{
+  style?: StyleProp<ViewStyle>;
+  maskElement: ReactElement;
+  children: ReactNode;
+}>;
+
 /** The top of a screen, under the status bar: 64 pt tall, 20 pt in from the sides. */
 export function HeaderBar({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
@@ -96,9 +105,7 @@ export function AppHeader() {
     <HeaderBar>
       <View className="flex-row items-center gap-2.5">
         <Mark />
-        <Typography type="h3" weight="bold" className="tracking-tighter">
-          Seek
-        </Typography>
+        <Display size={34}>Seek</Display>
       </View>
       <View className="rounded-full bg-white p-0.5">
         <Avatar source={ME} size="md" accessibilityLabel="Your profile" />
@@ -166,5 +173,41 @@ export function RoundButton({
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  solid: { flex: 1, backgroundColor: '#000000' },
   star: { position: 'absolute', borderRadius: 2, backgroundColor: '#ffffff' },
 });
+
+/**
+ * Fades scrolling content out at its edges with an alpha mask, so it never shows where it
+ * shouldn't: it is gone `bottom` points above the screen's bottom edge (the top of the dock),
+ * fading over the 56 pt above that, and it softens into the header over the top 18 pt. A mask,
+ * not a colour overlay, because the sky behind it is a gradient no flat colour could match.
+ */
+export function EdgeFade({ bottom, children }: { bottom: number; children: ReactNode }) {
+  return (
+    <MaskedView
+      style={styles.fill}
+      maskElement={
+        <View style={styles.fill}>
+          <LinearGradient colors={['transparent', '#000000']} style={{ height: 18 }} />
+          <View style={styles.solid} />
+          <LinearGradient colors={['#000000', 'transparent']} style={{ height: 56 }} />
+          <View style={{ height: bottom }} />
+        </View>
+      }
+    >
+      {children}
+    </MaskedView>
+  );
+}
+
+/**
+ * How far above the screen's bottom edge Ask Dock reaches: its capsule (65 pt, 2 pt above the
+ * safe area) and, on Discover, the prompt card over it (96 pt, 24 pt up). Screens end their
+ * content here; `useBottomTabBarHeight` reports the capsule's box only.
+ */
+export function useDockTop(withPrompt: boolean) {
+  const insets = useSafeAreaInsets();
+  return insets.bottom + 2 + 65 + (withPrompt ? 24 + 96 : 0) + 12;
+}
