@@ -464,7 +464,7 @@ export const catalog: DesignEntry[] = [
     kind: 'bar',
     layout: 'floating-pill',
     summary:
-      "X's frosted-glass bar: five icon-only tabs on a wide glass capsule with a round lens behind the active one, and a reply field on a second capsule that slides up above it.",
+      "X's frosted-glass bar: icon-only tabs on a wide glass capsule with a round lens that follows the finger, and a reply field above; on scroll it shrinks to a circle with the reply field beside it, and a tap expands it.",
     status: 'ready',
   },
   {

@@ -340,6 +340,18 @@ export function TabBarRoot({
   }, [minimize, minimizeBehavior]);
   // A minimized bar comes back on another tab: only the scrolled screen could restore it.
   useRestoreOnFocusChange(items[activeIndex]?.key);
+  // A minimized design draws less than its box (a circle where the pill was, a row moved down),
+  // so while minimized the box lets touches through to the screen wherever it draws nothing.
+  // Not always: a design may paint the box itself, and its background must keep its taps.
+  const minimizeTarget = minimize?.target;
+  const [passThrough, setPassThrough] = useState(() => minimizes && minimizeTarget?.value === 1);
+  useAnimatedReaction(
+    () => minimizes && minimizeTarget?.value === 1,
+    (next, previous) => {
+      if (next !== previous) runOnJS(setPassThrough)(next);
+    },
+    [minimizes, minimizeTarget],
+  );
 
   // Anchors measure against this root, so they re-measure whenever it or the bar moves.
   const onRootLayout = (size: Size) => {
@@ -580,7 +592,7 @@ export function TabBarRoot({
       >
         {panels}
         <Animated.View
-          pointerEvents={covering ? 'none' : undefined}
+          pointerEvents={covering ? 'none' : passThrough ? 'box-none' : undefined}
           // Centred, the box would size to its content and never learn the screen's width, so
           // a design's `maxWidth: '100%'` couldn't shrink a bar wider than a narrow phone.
           style={[

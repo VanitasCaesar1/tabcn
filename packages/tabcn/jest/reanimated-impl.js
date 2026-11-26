@@ -6,8 +6,64 @@
 const React = require('react');
 const { View, Text, ScrollView, Image } = require('react-native');
 
+// Mounted `useAnimatedReaction`s. After any shared value changes, each one re-runs its
+// `prepare` and, when the result changed, its `react`, as Reanimated does on the UI thread, so
+// a design that mirrors a shared value into React state (`runOnJS(setState)`) can be tested.
+const reactions = new Set();
+let reacting = false;
+function runReactions() {
+  if (reacting) return;
+  reacting = true;
+  try {
+    // A `react` may set shared values in turn; settle, with a bound against ping-pong.
+    for (let pass = 0; pass < 10; pass++) {
+      let changed = false;
+      for (const r of reactions) {
+        const next = r.prepare();
+        if (!Object.is(next, r.last)) {
+          const previous = r.last;
+          r.last = next;
+          changed = true;
+          r.react(next, previous);
+        }
+      }
+      if (!changed) break;
+    }
+  } finally {
+    reacting = false;
+  }
+}
+
+function useAnimatedReaction(prepare, react) {
+  const entry = React.useRef(null);
+  if (entry.current === null) entry.current = { prepare, react, last: undefined };
+  entry.current.prepare = prepare;
+  entry.current.react = react;
+  React.useEffect(() => {
+    const r = entry.current;
+    // The first run: `react` sees the starting value with no previous one (null), as in
+    // Reanimated.
+    r.last = r.prepare();
+    r.react(r.last, null);
+    reactions.add(r);
+    return () => {
+      reactions.delete(r);
+    };
+  }, []);
+}
+
 function makeShared(initial) {
-  const sv = { value: initial };
+  let current = initial;
+  const sv = {
+    get value() {
+      return current;
+    },
+    set value(v) {
+      if (Object.is(v, current)) return;
+      current = v;
+      runReactions();
+    },
+  };
   sv.get = () => sv.value;
   sv.set = (v) => {
     sv.value = typeof v === 'function' ? v(sv.value) : v;
@@ -64,7 +120,7 @@ module.exports = {
   makeMutable: (initial) => makeShared(initial),
   useAnimatedStyle: () => ({}),
   useAnimatedProps: () => ({}),
-  useAnimatedReaction: () => {},
+  useAnimatedReaction,
   useDerivedValue: (fn) => makeShared(fn()),
   withSpring: (to, _config, callback) => {
     callback?.(true);

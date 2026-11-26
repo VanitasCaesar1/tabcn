@@ -3,7 +3,8 @@
  * five icon-only tabs; a round glass lens glides behind the active one, whose icon turns solid.
  * Over it, on a post's page, a second capsule of the same width holds the reply field: the
  * viewer's photo, "Post your reply", and photo, GIF and expand buttons. The screen shows through
- * both, blurred. The glass itself is drawn in `reply-stack-glass.tsx`.
+ * both, blurred. The glass is drawn in `reply-stack-glass.tsx`, the reply row in
+ * `reply-stack-row.tsx`, the tabs and the lens in `reply-stack-tabs.tsx`.
  *
  * ```tsx
  * <Tabs tabBar={tabBar(<ReplyStack reply={{ onPress: openComposer }} showReply={onPost} />)} />
@@ -14,52 +15,61 @@
  * there is no row. Pressing the field calls `reply.onPress` (open your composer); each action
  * button calls its own `onPress`.
  *
+ * It minimizes on scroll, as X's does: on a screen that uses `useMinimizeOnScroll()` (under a
+ * `TabBarProvider`), scrolling down shrinks the bar to a glass circle at its start holding only
+ * the active tab's icon, and the reply row drops beside it into the same row. Scrolling up, or
+ * tapping the circle (no tab change), brings the tabs back. Turn it off with
+ * `minimizeOnScroll={false}`.
+ *
  * The glass is a blur under a light or dark tint with a bright edge, lit from the top right, and
  * a soft shadow. It follows the system's light or dark appearance unless `tint` is set. Android
  * can't blur what is behind the bar, so there it is a denser fill with the same edge.
  *
- * Motion (lively): the lens glides on tabcnSpring and stretches a little as it sets off, like a
- * drop of glass, settling round as it lands; the active icon's solid form crossfades in over its
- * outline on tabcnTiming. A pressed tab dips to 88% as the finger lands; a pressed reply field
- * dips the whole row to 98% and springs back. The row rises in over 220 ms and sinks away in
- * 150 ms. With "reduce motion" on, every change is instant.
+ * Motion (lively): the lens answers the finger, as X's does. It sets off for a tab as the finger
+ * lands and follows the finger as it slides along the bar (TabScrub, so this design needs
+ * react-native-gesture-handler and a GestureHandlerRootView); lifting on a tab changes to it.
+ * It glides on tabcnSpring, stretching a little like a drop of glass and settling round as it
+ * lands; the icon swaps to its solid form in a frame or two once the tab changes. A pressed tab
+ * dips to 88%; a pressed reply field dips the whole row to 98% and springs back. The row rises in
+ * over 220 ms and sinks away in 150 ms. Minimizing (tabcnTiming), the pill shrinks to a 52 pt
+ * circle at its bottom start corner while the other icons gather into the active one, which
+ * keeps its size; the reply row drops into the same row and narrows from its start. Growing back
+ * runs the same path. With "reduce motion" on, every change is instant.
  *
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import {
+  I18nManager,
   Pressable,
   StyleSheet,
-  Text,
   useColorScheme,
   useWindowDimensions,
   View,
 } from 'react-native';
 import Animated, {
   Easing,
-  interpolate,
   ReduceMotion,
   runOnJS,
-  type SharedValue,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
-  withSequence,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import {
-  BadgeCount,
   TabBarRoot,
-  TabButton,
-  TabIndicator,
   type TabItem,
-  TabList,
-  useFocusProgress,
+  useRestoreTabBar,
   useTabBar,
+  useTabBarMinimized,
 } from 'react-native-tabcn';
-import { Glass, Lens, type Tint } from './reply-stack-glass';
-import { ExpandIcon, GifIcon, PhotoIcon, type ReplyIconProps } from './reply-stack-icons';
+import { TabScrub } from 'react-native-tabcn/gestures';
+import { ComposeButton, type ComposeConfig } from './reply-stack-compose';
+import { APP_DIRECTION, Glass, LTR, type Tint, useCapsuleFrame } from './reply-stack-glass';
+import type { ReplyIconProps } from './reply-stack-icons';
+import { ReplyRow } from './reply-stack-row';
+import { PHYSICAL_LEFT, SlidingLens, Tab } from './reply-stack-tabs';
 
 const darkColors = {
   /** Laid over the blur: how dark the glass is. */
@@ -91,6 +101,9 @@ const darkColors = {
   badgeText: '#ffffff',
   /** The shadow under each capsule. */
   shadow: 'rgba(0, 0, 0, 0.45)',
+  /** The compose button and its glyph. */
+  compose: '#ffffff',
+  composeIcon: '#0f1419',
 };
 
 const lightColors: ReplyStackColors = {
@@ -109,9 +122,12 @@ const lightColors: ReplyStackColors = {
   badge: '#1d9bf0',
   badgeText: '#ffffff',
   shadow: 'rgba(0, 0, 0, 0.14)',
+  compose: '#0f1419',
+  composeIcon: '#ffffff',
 };
 
 export type ReplyStackColors = typeof darkColors;
+export type { ComposeConfig } from './reply-stack-compose';
 
 /** A button at the reply row's end. */
 export interface ReplyAction {
@@ -127,7 +143,10 @@ export interface ReplyAction {
 export interface ReplyConfig {
   /** The field's grey text. Default "Post your reply". */
   placeholder?: string;
-  /** The viewer's photo, drawn 38 pt across and clipped to a circle. Default: a grey disc. */
+  /**
+   * The viewer's photo, clipped to a circle 38 pt across (26 pt while docked beside the minimized
+   * bar): size it to fill its parent (`width: '100%', height: '100%'`). Default: a grey disc.
+   */
   avatar?: ReactNode;
   /** Runs when the field is pressed: open your composer. */
   onPress?: () => void;
@@ -140,41 +159,69 @@ export interface ReplyStackProps {
   reply?: ReplyConfig;
   /** Shows the reply row. Drive it from your screen's state. Default true. */
   showReply?: boolean;
+  /**
+   * X's round compose button at the bar's end. It floats above the pill, drops beside the
+   * minimized circle, and gives way to the reply row while that is shown. Without it there is
+   * none.
+   */
+  compose?: ComposeConfig;
   /** `light` or `dark` glass. Default: the system's appearance. */
   tint?: 'light' | 'dark';
   colors?: Partial<ReplyStackColors>;
   /** Blur strength (iOS and the web). Default 30. */
   intensity?: number;
-  /** A selection tick on pressing a tab that isn't active, and on the reply field. Default true. */
+  /**
+   * A selection tick on pressing a tab that isn't active, on each tab the finger slides onto,
+   * on the reply field and on the minimized circle. Default true.
+   */
   haptics?: boolean;
+  /**
+   * Shrinks the bar to a circle holding the active tab while a screen that uses
+   * `useMinimizeOnScroll()` scrolls down. Default true.
+   */
+  minimizeOnScroll?: boolean;
 }
-
-const defaultActions: readonly ReplyAction[] = [
-  { label: 'Add photo', icon: PhotoIcon },
-  { label: 'Add GIF', icon: GifIcon },
-  { label: 'Expand', icon: ExpandIcon },
-];
 
 export function ReplyStack({
   reply,
   showReply = true,
+  compose,
   tint: tintProp,
   colors: custom,
   intensity = 30,
   haptics = true,
+  minimizeOnScroll = true,
 }: ReplyStackProps) {
   const system = useColorScheme();
   const tint: Tint = tintProp ?? (system === 'dark' ? 'dark' : 'light');
   const colors = { ...(tint === 'dark' ? darkColors : lightColors), ...custom };
-  const { tabs, insets } = useTabBar();
+  const { tabs, insets, activeIndex } = useTabBar();
   const window = useWindowDimensions();
-  const width = Math.max(0, window.width - insets.left - insets.right - SIDE * 2);
-  // The lens fills a tab's cell: every tab is the same width.
-  const lensWidth = tabs.length > 0 ? (width - LIST_PAD_X * 2) / tabs.length : 0;
+  const minimized = useTabBarMinimized();
+  // X's own minimize motion, measured from the clip: it shrinks in about 130 ms, eased at both
+  // ends, and grows back over 200 ms, fast at first and settling (ease out). The foundation's
+  // progress says when and which way; this follows it on X's timing.
+  const shown = useSharedValue(minimized.value);
+  // Which way it is going: 1 minimizing, 0 restoring. A new run starts only when that changes.
+  const heading = useSharedValue(minimized.value > 0.5 ? 1 : 0);
+  useAnimatedReaction(
+    () => minimized.value,
+    (next, previous) => {
+      if (previous === null || next === previous) return;
+      const to = next > previous ? 1 : 0;
+      if (heading.value === to) return;
+      heading.value = to;
+      shown.value = withTiming(to, to === 1 ? SHRINK : GROW);
+    },
+  );
+  const restore = useRestoreTabBar();
+  const width = Math.max(PILL_HEIGHT * 2, window.width - insets.left - insets.right - SIDE * 2);
+  const count = Math.max(1, tabs.length);
+  // Every tab is the same width; the lens fills a tab's cell.
+  const cell = (width - LIST_PAD_X * 2) / count;
   // Never taller than wide: with six or more tabs the cells are narrower than the pill is tall,
   // and the lens stays a circle, centred.
-  const lensHeight = Math.min(PILL_HEIGHT - LIST_PAD_Y * 2, lensWidth);
-  const lensInsetY = (PILL_HEIGHT - LIST_PAD_Y * 2 - lensHeight) / 2;
+  const lensHeight = Math.min(PILL_HEIGHT - LIST_PAD_Y * 2, cell);
   // The pill sits low, as X's does: 20 pt above the screen's bottom edge over a home indicator,
   // 16 pt where there is none.
   const offset = (insets.bottom > 0 ? BOTTOM_GAP : BOTTOM_GAP_FLAT) - insets.bottom;
@@ -194,222 +241,188 @@ export function ReplyStack({
   }, [visible, presence]);
   const shownReply = reply ?? lastReply;
 
+  // Minimized (past half-way), the circle is one button that brings the tabs back; the tabs in
+  // it take no taps and aren't read.
+  const [compact, setCompact] = useState(() => minimized.value > 0.5);
+  useAnimatedReaction(
+    () => shown.value > 0.5,
+    (next, previous) => {
+      if (next !== previous) runOnJS(setCompact)(next);
+    },
+  );
+
+  // The lens answers the finger, as X's does: it sets off for a tab as the finger lands on it,
+  // follows the finger as it slides along the bar (TabScrub), and goes back to the active tab if
+  // the touch doesn't end in a tab change.
+  const [pressedIndex, setPressedIndex] = useState<number | null>(null);
+  const scrubbing = useRef(false);
+  const settle = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearSettle = useRef(() => {
+    if (settle.current !== null) clearTimeout(settle.current);
+    settle.current = null;
+  }).current;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: let go whenever the active tab changes.
+  useEffect(() => {
+    clearSettle();
+    setPressedIndex(null);
+  }, [activeIndex, clearSettle]);
+  useEffect(() => clearSettle, [clearSettle]);
+  // The lens waits a moment for the tab change a touch asks for, then goes back.
+  const settleSoon = () => {
+    clearSettle();
+    settle.current = setTimeout(() => setPressedIndex(null), LENS_RETURN_MS);
+  };
+  const indexOf = (tab: TabItem) => tabs.findIndex((t) => t.key === tab.key);
+  const onTabPressIn = (index: number) => {
+    clearSettle();
+    setPressedIndex(index !== activeIndex ? index : null);
+  };
+  const onTabPressOut = () => {
+    // A scrub takes the touch from the tab (its press is cancelled); the scrub decides.
+    if (!scrubbing.current) settleSoon();
+  };
+  const onScrubStart = (tab: TabItem) => {
+    scrubbing.current = true;
+    clearSettle();
+    setPressedIndex(indexOf(tab));
+  };
+  const onTabCross = (tab: TabItem) => {
+    if (haptics) Haptics.selectionAsync();
+    setPressedIndex(indexOf(tab));
+  };
+  const onScrubEnd = (tab: TabItem | null) => {
+    scrubbing.current = false;
+    // Lifted on a tab: TabScrub presses it, and the lens stays for the change. Lifted away from
+    // the bar: back to the active tab.
+    if (tab) settleSoon();
+    else setPressedIndex(null);
+  };
+  const lensIndex = pressedIndex ?? activeIndex;
+
+  // The tab the minimized circle keeps: the active one.
+  const kept = activeIndex >= 0 && activeIndex < count ? activeIndex : 0;
+  const rtl = Boolean(I18nManager.isRTL);
+  // Centres are measured from the pill's physical left; the row runs right to left in RTL.
+  const centerOf = (index: number) => LIST_PAD_X + cell * ((rtl ? count - 1 - index : index) + 0.5);
+  const keptCenter = centerOf(kept);
+  // The pill shrinks toward its bottom start corner (the left, or the right in RTL) to a circle
+  // MIN across. Its glass and the clip around the tabs share one frame; the icons keep their size.
+  const shape = {
+    width,
+    height: PILL_HEIGHT,
+    to: { width: MIN, height: MIN },
+    moves: 'end' as const,
+  };
+  const { frame: clipFrame, hold: clipHold } = useCapsuleFrame(shown, shape);
+  const circleX = rtl ? width - MIN / 2 : MIN / 2;
+  const circleDrop = (PILL_HEIGHT - MIN) / 2;
+  // The tabs slide so the kept icon lands in the middle of the circle.
+  const rowSlide = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: shown.value * (circleX - keptCenter) },
+      { translateY: shown.value * circleDrop },
+    ],
+  }));
+
   return (
-    <TabBarRoot placement="floating" offset={offset}>
-      <View style={[styles.column, { width }]}>
+    <TabBarRoot
+      placement="floating"
+      offset={offset}
+      minimizeBehavior={minimizeOnScroll ? 'onScrollDown' : 'none'}
+    >
+      <View pointerEvents="box-none" style={[styles.column, { width }]}>
         {mounted && shownReply ? (
           <ReplyRow
             reply={shownReply}
             presence={presence}
+            minimized={shown}
+            // Down into the tabs' row, its bottom edge on the pill's.
+            drop={GAP + PILL_HEIGHT}
+            travel={MIN + DOCK_GAP}
             colors={colors}
             tint={tint}
             intensity={intensity}
             width={width}
+            height={ROW_HEIGHT}
+            dockHeight={MIN}
             haptics={haptics}
           />
         ) : null}
-        <Glass colors={colors} tint={tint} intensity={intensity} width={width} height={PILL_HEIGHT}>
-          <TabList style={styles.list}>
-            <TabIndicator
-              inset={{ x: 0, y: lensInsetY }}
-              style={[styles.lens, tint === 'light' ? styles.lensLift : null]}
-            >
-              <StretchingLens colors={colors} width={lensWidth} height={lensHeight} />
-            </TabIndicator>
-            {tabs.map((tab) => (
-              <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
-            ))}
-          </TabList>
-        </Glass>
+        <View pointerEvents="box-none" style={{ width, height: PILL_HEIGHT }}>
+          <Glass colors={colors} tint={tint} intensity={intensity} progress={shown} {...shape} />
+          {/* The tabs, clipped to the shrinking pill. Minimized, they take no touches and are
+              hidden from screen readers and the keyboard: the circle stands for them. */}
+          <View
+            pointerEvents={compact ? 'none' : 'box-none'}
+            aria-hidden={compact}
+            style={[StyleSheet.absoluteFill, LTR]}
+          >
+            <Animated.View style={[styles.clipFrame, clipFrame]}>
+              <Animated.View
+                pointerEvents="box-none"
+                style={[styles.still, APP_DIRECTION, { width, height: PILL_HEIGHT }, clipHold]}
+              >
+                <Animated.View style={[styles.rowBox, PHYSICAL_LEFT, { width }, rowSlide]}>
+                  <TabScrub
+                    enabled={!compact}
+                    style={styles.list}
+                    onScrubStart={onScrubStart}
+                    onTabCross={onTabCross}
+                    onScrubEnd={onScrubEnd}
+                  >
+                    <SlidingLens
+                      index={lensIndex}
+                      left={lensIndex >= 0 ? centerOf(lensIndex) - cell / 2 : 0}
+                      width={cell}
+                      height={lensHeight}
+                      top={(PILL_HEIGHT - lensHeight) / 2}
+                      minimized={shown}
+                      colors={colors}
+                      tint={tint}
+                    />
+                    {tabs.map((tab, index) => (
+                      <Tab
+                        key={tab.key}
+                        tab={tab}
+                        colors={colors}
+                        haptics={haptics}
+                        kept={index === kept}
+                        gather={keptCenter - centerOf(index)}
+                        minimized={shown}
+                        focusable={!compact}
+                        onPressIn={() => onTabPressIn(index)}
+                        onPressOut={onTabPressOut}
+                      />
+                    ))}
+                  </TabScrub>
+                </Animated.View>
+              </Animated.View>
+            </Animated.View>
+          </View>
+          {compact ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${tabs[kept]?.label ?? 'Tabs'}, show all tabs`}
+              onPress={restore}
+              onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
+              style={styles.circle}
+            />
+          ) : null}
+          {compose ? (
+            <ComposeButton
+              compose={compose}
+              enabled={!visible}
+              shown={shown}
+              hidden={presence}
+              colors={colors}
+              haptics={haptics}
+              pillHeight={PILL_HEIGHT}
+              circle={MIN}
+            />
+          ) : null}
+        </View>
       </View>
     </TabBarRoot>
-  );
-}
-
-/**
- * The lens, stretching as it sets off for a new tab and settling round as it lands: it widens by
- * up to 14% and flattens by 5% in 110 ms, then springs back while the glide finishes. Not taken
- * from X (its clips never change tab): it is how glass lenses move on today's phones.
- */
-function StretchingLens(props: Parameters<typeof Lens>[0]) {
-  const { activeIndex } = useTabBar();
-  const stretch = useSharedValue(0);
-  const shownIndex = useRef(activeIndex);
-  useEffect(() => {
-    // Only a change of tab moves the lens; the first render and a hidden route (-1) don't.
-    if (activeIndex === shownIndex.current) return;
-    const from = shownIndex.current;
-    shownIndex.current = activeIndex;
-    if (from < 0 || activeIndex < 0) return;
-    stretch.value = withSequence(withTiming(1, STRETCH_OUT), withSpring(0, STRETCH_BACK));
-  }, [activeIndex, stretch]);
-  const shape = useAnimatedStyle(() => ({
-    transform: [{ scaleX: 1 + 0.14 * stretch.value }, { scaleY: 1 - 0.05 * stretch.value }],
-  }));
-  return (
-    <Animated.View style={shape}>
-      <Lens {...props} />
-    </Animated.View>
-  );
-}
-
-/**
- * The reply row: the field (one press area: photo and placeholder) and the action buttons beside
- * it, each its own button. Pressing the field dips the whole row.
- */
-function ReplyRow({
-  reply,
-  presence,
-  colors,
-  tint,
-  intensity,
-  width,
-  haptics,
-}: {
-  reply: ReplyConfig;
-  presence: SharedValue<number>;
-  colors: ReplyStackColors;
-  tint: Tint;
-  intensity: number;
-  width: number;
-  haptics: boolean;
-}) {
-  const placeholder = reply.placeholder ?? 'Post your reply';
-  const actions = reply.actions ?? defaultActions;
-  const scale = useSharedValue(1);
-  // Rises 12 pt from behind the tabs as it fades in; dips while the field is pressed.
-  const motion = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: interpolate(presence.value, [0, 1], [12, 0]) },
-      { scale: interpolate(presence.value, [0, 1], [0.96, 1]) * scale.value },
-    ],
-  }));
-  return (
-    <Animated.View style={motion}>
-      <Glass
-        colors={colors}
-        tint={tint}
-        intensity={intensity}
-        width={width}
-        height={ROW_HEIGHT}
-        presence={presence}
-      >
-        <View style={styles.row}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={placeholder}
-            onPressIn={() => {
-              scale.value = withTiming(0.98, PRESS_DOWN);
-              if (haptics) Haptics.selectionAsync();
-            }}
-            onPressOut={() => {
-              scale.value = withSpring(1, PRESS_UP);
-            }}
-            onPress={reply.onPress}
-            style={styles.field}
-          >
-            <View style={[styles.avatar, { backgroundColor: colors.avatar }]}>{reply.avatar}</View>
-            <Text
-              numberOfLines={1}
-              maxFontSizeMultiplier={1.3}
-              // At large text sizes it shrinks a little before it would cut off.
-              adjustsFontSizeToFit
-              minimumFontScale={0.75}
-              style={[styles.placeholder, { color: colors.placeholder }]}
-            >
-              {placeholder}
-            </Text>
-          </Pressable>
-          <View style={styles.actions}>
-            {actions.map((action) => (
-              <Pressable
-                key={action.label}
-                accessibilityRole="button"
-                accessibilityLabel={action.label}
-                onPress={action.onPress}
-                style={({ pressed }) => [styles.action, pressed ? styles.pressed : null]}
-              >
-                <action.icon color={colors.foreground} size={ACTION_ICON} />
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      </Glass>
-    </Animated.View>
-  );
-}
-
-/**
- * A tab: its outline icon, with the solid form crossfading in over it as the tab gains focus.
- * The tab dips as the finger lands (TabButton's press scale).
- */
-function Tab({
-  tab,
-  colors,
-  haptics,
-}: {
-  tab: TabItem;
-  colors: ReplyStackColors;
-  haptics: boolean;
-}) {
-  const progress = useFocusProgress(tab);
-  // The outline holds until late in the change, so the icon never looks dimmed half-way.
-  const outline = useAnimatedStyle(() => ({ opacity: 1 - Math.min(1, progress.value * 1.4) }));
-  const solid = useAnimatedStyle(() => ({ opacity: progress.value }));
-  return (
-    <TabButton
-      tab={tab}
-      scale={0.88}
-      style={styles.tab}
-      // No tick for the tab that's already active: nothing changes.
-      onPressIn={haptics && !tab.focused ? () => Haptics.selectionAsync() : undefined}
-    >
-      {tab.renderIcon ? (
-        <View>
-          <Animated.View style={outline}>
-            {tab.renderIcon({ focused: false, color: colors.foreground, size: ICON })}
-          </Animated.View>
-          <Animated.View style={[StyleSheet.absoluteFill, solid]}>
-            {tab.renderIcon({ focused: true, color: colors.active, size: ICON })}
-          </Animated.View>
-          <Badge badge={tab.badge} colors={colors} />
-        </View>
-      ) : (
-        <Text
-          numberOfLines={1}
-          maxFontSizeMultiplier={1.3}
-          style={[styles.fallback, { color: colors.foreground }]}
-        >
-          {tab.label}
-        </Text>
-      )}
-    </TabButton>
-  );
-}
-
-/**
- * A badge at the icon's top right, drawn only when the tab sets one: an empty badge ('') is a
- * dot, a number a count. Hidden from screen readers: `TabButton` reads it with the label.
- */
-function Badge({ badge, colors }: { badge: TabItem['badge']; colors: ReplyStackColors }) {
-  if (badge == null) return null;
-  const text = String(badge).trim();
-  if (!text) return <View style={[styles.dot, { backgroundColor: colors.badge }]} />;
-  const textStyle = [styles.badgeText, { color: colors.badgeText }];
-  return (
-    <View
-      importantForAccessibility="no-hide-descendants"
-      accessibilityElementsHidden
-      style={[styles.count, { backgroundColor: colors.badge }]}
-    >
-      {typeof badge === 'number' ? (
-        <BadgeCount value={badge} textStyle={textStyle} />
-      ) : (
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[textStyle, styles.badgeCap]}>
-          {text}
-        </Text>
-      )}
-    </View>
   );
 }
 
@@ -426,26 +439,28 @@ const BOTTOM_GAP_FLAT = 16;
 /** The tab row's inset inside the pill: the lens sits 4 pt in from its edge. */
 const LIST_PAD_X = 4;
 const LIST_PAD_Y = 4;
-/** Tab icons (the glyphs fill about 23 pt of it) and the reply row's action icons. */
-const ICON = 31;
-const ACTION_ICON = 24;
+/** The minimized circle (0.72 of the pill's height, as in X's clip), and the glass gap to the
+ * reply row docked beside it. */
+const MIN = 52;
+const DOCK_GAP = 10;
+/** How long the lens waits on a released tab for the tab change before it goes back. */
+const LENS_RETURN_MS = 300;
 
-const PRESS_DOWN = {
-  duration: 100,
-  easing: Easing.out(Easing.quad),
-  reduceMotion: ReduceMotion.System,
-};
-const STRETCH_OUT = {
-  duration: 110,
-  easing: Easing.out(Easing.quad),
-  reduceMotion: ReduceMotion.System,
-};
-const STRETCH_BACK = { duration: 380, dampingRatio: 0.75, reduceMotion: ReduceMotion.System };
-const PRESS_UP = { duration: 320, dampingRatio: 0.7, reduceMotion: ReduceMotion.System };
 // The row rises in, and sinks away in about 70% of the time. Nobody tapped the row to make it
 // leave, so its exit can ease in.
 const ROW_IN = {
   duration: 220,
+  easing: Easing.out(Easing.cubic),
+  reduceMotion: ReduceMotion.System,
+};
+// X's minimize: a quick shrink eased at both ends, and a growth that starts fast and settles.
+const SHRINK = {
+  duration: 130,
+  easing: Easing.inOut(Easing.sin),
+  reduceMotion: ReduceMotion.System,
+};
+const GROW = {
+  duration: 200,
   easing: Easing.out(Easing.cubic),
   reduceMotion: ReduceMotion.System,
 };
@@ -457,37 +472,19 @@ const ROW_OUT = {
 
 const styles = StyleSheet.create({
   column: { gap: GAP },
+  // The clip around the tabs: its frame follows the glass as it shrinks.
+  clipFrame: { position: 'absolute', overflow: 'hidden', borderCurve: 'continuous' },
+  // The tabs' layer, held at the pill's resting frame while the clip shrinks around it.
+  still: { position: 'absolute' },
+  rowBox: { position: 'absolute', top: 0, height: PILL_HEIGHT },
   list: { flex: 1, paddingHorizontal: LIST_PAD_X, paddingVertical: LIST_PAD_Y },
-  lens: { borderRadius: 999 },
-  lensLift: { boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  fallback: { fontSize: 12, fontWeight: '600' },
-  row: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  field: {
-    flex: 1,
-    alignSelf: 'stretch',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingLeft: 10,
-  },
-  avatar: { width: 38, height: 38, borderRadius: 19, overflow: 'hidden' },
-  placeholder: { flex: 1, fontSize: 17.5 },
-  actions: { flexDirection: 'row', alignItems: 'center', paddingRight: 9 },
-  action: { width: 56, height: 48, alignItems: 'center', justifyContent: 'center' },
-  pressed: { opacity: 0.5 },
-  badgeCap: { maxWidth: 56 },
-  dot: { position: 'absolute', top: 1, right: 0, width: 9, height: 9, borderRadius: 5 },
-  count: {
+  // The minimized circle's button, at the pill's bottom start corner.
+  circle: {
     position: 'absolute',
-    top: -3,
-    left: ICON - 10,
-    minWidth: 17,
-    height: 17,
-    borderRadius: 9,
-    paddingHorizontal: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
+    bottom: 0,
+    start: 0,
+    width: MIN,
+    height: MIN,
+    borderRadius: MIN / 2,
   },
-  badgeText: { fontSize: 10.5, lineHeight: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
 });

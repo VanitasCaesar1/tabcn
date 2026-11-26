@@ -1,6 +1,7 @@
 /**
  * Reply Stack's demo: the reply row shows on Home only (a post is open there), with the viewer's
- * photo from the scenes' avatars, so it rises in and sinks away as the tab changes. The glass
+ * photo from the scenes' avatars, so it rises in and sinks away as the tab changes. The other tabs
+ * show X's compose button above the bar's end instead. The glass
  * follows the Customize panel's light or dark scene (dark, as in X's screenshot, by default).
  */
 import { ReplyStack } from '@registry/reply-stack/reply-stack';
@@ -20,9 +21,11 @@ export function ReplyStackDemo() {
     <ReplyStack
       tint={scheme}
       reply={{ avatar: <Image source={AVATARS[2]} style={styles.avatar} /> }}
+      compose={{ label: 'Post' }}
       showReply={activeIndex === POST_TAB}
     />
   );
 }
 
-const styles = StyleSheet.create({ avatar: { width: 38, height: 38 } });
+// The photo fills its circle, which shrinks while the row is docked.
+const styles = StyleSheet.create({ avatar: { width: '100%', height: '100%' } });

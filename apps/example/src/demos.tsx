@@ -130,6 +130,7 @@ import {
 import { themed, useDemoColors } from '@/panel-theme';
 import type { PreviewSettings } from '@/preview-settings';
 import { ReplyStackDemo } from '@/reply-stack-demo';
+import { ReplyStackScreen } from '@/reply-stack-screens';
 
 // Each scene's screen colour (scenes/palette.ts), written out: the site's build reads each
 // demo's `background:` line as text, and it resolves a name only to a hex literal declared here.
@@ -931,6 +932,7 @@ export const demos: Record<string, Demo> = {
     // A post's page on a dark feed: the reply row sits over the bar on Home and slides away on
     // the other tabs. Home is the filled tab; Alerts carries a count.
     render: () => <ReplyStackDemo />,
+    screen: ReplyStackScreen,
     background: SOCIAL_DARK,
     barHeight: 66,
     tabs: [
