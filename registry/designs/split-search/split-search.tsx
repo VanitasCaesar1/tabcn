@@ -30,6 +30,7 @@ import {
   Text,
   useWindowDimensions,
   View,
+  type ViewStyle,
 } from 'react-native';
 import Animated, {
   interpolate,
@@ -638,6 +639,14 @@ function splitAlpha(color: string): { color: string; alpha: number } {
   return { color: `rgb(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255})`, alpha };
 }
 
+/**
+ * A fixed layout direction. React Native Web spells it `writingDirection` (CSS `direction`): in
+ * development it drops `direction` with an error, so the web would follow the app's direction.
+ */
+function layoutDirection(direction: 'ltr' | 'rtl'): ViewStyle {
+  return Platform.OS === 'web' ? ({ writingDirection: direction } as ViewStyle) : { direction };
+}
+
 const styles = StyleSheet.create({
   // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
   badgeTextCap: { maxWidth: 56 },
@@ -708,7 +717,7 @@ const styles = StyleSheet.create({
     height: CAP,
   },
   // The capsule's frame is physical (from the left edge) in either layout direction.
-  ltr: { direction: 'ltr' },
+  ltr: layoutDirection('ltr'),
   tab: {
     height: BAR,
     alignItems: 'center',

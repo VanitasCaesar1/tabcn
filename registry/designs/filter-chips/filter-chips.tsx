@@ -54,6 +54,7 @@ import {
   Text,
   useWindowDimensions,
   View,
+  type ViewStyle,
 } from 'react-native';
 import Animated, {
   Extrapolation,
@@ -935,9 +936,17 @@ function Corner({
   return <Animated.View style={[styles.corner, { backgroundColor: color }, style]} />;
 }
 
+/**
+ * A fixed layout direction. React Native Web spells it `writingDirection` (CSS `direction`): in
+ * development it drops `direction` with an error, so the web would follow the app's direction.
+ */
+function layoutDirection(direction: 'ltr' | 'rtl'): ViewStyle {
+  return Platform.OS === 'web' ? ({ writingDirection: direction } as ViewStyle) : { direction };
+}
+
 const styles = StyleSheet.create({
-  ltr: { direction: 'ltr' },
-  rtl: { direction: 'rtl' },
+  ltr: layoutDirection('ltr'),
+  rtl: layoutDirection('rtl'),
   reverse: { flexDirection: 'row-reverse' },
   unit: { position: 'absolute', left: 0, top: 0, width: UNIT, height: UNIT },
   corner: {

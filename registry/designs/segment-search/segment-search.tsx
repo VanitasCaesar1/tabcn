@@ -18,7 +18,14 @@
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import {
   PressableScale,
@@ -189,6 +196,14 @@ function wellShadow(color: string) {
   return { boxShadow: `0 0 2px ${color}, 0 0 12px 3px ${color}, 0 5px 12px ${color}` };
 }
 
+/**
+ * A fixed layout direction. React Native Web spells it `writingDirection` (CSS `direction`): in
+ * development it drops `direction` with an error, so the web would follow the app's direction.
+ */
+function layoutDirection(direction: 'ltr' | 'rtl'): ViewStyle {
+  return Platform.OS === 'web' ? ({ writingDirection: direction } as ViewStyle) : { direction };
+}
+
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   well: { borderRadius: 999 },
@@ -214,7 +229,7 @@ const styles = StyleSheet.create({
   },
   // Laid out left to right in every language: React Native swaps `left` in right-to-left
   // layouts, which would put the handle at the lower left. iOS doesn't mirror the search glyph.
-  magnifier: { width: ACTION_ICON, height: ACTION_ICON, direction: 'ltr' },
+  magnifier: { width: ACTION_ICON, height: ACTION_ICON, ...layoutDirection('ltr') },
   lens: {
     position: 'absolute',
     left: 0,
