@@ -1,10 +1,10 @@
 /**
  * Icons for the Reply Stack design, drawn by hand to the proportions and stroke weight of X's
  * navigation glyphs (not traced): five tab glyphs (home, search, explore, bell, chat) in a 40-unit
- * box, and three for the reply row (photo, GIF, expand) in a 24-unit box. The tab glyphs take
- * `focused`: an outline when idle, solid when active (search and explore thicken instead). Reply
- * Stack draws both forms and crossfades them. Pass the tab glyphs as `tabBarIcon` in your screen
- * options.
+ * box, and in a 24-unit box three for the reply row (photo, GIF, expand) and the compose button's
+ * plus. The tab glyphs take `focused`: an outline when idle, solid when active (search and explore
+ * thicken instead). Reply Stack draws both forms and swaps them. Pass the tab glyphs as
+ * `tabBarIcon` in your screen options.
  */
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import type { TabIconProps } from 'react-native-tabcn';
@@ -138,6 +138,15 @@ export function ExpandIcon({ color, size }: ReplyIconProps) {
         strokeWidth={2.2}
         {...round}
       />
+    </Svg>
+  );
+}
+
+/** A plus, for the compose button: two round-ended strokes, 14 units long in the 24-unit box. */
+export function PlusIcon({ color, size }: ReplyIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M 12 5 L 12 19 M 5 12 L 19 12" stroke={color} strokeWidth={2} {...round} />
     </Svg>
   );
 }

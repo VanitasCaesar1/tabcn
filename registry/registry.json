@@ -893,13 +893,34 @@
       "name": "reply-stack",
       "type": "registry:item",
       "title": "Reply Stack",
-      "description": "X's frosted-glass bar: five icon-only tabs on a wide glass capsule with a round lens behind the active one, and a reply field on a second capsule that slides up above it.",
-      "dependencies": ["react-native-tabcn", "expo-blur", "expo-haptics", "react-native-svg"],
+      "description": "X's frosted-glass bar: five icon-only tabs on a wide glass capsule with a round lens that follows the finger, and a reply field on a second capsule above it; on scroll the bar shrinks to a circle holding the active tab and the reply field drops in beside it (tap the circle to expand); an optional compose button rides above the bar's end.",
+      "dependencies": [
+        "react-native-tabcn",
+        "expo-blur",
+        "expo-haptics",
+        "react-native-gesture-handler",
+        "react-native-svg"
+      ],
       "files": [
         {
           "path": "registry/designs/reply-stack/reply-stack.tsx",
           "type": "registry:file",
           "target": "components/tabcn/reply-stack.tsx"
+        },
+        {
+          "path": "registry/designs/reply-stack/reply-stack-tabs.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/reply-stack-tabs.tsx"
+        },
+        {
+          "path": "registry/designs/reply-stack/reply-stack-compose.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/reply-stack-compose.tsx"
+        },
+        {
+          "path": "registry/designs/reply-stack/reply-stack-row.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/reply-stack-row.tsx"
         },
         {
           "path": "registry/designs/reply-stack/reply-stack-glass.tsx",

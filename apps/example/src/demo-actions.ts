@@ -94,20 +94,20 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
     { tap: 'Apply' },
     { wait: 2000 },
   ],
-  // Each tab change draws the new stroke and wipes the old one: forward through the tabs, then
-  // back to the first (a long move, so both strokes show at once).
-  // Home has the reply row: leave it for Explore (the row slides down and out), come back
-  // (it slides up), then to Alerts and Home again.
+  // Home has the reply row. Leave it for Alerts (the row sinks away), then slide a finger along
+  // the bar back to Home: the lens follows it and the row rises again. Scroll the post down: the
+  // bar shrinks to the Home circle with the row docked beside it; tap the circle to bring the
+  // tabs back.
   'reply-stack': [
-    { wait: 1100 },
-    { tab: 2 },
-    { wait: 1300 },
-    { tab: 0 },
-    { wait: 1300 },
+    { wait: 900 },
     { tab: 3 },
+    { wait: 1200 },
+    { pan: [272, 818, -215, 0, 1200] },
     { wait: 1300 },
-    { tab: 0 },
-    { wait: 1300 },
+    { pan: [200, 520, 0, -70, 700] },
+    { wait: 1600 },
+    { tap: 'Home, show all tabs' },
+    { wait: 1200 },
   ],
   // Opens on Chat; each new tab's pill pops in its own colour. Left, then right, then back.
   'sticker-pills': [
@@ -121,6 +121,8 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
     { tab: 1 },
     { wait: 1300 },
   ],
+  // Each tab change draws the new stroke and wipes the old one: forward through the tabs, then
+  // back to the first (a long move, so both strokes show at once).
   'ink-underline': [
     { wait: 900 },
     { tab: 1 },
@@ -205,5 +207,46 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
     { wait: 1800 },
     { tap: 'Close menu' },
     { wait: 1000 },
+  ],
+};
+
+/**
+ * Longer storyboards for the studio videos (apps/site/scripts/studio.py), which show a design in
+ * full rather than in a few seconds. Same steps as DEMO_ACTIONS; a design without one here uses
+ * its DEMO_ACTIONS.
+ */
+export const STUDIO_ACTIONS: Record<string, DemoStep[]> = {
+  // Search: scroll the trends (the bar shrinks to the Search circle, the compose button beside
+  // it) and back. Explore, then Alerts, and press the compose button. Slide a finger along the
+  // bar back to Home (the lens follows it; the reply row rises). Scroll the post: the row docks
+  // beside the Home circle; tap the circle. Slide to Chat, scroll, tap the circle, and home.
+  'reply-stack': [
+    { wait: 900 },
+    { tab: 1 },
+    { wait: 1300 },
+    { pan: [200, 620, 0, -170, 600] },
+    { wait: 1700 },
+    { pan: [200, 420, 0, 170, 600] },
+    { wait: 3300 },
+    { tab: 2 },
+    { wait: 1200 },
+    { tab: 3 },
+    { wait: 1200 },
+    { tap: 'Post' },
+    { wait: 3300 },
+    { pan: [272, 818, -214, 0, 1300] },
+    { wait: 1600 },
+    { pan: [200, 600, 0, -140, 600] },
+    { wait: 1900 },
+    { tap: 'Home, show all tabs' },
+    { wait: 3300 },
+    { pan: [58, 818, 286, 0, 1400] },
+    { wait: 1600 },
+    { pan: [200, 620, 0, -170, 600] },
+    { wait: 1700 },
+    { tap: 'Chat, show all tabs' },
+    { wait: 1300 },
+    { tab: 0 },
+    { wait: 1600 },
   ],
 };

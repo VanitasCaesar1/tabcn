@@ -17,6 +17,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, { type SharedValue } from 'react-native-reanimated';
 
 import {
   TabBarProvider,
@@ -28,8 +29,10 @@ import {
   type TabItem,
   TabList,
   type TabPanelControls,
+  useMinimizeOnScroll,
   usePanelAnchor,
   useTabBar,
+  useTabBarMinimized,
   useTabPanel,
 } from '../index';
 import { useOverrideSlot } from '../override';
@@ -1076,12 +1079,24 @@ describe('sticker-pills', () => {
 
 // Reply Stack ----------------------------------------------------------------------------
 
+/** The bar's minimize progress, as the last rendered `Feed` saw it. */
+let feedMinimized: SharedValue<number> | undefined;
+
+/** A scrolling screen that minimizes the bar. */
+function Feed() {
+  const onScroll = useMinimizeOnScroll();
+  feedMinimized = useTabBarMinimized();
+  return <Animated.ScrollView testID="feed" onScroll={onScroll} />;
+}
+
 describe('reply-stack', () => {
   const { ReplyStack } = require('../../../../registry/designs/reply-stack/reply-stack') as {
     ReplyStack: ComponentType<{
       reply?: { onPress?: () => void };
       showReply?: boolean;
+      compose?: { onPress?: () => void; label?: string };
       haptics?: boolean;
+      minimizeOnScroll?: boolean;
     }>;
   };
 
@@ -1089,9 +1104,11 @@ describe('reply-stack', () => {
     const onPress = jest.fn();
     const { state } = makeState(3, 0, []);
     await render(
-      <TabBarStateProvider value={state}>
-        <ReplyStack haptics={false} reply={{ onPress }} />
-      </TabBarStateProvider>,
+      <GestureHandlerRootView>
+        <TabBarStateProvider value={state}>
+          <ReplyStack haptics={false} reply={{ onPress }} />
+        </TabBarStateProvider>
+      </GestureHandlerRootView>,
     );
     expect(screen.getAllByRole('tab')).toHaveLength(3);
     await fireEvent.press(screen.getByRole('button', { name: 'Post your reply' }));
@@ -1104,17 +1121,109 @@ describe('reply-stack', () => {
   it('draws only the tabs when the row is hidden or there is no reply', async () => {
     const { state } = makeState(3, 0, []);
     const { rerender } = await render(
-      <TabBarStateProvider value={state}>
-        <ReplyStack haptics={false} reply={{}} showReply={false} />
-      </TabBarStateProvider>,
+      <GestureHandlerRootView>
+        <TabBarStateProvider value={state}>
+          <ReplyStack haptics={false} reply={{}} showReply={false} />
+        </TabBarStateProvider>
+      </GestureHandlerRootView>,
     );
     expect(screen.queryByRole('button', { name: 'Post your reply' })).toBeNull();
     await rerender(
-      <TabBarStateProvider value={state}>
-        <ReplyStack haptics={false} />
-      </TabBarStateProvider>,
+      <GestureHandlerRootView>
+        <TabBarStateProvider value={state}>
+          <ReplyStack haptics={false} />
+        </TabBarStateProvider>
+      </GestureHandlerRootView>,
     );
     expect(screen.queryByRole('button', { name: 'Post your reply' })).toBeNull();
     expect(screen.getAllByRole('tab')).toHaveLength(3);
+  });
+
+  /** Scrolls the feed far enough down to minimize the bar. */
+  async function scrollFeed(y: number) {
+    await act(async () => {
+      await fireEvent.scroll(screen.getByTestId('feed'), {
+        nativeEvent: {
+          contentOffset: { x: 0, y },
+          contentSize: { width: 390, height: 2000 },
+          layoutMeasurement: { width: 390, height: 800 },
+        },
+      });
+    });
+  }
+
+  it('minimizes to a circle that brings the tabs back, with the reply row still working', async () => {
+    const onReply = jest.fn();
+    const { state, press } = makeState(4, 1, []);
+    await render(
+      <GestureHandlerRootView>
+        <TabBarProvider>
+          <Feed />
+          <TabBarStateProvider value={state}>
+            <ReplyStack haptics={false} reply={{ onPress: onReply }} />
+          </TabBarStateProvider>
+        </TabBarProvider>
+      </GestureHandlerRootView>,
+    );
+    expect(screen.queryByRole('button', { name: /show all tabs/ })).toBeNull();
+    await scrollFeed(300);
+    expect(feedMinimized?.value).toBe(1);
+    // The circle keeps the active tab and stands for the rest: they aren't read and take no
+    // presses.
+    expect(screen.queryAllByRole('tab')).toHaveLength(0);
+    const [firstHidden, ...rest] = screen.getAllByRole('tab', { includeHiddenElements: true });
+    expect(rest).toHaveLength(3);
+    if (firstHidden) await fireEvent.press(firstHidden);
+    expect(press).not.toHaveBeenCalled();
+    // The docked reply row still works.
+    await fireEvent.press(screen.getByRole('button', { name: 'Post your reply' }));
+    expect(onReply).toHaveBeenCalledTimes(1);
+    // The circle brings the tabs back without changing tab.
+    await fireEvent.press(screen.getByRole('button', { name: 'Tab 2, show all tabs' }));
+    expect(feedMinimized?.value).toBe(0);
+    expect(press).not.toHaveBeenCalled();
+    expect(screen.getAllByRole('tab')).toHaveLength(4);
+    expect(screen.queryByRole('button', { name: /show all tabs/ })).toBeNull();
+  });
+
+  it('shows the compose button, and hides it while the reply row stands in for it', async () => {
+    const onCompose = jest.fn();
+    const { state } = makeState(3, 0, []);
+    const bar = (showReply: boolean) => (
+      <GestureHandlerRootView>
+        <TabBarStateProvider value={state}>
+          <ReplyStack
+            haptics={false}
+            reply={{}}
+            showReply={showReply}
+            compose={{ onPress: onCompose }}
+          />
+        </TabBarStateProvider>
+      </GestureHandlerRootView>
+    );
+    const { rerender } = await render(bar(false));
+    await fireEvent.press(screen.getByRole('button', { name: 'Post' }));
+    expect(onCompose).toHaveBeenCalledTimes(1);
+    await rerender(bar(true));
+    expect(screen.queryByRole('button', { name: 'Post' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Post your reply' })).toBeTruthy();
+  });
+
+  it('stays full with minimizeOnScroll off', async () => {
+    const { state } = makeState(3, 0, []);
+    await render(
+      <GestureHandlerRootView>
+        <TabBarProvider>
+          <Feed />
+          <TabBarStateProvider value={state}>
+            <ReplyStack haptics={false} minimizeOnScroll={false} />
+          </TabBarStateProvider>
+        </TabBarProvider>
+      </GestureHandlerRootView>,
+    );
+    await scrollFeed(300);
+    expect(feedMinimized?.value).toBe(0);
+    expect(screen.getAllByRole('tab')).toHaveLength(3);
+    expect(screen.queryByRole('button', { name: /show all tabs/ })).toBeNull();
   });
 });

@@ -121,6 +121,31 @@ describe('minimize on scroll', () => {
     expect(minimized?.value).toBe(0);
   });
 
+  it('lets touches through a minimized floating bar where it draws nothing', async () => {
+    const state = makeTabState();
+    await render(
+      <TabBarProvider>
+        <ScrollScreen />
+        <TabBarStateProvider value={state}>
+          <TestBar placement="floating" minimizeBehavior="onScrollDown" />
+        </TabBarStateProvider>
+      </TabBarProvider>,
+    );
+    // The floating box: the bar root's child that reports the bar's frame.
+    const box = () => {
+      const found = screen
+        .getByTestId('bar')
+        .children.find((c) => typeof c !== 'string' && typeof c.props.onLayout === 'function');
+      return typeof found === 'string' ? undefined : found;
+    };
+    expect(box()?.props.pointerEvents).toBeUndefined();
+    await scrollTo(300);
+    expect(minimized?.value).toBe(1);
+    expect(box()?.props.pointerEvents).toBe('box-none');
+    await act(async () => restoreBar?.());
+    expect(box()?.props.pointerEvents).toBeUndefined();
+  });
+
   it('restores the bar when the active tab changes', async () => {
     const tabs = makeTabState().tabs;
     const first = makeTabState();
