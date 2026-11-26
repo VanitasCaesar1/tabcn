@@ -9,6 +9,7 @@ import { AskDock } from '@registry/ask-dock/ask-dock';
 import { Orb } from '@registry/ask-dock/ask-dock-orb';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useIsFocused } from 'expo-router/react-navigation';
 import { useEffect, useSyncExternalStore } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -237,6 +238,8 @@ function Mark() {
  * up, the orb steps back (smaller, higher) and the line clears, so nothing sits behind the prompt.
  */
 function Hero({ bottom, attached }: { bottom: number; attached: boolean }) {
+  // The orb drifts and blinks only while its tab is on screen.
+  const focused = useIsFocused();
   const keyboard = useAnimatedKeyboard();
   const room = useSharedValue(attached ? 1 : 0);
   useEffect(() => {
@@ -267,7 +270,7 @@ function Hero({ bottom, attached }: { bottom: number; attached: boolean }) {
   return (
     <View style={[styles.hero, { paddingBottom: bottom }]}>
       <Animated.View style={orb}>
-        <Orb size={150} />
+        <Orb size={150} alive={focused} />
       </Animated.View>
       <Animated.Text style={[styles.headline, line]}>
         Show me a still or a clip,{'\n'}and I'll find the film.

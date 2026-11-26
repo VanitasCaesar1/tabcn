@@ -253,13 +253,18 @@ function scanYaw(t: number) {
 /** 1 open, 0 shut: a quick close and a slightly slower open, 0.18 s in all (bloub's). */
 function blinkLid(t: number) {
   'worklet';
-  for (let i = 0; i < BLINKS.length; i++) {
-    const start = BLINKS[i] as number;
-    if (t < start) break;
-    const k = (t - start) / 0.18;
-    if (k <= 1) return k < 0.45 ? 1 - k / 0.45 : (k - 0.45) / 0.55;
+  // The last blink that started by `t` (binary search: the schedule is sorted).
+  let lo = 0;
+  let hi = BLINKS.length - 1;
+  if (hi < 0 || t < (BLINKS[0] as number)) return 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if ((BLINKS[mid] as number) <= t) lo = mid;
+    else hi = mid - 1;
   }
-  return 1;
+  const k = (t - (BLINKS[lo] as number)) / 0.18;
+  if (k > 1) return 1;
+  return k < 0.45 ? 1 - k / 0.45 : (k - 0.45) / 0.55;
 }
 
 /**

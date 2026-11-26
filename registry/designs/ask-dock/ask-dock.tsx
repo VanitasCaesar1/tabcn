@@ -28,7 +28,7 @@
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { type ComponentRef, useEffect, useRef, useState } from 'react';
+import { type ComponentRef, useEffect, useId, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Pressable,
@@ -39,10 +39,9 @@ import {
   View,
 } from 'react-native';
 import Animated, {
+  cancelAnimation,
   Easing,
   Extrapolation,
-  FadeInDown,
-  FadeOutUp,
   interpolate,
   interpolateColor,
   KeyboardState,
@@ -52,11 +51,15 @@ import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
+  useReducedMotion,
   useSharedValue,
+  withDelay,
+  withRepeat,
   withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import {
   BadgeCount,
   TabBarRoot,
@@ -90,6 +93,8 @@ const defaultColors = {
   active: '#ffffff',
   /** The status line. */
   statusText: '#ffffff',
+  /** The soft band of light that sweeps across the status line while it waits (drawn at 20%). */
+  sheen: '#ffffff',
   /** The prompt card's tint at rest, and focused. */
   promptTint: 'rgba(56, 80, 178, 0.32)',
   promptFocused: 'rgba(12, 14, 34, 0.9)',
@@ -273,8 +278,12 @@ export function AskDock({
       { scale: press.value },
     ],
   }));
+  // Worklets capture plain strings, not the colours object, so a re-render with the same colours
+  // doesn't rebuild them.
+  const tintRest = colors.tint;
+  const tintBusy = colors.statusTint;
   const tint = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(fold.value, [0, 1], [colors.tint, colors.statusTint]),
+    backgroundColor: interpolateColor(fold.value, [0, 1], [tintRest, tintBusy]),
   }));
   const tabsFade = useAnimatedStyle(() => ({
     opacity: interpolate(fold.value, [0, 0.4], [1, 0], Extrapolation.CLAMP),
@@ -387,17 +396,9 @@ export function AskDock({
                   <Orb size={ORB} busy={busy} alive={false} colors={orbColors} />
                 </Animated.View>
                 <Animated.View style={[styles.line, lineIn]}>
-                  <Animated.Text
-                    key={shownStatus}
-                    entering={FadeInDown.duration(220).reduceMotion(ReduceMotion.System)}
-                    exiting={FadeOutUp.duration(150).reduceMotion(ReduceMotion.System)}
-                    numberOfLines={1}
-                    maxFontSizeMultiplier={1.3}
-                    style={[styles.statusText, { color: colors.statusText }]}
-                  >
-                    {shownStatus}
-                  </Animated.Text>
+                  <StatusLine text={shownStatus} color={colors.statusText} />
                 </Animated.View>
+                <Sheen busy={busy} width={pillWidth - SHEEN_START} color={colors.sheen} />
               </Pressable>
             </View>
           </Animated.View>
@@ -405,6 +406,90 @@ export function AskDock({
         <Animated.View style={spacer} />
       </View>
     </TabBarRoot>
+  );
+}
+
+/**
+ * The status line. A new line rises in as the old one lifts out (220 ms in, the old one gone in
+ * the first 70% of it), on the UI thread and without layout animations.
+ */
+function StatusLine({ text, color }: { text: string; color: string }) {
+  const [lines, setLines] = useState({ current: text, previous: '' });
+  if (text !== lines.current) setLines({ current: text, previous: lines.current });
+  const swap = useSharedValue(1);
+  useEffect(() => {
+    if (!lines.previous) return;
+    swap.value = 0;
+    swap.value = withTiming(1, LINE_IN);
+  }, [lines, swap]);
+  const incoming = useAnimatedStyle(() => ({
+    opacity: swap.value,
+    transform: [{ translateY: (1 - swap.value) * 8 }],
+  }));
+  const outgoing = useAnimatedStyle(() => ({
+    opacity: Math.max(0, 1 - swap.value * 1.4),
+    transform: [{ translateY: -swap.value * 8 }],
+  }));
+  const textStyle = [styles.statusText, { color }];
+  return (
+    <View>
+      {lines.previous ? (
+        <Animated.Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[textStyle, styles.outgoing, outgoing]}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        >
+          {lines.previous}
+        </Animated.Text>
+      ) : null}
+      <Animated.Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[textStyle, incoming]}>
+        {lines.current}
+      </Animated.Text>
+    </View>
+  );
+}
+
+/**
+ * A soft band of light sweeping across the status line every 2 s while a search runs, so a long
+ * wait still reads as work going on. Off with reduce motion.
+ */
+function Sheen({ busy, width, color }: { busy: boolean; width: number; color: string }) {
+  const reduceMotion = useReducedMotion();
+  const id = `sheen${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  const x = useSharedValue(0);
+  const running = busy && !reduceMotion;
+  useEffect(() => {
+    if (!running) {
+      cancelAnimation(x);
+      x.value = 0;
+      return;
+    }
+    x.value = withRepeat(
+      withSequence(withTiming(1, SWEEP), withDelay(700, withTiming(0, { duration: 0 }))),
+      -1,
+    );
+  }, [running, x]);
+  const band = useAnimatedStyle(() => ({
+    opacity: running ? 1 : 0,
+    transform: [{ translateX: -SHEEN_WIDTH + x.value * (width + SHEEN_WIDTH) }],
+  }));
+  return (
+    <View pointerEvents="none" style={[styles.sheen, { width }]}>
+      <Animated.View style={band}>
+        <Svg width={SHEEN_WIDTH} height={STATUS_HEIGHT}>
+          <Defs>
+            <LinearGradient id={id} x1="0" y1="0" x2="1" y2="0">
+              <Stop offset="0" stopColor={color} stopOpacity={0} />
+              <Stop offset="0.5" stopColor={color} stopOpacity={0.2} />
+              <Stop offset="1" stopColor={color} stopOpacity={0} />
+            </LinearGradient>
+          </Defs>
+          <Rect width={SHEEN_WIDTH} height={STATUS_HEIGHT} fill={`url(#${id})`} />
+        </Svg>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -438,8 +523,10 @@ function Tab({ tab, colors, haptics }: { tab: TabItem; colors: AskDockColors; ha
   const progress = useFocusProgress(tab);
   const outline = useAnimatedStyle(() => ({ opacity: 1 - Math.min(1, progress.value * 1.4) }));
   const solid = useAnimatedStyle(() => ({ opacity: progress.value }));
+  const idle = colors.foreground;
+  const on = colors.active;
   const label = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0, 1], [colors.foreground, colors.active]),
+    color: interpolateColor(progress.value, [0, 1], [idle, on]),
   }));
   return (
     <TabButton
@@ -518,6 +605,9 @@ const STATUS_RISE = 52;
 const ORB = 40;
 const ORB_GAP = 11;
 const PILL_END = 18;
+const SHEEN_WIDTH = 90;
+/** The sheen runs over the line only, starting just past the orb. */
+const SHEEN_START = ORB + 4;
 
 // Springs by stiffness and damping: Reanimated's duration-based springs settle in their duration
 // but do most of the move in its first fifth, too quick to read as a fold.
@@ -536,6 +626,16 @@ const PRESS_DOWN = {
   reduceMotion: ReduceMotion.System,
 };
 const PRESS_UP = { duration: 320, dampingRatio: 0.7, reduceMotion: ReduceMotion.System };
+const LINE_IN = {
+  duration: 220,
+  easing: Easing.out(Easing.cubic),
+  reduceMotion: ReduceMotion.System,
+};
+const SWEEP = {
+  duration: 1300,
+  easing: Easing.inOut(Easing.quad),
+  reduceMotion: ReduceMotion.System,
+};
 // The prompt rises in, and sinks away in about 70% of the time.
 const ROW_IN = {
   duration: 220,
@@ -544,7 +644,7 @@ const ROW_IN = {
 };
 const ROW_OUT = {
   duration: 150,
-  easing: Easing.in(Easing.quad),
+  easing: Easing.out(Easing.quad),
   reduceMotion: ReduceMotion.System,
 };
 
@@ -587,6 +687,8 @@ const styles = StyleSheet.create({
   },
   line: { flex: 1, marginLeft: ORB_GAP, marginRight: PILL_END - 4, justifyContent: 'center' },
   statusText: { fontSize: 16, fontWeight: '500', letterSpacing: -0.2 },
+  outgoing: { position: 'absolute', left: 0, right: 0 },
+  sheen: { position: 'absolute', left: SHEEN_START, top: 0, bottom: 0, overflow: 'hidden' },
   dot: { position: 'absolute', top: 0, right: -2, width: 8, height: 8, borderRadius: 4 },
   count: {
     position: 'absolute',

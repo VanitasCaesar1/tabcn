@@ -19,10 +19,9 @@ import {
 } from 'react-native';
 import Animated, {
   Easing,
-  FadeIn,
-  FadeOut,
   interpolateColor,
   ReduceMotion,
+  runOnJS,
   type SharedValue,
   useAnimatedProps,
   useAnimatedStyle,
@@ -138,6 +137,25 @@ export function Prompt({
     ),
   }));
   const fade = useAnimatedStyle(() => ({ opacity: presence.value }));
+
+  // The attachment card grows in from 90% from its lower left corner, and shrinks away in 150 ms,
+  // staying mounted (with the attachment it last had) until it has gone.
+  const [chip, setChip] = useState(attachment);
+  if (attachment && attachment !== chip) setChip(attachment);
+  const chipIn = useSharedValue(attachment ? 1 : 0);
+  useEffect(() => {
+    chipIn.value = withTiming(attachment ? 1 : 0, attachment ? CHIP_IN : CHIP_OUT, (done) => {
+      if (done && !attachment) runOnJS(setChip)(undefined);
+    });
+  }, [attachment, chipIn]);
+  const chipMotion = useAnimatedStyle(() => ({
+    opacity: chipIn.value * presence.value,
+    transform: [
+      { translateX: -CHIP_W * 0.05 * (1 - chipIn.value) },
+      { translateY: 10 * (1 - chipIn.value) },
+      { scale: 0.9 + 0.1 * chipIn.value },
+    ],
+  }));
   const edge = useAnimatedStyle(() => ({ opacity: presence.value * (1 - focus.value) }));
   const ring = useAnimatedStyle(() => ({ opacity: presence.value * focus.value }));
 
@@ -152,14 +170,9 @@ export function Prompt({
 
   return (
     <View style={{ width }}>
-      {attachment ? (
-        <Animated.View
-          key="attachment"
-          entering={FadeIn.duration(200).reduceMotion(ReduceMotion.System)}
-          exiting={FadeOut.duration(140).reduceMotion(ReduceMotion.System)}
-          style={[styles.chip, fade]}
-        >
-          <Chip attachment={attachment} colors={colors} labels={labels} haptics={haptics} />
+      {chip ? (
+        <Animated.View style={[styles.chip, chipMotion]}>
+          <Chip attachment={chip} colors={colors} labels={labels} haptics={haptics} />
         </Animated.View>
       ) : null}
       <View style={[styles.card, { width }]}>
@@ -365,6 +378,17 @@ const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 /** Measured from the reference: a 96 pt card with 22 pt corners. */
 export const PROMPT_HEIGHT = 96;
 const RADIUS = 22;
+const CHIP_W = 144;
+const CHIP_IN = {
+  duration: 240,
+  easing: Easing.bezier(0.34, 1.4, 0.64, 1),
+  reduceMotion: ReduceMotion.System,
+};
+const CHIP_OUT = {
+  duration: 150,
+  easing: Easing.out(Easing.quad),
+  reduceMotion: ReduceMotion.System,
+};
 const TOOL_ICON = 24;
 
 const FOCUS_IN = {
@@ -426,7 +450,7 @@ const styles = StyleSheet.create({
   },
   chip: { alignSelf: 'flex-start', marginBottom: 12 },
   thumb: {
-    width: 144,
+    width: CHIP_W,
     height: 80,
     borderRadius: 16,
     borderCurve: 'continuous',
