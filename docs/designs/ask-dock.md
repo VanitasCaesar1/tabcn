@@ -36,6 +36,10 @@ From the stills (2328 px wide mockups, the phone screen about 1262 px across), s
 -   **Tab count.** Made for three; two to five fit (the tabs narrow from 91 pt only when the screen can't hold them).
 -   **Haptics.** A tick on pressing an inactive tab and on removing an attachment, a light tap on send, and a tick as the bar unfolds.
 
+## The Seek app
+
+`apps/seek` is a whole app built around Ask Dock with PanelUI's components, in a PanelUI theme of its own: every screen of the reference (home, typing with a still attached, analysing, matches, found it, the film page) plus Collection and History. The example app's demo stays the short loop the site records.
+
 ## Out of scope
 
 -   A light glass variant.

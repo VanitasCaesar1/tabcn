@@ -108,6 +108,7 @@ Each is shown with the tab bar it pairs with in the example app. Mini Player, Co
 
 ```
 apps/example/      Expo SDK 58 app (Expo Router) that shows every design
+apps/seek/         Seek, a film finder built with PanelUI around Ask Dock
 apps/site/         the website (Next.js, static export to GitHub Pages)
 packages/tabcn/    the foundation npm package
 registry/          the copyable designs, one folder each
