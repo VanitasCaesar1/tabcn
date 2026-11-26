@@ -36,23 +36,33 @@
  * that changes width is two round caps and a stretched middle strip, shadows cross-fade between
  * where the pills rest, and the active tab's icon travels into the round button. Apps that turn
  * on Reanimated's `IOS_SYNCHRONOUSLY_UPDATE_UI_PROPS` and `ANDROID_SYNCHRONOUSLY_UPDATE_UI_PROPS`
- * static flags let these updates skip React Native's commit as well. The sheet's lists and the
- * status menu fade on `tabcnTiming`, and a change of status cross-fades the avatar's dot. Pills
- * shrink a little while pressed. With "reduce motion" on, all of it is instant. While the sheet is open, the
+ * static flags let these updates skip React Native's commit as well. As the tabs leave they shrink
+ * a little towards the round button, so they read as folding into it. The sheet's lists fade on
+ * `tabcnTiming`. The status menu grows out of the corner over the account pill and its rows come
+ * in once it is mostly open; it leaves faster than it came. A finger can press a row and slide to
+ * another, or press the account pill and slide straight up into the menu: a highlight follows the
+ * finger with a selection tick on each new row, and letting go on a row picks it (outside the
+ * rows, nothing is picked and the menu stays). A change of status morphs the avatar's dot into
+ * the new status's shape (a dot, a moon, a bar, a ring), so it reads without its colour, and the
+ * dot gives a small pulse. Pills shrink a little while pressed. With "reduce motion" on, all of it
+ * is instant. While the sheet is open, the
  * foundation hides the bar from screen readers, so the sheet carries every control: a header
  * that switches between the lists and a Status row; the pills in the bar are shortcuts.
  * Not drawn as a rail: on a tablet rail, panels aren't drawn, so the chip does nothing there.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
-import { type ComponentRef, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ComponentRef, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   BackHandler,
+  type GestureResponderHandlers,
   I18nManager,
   Image,
   type ImageSourcePropType,
   type LayoutChangeEvent,
+  PanResponder,
+  type PanResponderGestureState,
   Platform,
   Pressable,
   ScrollView,
@@ -63,16 +73,20 @@ import {
   type ViewStyle,
 } from 'react-native';
 import Animated, {
+  Easing,
   interpolate,
   ReduceMotion,
   type SharedValue,
+  useAnimatedProps,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   type WithTimingConfig,
+  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import Svg, { Rect } from 'react-native-svg';
 import {
   BadgeCount,
   TabBarRoot,
@@ -264,10 +278,117 @@ const MAX_WIDTH = 440;
 /** Rows in the sheet. */
 const ROW_MARK = 40;
 
+/** Exits take about 70% of tabcnTiming's 200 ms enter, easing out: the status menu closing. */
+const EXIT: WithTimingConfig = {
+  duration: 140,
+  easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+  reduceMotion: ReduceMotion.System,
+};
+/** A finger that moves this far (pt) from where it landed is dragging, not tapping. */
+const DRAG_SLOP = 8;
+/** As the tabs fade out they shrink to this, about the round button's centre. */
+const REST_SHRINK = 0.92;
+
 const lerp = (a: number, b: number, t: number) => {
   'worklet';
   return a + (b - a) * t;
 };
+
+/**
+ * What a drag needs to know about the status menu: shared by the menu (a finger sliding over
+ * its rows) and the account pill (a finger pressing it and sliding up into the menu). The menu
+ * fills in `box` and `rows`; the box is never transformed (only the card inside it is), so
+ * measuring it gives where the rows rest even while the card is still growing.
+ */
+interface MenuTrack {
+  box: ComponentRef<typeof View> | null;
+  /** The box in page coordinates, measured when a drag starts and when the menu opens. */
+  frame: Frame | null;
+  /** Each row's top and height inside the box. */
+  rows: { y: number; height: number }[];
+  /** The highlighted row, or -1. The menu's highlight follows it on the UI thread. */
+  hot: SharedValue<number>;
+  /** The highlight's top inside the box, and how visible it is. */
+  y: SharedValue<number>;
+  shown: SharedValue<number>;
+  /** The JS side's copy of `hot`, so a tick plays once per new row. */
+  last: number;
+  /** True while a drag owns the touch, so a row's press-out doesn't clear the highlight. */
+  dragging: boolean;
+}
+
+function measureMenu(track: MenuTrack) {
+  track.box?.measure((_x, _y, width, height, pageX, pageY) => {
+    // Not laid out yet (or on a platform that can't measure): keep what we had.
+    if (!width || !height) return;
+    track.frame = { x: pageX, y: pageY, width, height };
+  });
+}
+
+/**
+ * The row under a point in page coordinates: inside the menu's box, the nearest row (so the
+ * padding round the rows still counts); outside it, -1.
+ */
+function rowAt(track: MenuTrack, pageX: number, pageY: number) {
+  const f = track.frame;
+  if (!f || track.rows.length === 0) return -1;
+  const x = pageX - f.x;
+  const y = pageY - f.y;
+  if (x < 0 || x > f.width || y < 0 || y > f.height) return -1;
+  let best = -1;
+  let distance = Number.POSITIVE_INFINITY;
+  track.rows.forEach((row, i) => {
+    const d = y < row.y ? row.y - y : y > row.y + row.height ? y - row.y - row.height : 0;
+    if (d < distance) {
+      distance = d;
+      best = i;
+    }
+  });
+  return best;
+}
+
+/**
+ * Moves the highlight to row `i` (-1 hides it). The first row it lands on it jumps to; after
+ * that it slides on tabcnSpring. `tick` plays a selection haptic when a dragging finger reaches a
+ * new row, as native menus do; a plain press doesn't tick (choosing does).
+ */
+function setHot(track: MenuTrack, i: number, tick?: () => void) {
+  if (i === track.last) return;
+  const prev = track.last;
+  track.last = i;
+  track.hot.value = i;
+  if (i < 0) {
+    track.shown.value = withTiming(0, EXIT);
+    return;
+  }
+  const row = track.rows[i];
+  if (!row) return;
+  track.y.value = prev < 0 ? row.y : withSpring(row.y, tabcnSpring);
+  track.shown.value = withTiming(1, PRESS_IN);
+  tick?.();
+}
+
+/** Ends a drag over the menu: hides the highlight and returns the row it ended on, or -1. */
+function endDrag(track: MenuTrack, pageX: number, pageY: number) {
+  const i = track.dragging ? rowAt(track, pageX, pageY) : -1;
+  track.dragging = false;
+  setHot(track, -1);
+  return i;
+}
+
+function useMenuTrack(): MenuTrack {
+  const hot = useSharedValue(-1);
+  const y = useSharedValue(0);
+  const shown = useSharedValue(0);
+  const track = useRef<MenuTrack | null>(null);
+  if (!track.current) {
+    track.current = { box: null, frame: null, rows: [], hot, y, shown, last: -1, dragging: false };
+  }
+  return track.current;
+}
+
+/** True once a finger has moved far enough from where it landed to be a drag. */
+const isDrag = (g: PanResponderGestureState) => Math.hypot(g.dx, g.dy) > DRAG_SLOP;
 
 export function AccountDock({
   workspaces,
@@ -381,6 +502,51 @@ export function AccountDock({
     setList('accounts');
     setMenu(true);
   };
+  const chooseStatus = (next: AccountStatus) => {
+    tick();
+    setMenu(false);
+    onStatusChange(next);
+  };
+
+  // Press the account pill and slide up: the menu opens under the finger, a highlight follows
+  // it, and letting go on a row picks that status. Letting go anywhere else leaves the menu open,
+  // as a tap on the pill would. The responder is made once, so it reads the latest state here.
+  const track = useMenuTrack();
+  const latest = useRef({ list, menu, tick, chooseStatus });
+  latest.current = { list, menu, tick, chooseStatus };
+  const acctDrag = useMemo(
+    () =>
+      PanResponder.create({
+        // A drag takes the touch from the pill's own press (which then cancels).
+        onMoveShouldSetPanResponderCapture: (_e, g) => isDrag(g),
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: () => {
+          const now = latest.current;
+          track.dragging = true;
+          if (now.list !== 'accounts' || !now.menu) {
+            now.tick();
+            setList('accounts');
+            setMenu(true);
+          }
+          measureMenu(track);
+        },
+        onPanResponderMove: (_e, g) => {
+          // The sheet may still be settling from the list switch: keep the box's place fresh.
+          measureMenu(track);
+          setHot(track, rowAt(track, g.moveX, g.moveY), latest.current.tick);
+        },
+        onPanResponderRelease: (_e, g) => {
+          const i = endDrag(track, g.moveX, g.moveY);
+          const next = STATUSES[i];
+          if (next) latest.current.chooseStatus(next);
+        },
+        onPanResponderTerminate: () => {
+          track.dragging = false;
+          setHot(track, -1);
+        },
+      }),
+    [track],
+  );
 
   const statusLabel = labels[status];
   const chipLabel = [labels.chip, workspace?.name, account?.name, statusLabel]
@@ -420,12 +586,17 @@ export function AccountDock({
               }}
               onWorkspace={showWorkspaces}
               onAccount={showAccounts}
+              acctDrag={acctDrag.panHandlers}
             />
           ) : null}
 
           {/* Layout A: in flow, so it sets the bar's size. Its pill and chip are drawn by the
               shapes behind it once measured; the tabs fade out as the dock opens. */}
-          <RestLayer progress={progress} open={open}>
+          <RestLayer
+            progress={progress}
+            open={open}
+            originX={frames.round ? frames.round.x + H / 2 : undefined}
+          >
             <View style={styles.pillBox} onLayout={measure('pill')}>
               <TabList style={[styles.pill, !ready && { backgroundColor: colors.surface }]}>
                 <TabIndicator style={[styles.capsule, { backgroundColor: colors.capsule }]} />
@@ -518,33 +689,40 @@ export function AccountDock({
             tick();
             onAccountChange(next);
           }}
-          onStatus={(next) => {
-            tick();
-            setMenu(false);
-            onStatusChange(next);
-          }}
+          onStatus={chooseStatus}
           onAddWorkspace={onAddWorkspace}
+          track={track}
+          tick={tick}
         />
       </TabPanel>
     </>
   );
 }
 
-/** Layout A's content: fades out over the first third of the fold, and stops taking touches. */
+/**
+ * Layout A's content: over the first third of the fold it fades out and shrinks a little about
+ * the round button's centre (`originX`, from the row's left edge), so the tabs read as folding
+ * into the button rather than vanishing in place; it stops taking touches. A transform, so the
+ * tabs' own measured layout (and the indicator under the active one) never changes.
+ */
 function RestLayer({
   progress,
   open,
+  originX,
   children,
 }: {
   progress: SharedValue<number>;
   open: boolean;
+  originX: number | undefined;
   children: ReactNode;
 }) {
   const fade = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 0.3], [1, 0], 'clamp'),
+    transform: [{ scale: interpolate(progress.value, [0, 0.3], [1, REST_SHRINK], 'clamp') }],
   }));
+  const origin = originX === undefined ? undefined : { transformOrigin: [originX, H / 2, 0] };
   return (
-    <Animated.View style={[styles.rest, fade]} pointerEvents={open ? 'none' : 'box-none'}>
+    <Animated.View style={[styles.rest, origin, fade]} pointerEvents={open ? 'none' : 'box-none'}>
       {children}
     </Animated.View>
   );
@@ -601,6 +779,7 @@ function Shapes({
   onRound,
   onWorkspace,
   onAccount,
+  acctDrag,
 }: {
   frames: Frames;
   rowWidth: number;
@@ -620,6 +799,8 @@ function Shapes({
   onRound: () => void;
   onWorkspace: () => void;
   onAccount: () => void;
+  /** Press the account pill and slide up into the status menu. */
+  acctDrag: GestureResponderHandlers;
 }) {
   const { pill, chip, round, ws, acct, ws2, acct2 } = frames;
   const rtl = I18nManager.isRTL;
@@ -809,16 +990,19 @@ function Shapes({
             onPressIn={onPressIn('ws')}
             onPressOut={onPressOut('ws')}
           />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={[labels.accounts, account?.name, labels[status]]
-              .filter(Boolean)
-              .join(', ')}
-            style={[styles.target, target(acctFrame)]}
-            onPress={onAccount}
-            onPressIn={onPressIn('acct')}
-            onPressOut={onPressOut('acct')}
-          />
+          {/* The pill's press inside a view that takes over the touch once it drags. */}
+          <View style={[styles.target, target(acctFrame)]} {...acctDrag}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={[labels.accounts, account?.name, labels[status]]
+                .filter(Boolean)
+                .join(', ')}
+              style={styles.fill}
+              onPress={onAccount}
+              onPressIn={onPressIn('acct')}
+              onPressOut={onPressOut('acct')}
+            />
+          </View>
         </>
       ) : null}
     </View>
@@ -1114,6 +1298,40 @@ function Avatar({
   );
 }
 
+/** The status dot's coloured disc, inside its ring. */
+const DOT = 12;
+
+/**
+ * The part of the dot cut away for each status, in points inside the 12 pt disc: none (online),
+ * a disc bitten from the top corner (idle, a moon), a bar across the middle (do not disturb), a
+ * hole in the centre (invisible). Each is a rounded rectangle whose corner radius is half its
+ * shorter side, so one shape morphs into any other. Every cut stays inside the dot's ring, so it
+ * is drawn in the ring's colour instead of masked.
+ */
+const CUTS: Record<AccountStatus, { x: number; y: number; w: number; h: number }> = {
+  online: { x: DOT / 2, y: DOT / 2, w: 0, h: 0 },
+  idle: { x: -1.05, y: -1.05, w: 8.5, h: 8.5 },
+  dnd: { x: 1.5, y: 4.5, w: 9, h: 3 },
+  invisible: { x: 3, y: 3, w: 6, h: 6 },
+};
+
+const AnimatedRect = Animated.createAnimatedComponent(Rect);
+
+/** The dot's pulse on a change: up quickly, then back on tabcnSpring. */
+const PULSE_UP: WithTimingConfig = {
+  duration: 110,
+  easing: Easing.out(Easing.quad),
+  reduceMotion: ReduceMotion.System,
+};
+
+/**
+ * The status dot: a disc in the status's colour, with that status's cut drawn over it in the
+ * ring's colour. A change of status springs the cut into its new shape (on tabcnSpring) while
+ * the colour cross-fades, and the dot pulses once, so the change is seen as well as the new
+ * state. The shape tells the statuses apart without their colours. Only on a change: the first
+ * render draws the current shape at rest. The cut's props animate on the UI thread, for about a
+ * quarter of a second, only when the status changes.
+ */
 function StatusDot({
   status,
   colors,
@@ -1124,16 +1342,39 @@ function StatusDot({
   ring: string;
 }) {
   const fill = colors[status];
-  // A ring for invisible, a solid dot otherwise; a change of status cross-fades the colour.
-  const centre = status === 'invisible' ? ring : fill;
-  const dot = useAnimatedStyle(() => ({
-    borderColor: withTiming(fill, tabcnTiming),
-    backgroundColor: withTiming(centre, tabcnTiming),
-  }));
+  const cut = CUTS[status];
+  const x = useSharedValue(cut.x);
+  const y = useSharedValue(cut.y);
+  const w = useSharedValue(cut.w);
+  const h = useSharedValue(cut.h);
+  const pulse = useSharedValue(1);
+  const shown = useRef(status);
+  useEffect(() => {
+    if (shown.current === status) return;
+    shown.current = status;
+    const next = CUTS[status];
+    x.value = withSpring(next.x, tabcnSpring);
+    y.value = withSpring(next.y, tabcnSpring);
+    w.value = withSpring(next.w, tabcnSpring);
+    h.value = withSpring(next.h, tabcnSpring);
+    pulse.value = withSequence(withTiming(1.2, PULSE_UP), withSpring(1, tabcnSpring));
+  }, [status, x, y, w, h, pulse]);
+  const cutProps = useAnimatedProps(() => {
+    const width = Math.max(0, w.value);
+    const height = Math.max(0, h.value);
+    const radius = Math.min(width, height) / 2;
+    return { x: x.value, y: y.value, width, height, rx: radius, ry: radius };
+  });
+  const disc = useAnimatedStyle(() => ({ backgroundColor: withTiming(fill, tabcnTiming) }));
+  const grow = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
   return (
-    <View style={[styles.statusDot, { backgroundColor: ring }]}>
-      <Animated.View style={[styles.statusInner, dot]} />
-    </View>
+    <Animated.View style={[styles.statusDot, { backgroundColor: ring }, grow]}>
+      <Animated.View style={[styles.statusInner, disc]} />
+      {/* The canvas is the disc's square: the moon's cut reaches past it, but only over ring. */}
+      <Svg width={DOT} height={DOT} style={styles.statusCut} pointerEvents="none">
+        <AnimatedRect animatedProps={cutProps} fill={ring} />
+      </Svg>
+    </Animated.View>
   );
 }
 
@@ -1162,6 +1403,8 @@ function Sheet({
   onStatus,
   onAddWorkspace,
   progress,
+  track,
+  tick,
 }: {
   list: List;
   menu: boolean;
@@ -1180,6 +1423,8 @@ function Sheet({
   onAddWorkspace?: () => void;
   /** The fold, 0 (tabs) to 1 (account bar). */
   progress: SharedValue<number>;
+  track: MenuTrack;
+  tick: () => void;
 }) {
   const overlap = usePanelOverlap();
   const { height } = useWindowDimensions();
@@ -1301,6 +1546,8 @@ function Sheet({
           bottom={overlap + 10}
           onClose={() => setMenu(false)}
           onChoose={onStatus}
+          track={track}
+          tick={tick}
         />
       </Animated.View>
     </View>
@@ -1398,6 +1645,13 @@ interface KeyEvent {
  * The status menu: four radio rows over the account list, aligned to the sheet's end above the
  * account pill. Back, Escape (web) and the screen-reader escape gesture close only the menu:
  * its listeners are added after the panel's, so they run first.
+ *
+ * It grows out of the corner over the account pill (rising as it grows, on tabcnSpring), and its
+ * rows fade in once it is mostly open; closing takes 70% of the time and the rows go first. One
+ * highlight serves every row: a press lights its row, and a finger that slides takes the touch
+ * from the row's press and carries the highlight from row to row (a selection tick on each),
+ * picking the row it lets go on. The rows stay buttons, so taps, screen readers and keyboards
+ * work as before.
  */
 function StatusMenu({
   open,
@@ -1407,6 +1661,8 @@ function StatusMenu({
   bottom,
   onClose,
   onChoose,
+  track,
+  tick,
 }: {
   open: boolean;
   status: AccountStatus;
@@ -1415,15 +1671,65 @@ function StatusMenu({
   bottom: number;
   onClose: () => void;
   onChoose: (status: AccountStatus) => void;
+  track: MenuTrack;
+  tick: () => void;
 }) {
   const shown = useSharedValue(0);
   useEffect(() => {
-    shown.value = withTiming(open ? 1 : 0, tabcnTiming);
-  }, [open, shown]);
-  const style = useAnimatedStyle(() => ({
-    opacity: shown.value,
-    transform: [{ scale: lerp(0.96, 1, shown.value) }],
+    shown.value = open ? withSpring(1, tabcnSpring) : withTiming(0, EXIT);
+    if (!open) {
+      track.dragging = false;
+      setHot(track, -1);
+      return;
+    }
+    // Where the rows rest, for a drag: after this render has been laid out.
+    const frame = requestAnimationFrame(() => measureMenu(track));
+    return () => cancelAnimationFrame(frame);
+  }, [open, shown, track]);
+  const card = useAnimatedStyle(() => ({
+    opacity: interpolate(shown.value, [0, 0.3], [0, 1], 'clamp'),
+    transform: [{ translateY: lerp(12, 0, shown.value) }, { scale: lerp(0.5, 1, shown.value) }],
   }));
+  const content = useAnimatedStyle(() => ({
+    opacity: interpolate(shown.value, [0.4, 1], [0, 1], 'clamp'),
+  }));
+  // Only the shared values go into the worklet: the tracker also holds a view, which can't be
+  // copied to the UI thread.
+  const { y: highlightY, shown: highlightShown } = track;
+  const highlight = useAnimatedStyle(() => ({
+    opacity: highlightShown.value,
+    transform: [{ translateY: highlightY.value }, { scale: lerp(0.97, 1, highlightShown.value) }],
+  }));
+  const [rowHeight, setRowHeight] = useState(0);
+
+  const latest = useRef({ onChoose, tick });
+  latest.current = { onChoose, tick };
+  const drag = useMemo(
+    () =>
+      PanResponder.create({
+        // A finger that slides takes the touch from the row it pressed (whose press cancels).
+        onMoveShouldSetPanResponderCapture: (_e, g) => {
+          if (!isDrag(g)) return false;
+          track.dragging = true;
+          return true;
+        },
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: () => measureMenu(track),
+        onPanResponderMove: (_e, g) => {
+          measureMenu(track);
+          setHot(track, rowAt(track, g.moveX, g.moveY), latest.current.tick);
+        },
+        onPanResponderRelease: (_e, g) => {
+          const next = STATUSES[endDrag(track, g.moveX, g.moveY)];
+          if (next) latest.current.onChoose(next);
+        },
+        onPanResponderTerminate: () => {
+          track.dragging = false;
+          setHot(track, -1);
+        },
+      }),
+    [track],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -1457,53 +1763,78 @@ function StatusMenu({
           accessibilityElementsHidden
         />
       ) : null}
-      <Animated.View
-        pointerEvents={open ? 'auto' : 'none'}
-        importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}
-        accessibilityElementsHidden={!open}
-        accessibilityRole="radiogroup"
-        accessibilityLabel={labels.status}
-        onAccessibilityEscape={onClose}
-        style={[
-          styles.menu,
-          {
-            bottom,
-            backgroundColor: colors.sheet,
-            borderColor: colors.border,
-            // It grows from the corner over the account pill: bottom left in RTL.
-            transformOrigin: I18nManager.isRTL ? 'bottom left' : 'bottom right',
-          },
-          style,
-        ]}
+      {/* The box never moves, so measuring it says where the rows rest; the card inside grows. */}
+      <View
+        ref={(view) => {
+          track.box = view;
+        }}
+        onLayout={() => measureMenu(track)}
+        pointerEvents={open ? 'box-none' : 'none'}
+        style={[styles.menuBox, { bottom }]}
       >
-        {STATUSES.map((s) => (
-          <Pressable
-            key={s}
-            onPress={() => onChoose(s)}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: s === status }}
-            accessibilityLabel={labels[s]}
-            style={({ pressed }) => [
-              styles.menuRow,
-              pressed && { backgroundColor: colors.capsule },
-            ]}
-          >
-            <StatusCircle status={s} colors={colors} size={28} />
-            <Text
-              numberOfLines={1}
-              maxFontSizeMultiplier={1.4}
-              style={[styles.menuText, { color: colors.foreground }]}
-            >
-              {labels[s]}
-            </Text>
-            {s === status ? (
-              <CheckIcon color={colors.accent} size={18} />
-            ) : (
-              <View style={styles.checkSpace} />
-            )}
-          </Pressable>
-        ))}
-      </Animated.View>
+        <Animated.View
+          importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}
+          accessibilityElementsHidden={!open}
+          accessibilityRole="radiogroup"
+          accessibilityLabel={labels.status}
+          onAccessibilityEscape={onClose}
+          style={[
+            styles.menu,
+            {
+              backgroundColor: colors.sheet,
+              borderColor: colors.border,
+              // It grows from the corner over the account pill: bottom left in RTL.
+              transformOrigin: I18nManager.isRTL ? 'bottom left' : 'bottom right',
+            },
+            card,
+          ]}
+          {...drag.panHandlers}
+        >
+          <Animated.View style={[styles.menuRows, content]}>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.menuHighlight,
+                { height: rowHeight, backgroundColor: colors.capsule },
+                highlight,
+              ]}
+            />
+            {STATUSES.map((s, i) => (
+              <Pressable
+                key={s}
+                onPress={() => onChoose(s)}
+                onPressIn={() => setHot(track, i)}
+                onPressOut={() => {
+                  if (!track.dragging) setHot(track, -1);
+                }}
+                onLayout={(e) => {
+                  const { y, height } = e.nativeEvent.layout;
+                  track.rows[i] = { y, height };
+                  if (i === 0) setRowHeight(height);
+                }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: s === status }}
+                accessibilityLabel={labels[s]}
+                style={styles.menuRow}
+              >
+                <StatusCircle status={s} colors={colors} size={28} />
+                <Text
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={1.4}
+                  style={[styles.menuText, { color: colors.foreground }]}
+                >
+                  {labels[s]}
+                </Text>
+                {s === status ? (
+                  <CheckIcon color={colors.accent} size={18} />
+                ) : (
+                  <View style={styles.checkSpace} />
+                )}
+              </Pressable>
+            ))}
+          </Animated.View>
+        </Animated.View>
+      </View>
     </>
   );
 }
@@ -1592,7 +1923,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statusInner: { width: 12, height: 12, borderRadius: 6, borderWidth: 2.5 },
+  statusInner: { width: DOT, height: DOT, borderRadius: DOT / 2 },
+  statusCut: { position: 'absolute', left: (17 - DOT) / 2, top: (17 - DOT) / 2 },
+  fill: { flex: 1, borderRadius: H / 2 },
   sheet: {
     borderRadius: 30,
     borderWidth: StyleSheet.hairlineWidth,
@@ -1633,15 +1966,15 @@ const styles = StyleSheet.create({
   divider: { height: StyleSheet.hairlineWidth, marginVertical: 4, marginHorizontal: 10 },
   statusCircle: { alignItems: 'center', justifyContent: 'center' },
   mirror: { transform: [{ scaleX: -1 }] },
+  menuBox: { position: 'absolute', end: 10, width: 216 },
   menu: {
-    position: 'absolute',
-    end: 10,
-    width: 216,
     borderRadius: 22,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 6,
     boxShadow: '0 12px 32px rgba(40, 40, 60, 0.18)',
   },
+  menuRows: { padding: 6 },
+  // Concentric with the menu's corners: 22 pt less the 6 pt padding, as the rows are.
+  menuHighlight: { position: 'absolute', top: 0, left: 6, right: 6, borderRadius: 16 },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -609,6 +609,204 @@ describe('account-dock', () => {
     expect(shows('Workspaces')).toBe(true);
     expect(shows('Field Notes')).toBe(true);
   });
+
+  describe('dragging to a status', () => {
+    // The menu's box at (100, 500) in the page, 216 x 196 pt: four 46 pt rows under 6 pt padding.
+    const BOX = { x: 100, y: 500, width: 216, height: 196 };
+    const rowCentre = (i: number) => BOX.y + 6 + i * 46 + 23;
+    const native = jest.requireActual('@react-native/jest-preset/jest/MockNativeMethods')
+      .default as { measure: jest.Mock };
+
+    beforeEach(() => {
+      native.measure.mockImplementation((callback: (...args: number[]) => void) =>
+        callback(0, 0, BOX.width, BOX.height, BOX.x, BOX.y),
+      );
+    });
+    afterEach(() => native.measure.mockReset());
+
+    /** Lays out the four rows as the menu would, so a drag knows where they are. */
+    async function layOutRows() {
+      const radios = screen.getAllByRole('radio', { includeHiddenElements: true });
+      expect(radios).toHaveLength(4);
+      await act(async () => {
+        radios.forEach((radio, i) => {
+          fireEvent(radio, 'layout', {
+            nativeEvent: { layout: { x: 6, y: 6 + i * 46, width: 204, height: 46 } },
+          });
+        });
+      });
+    }
+
+    /**
+     * One finger's path, played through a PanResponder's handlers as React Native's responder
+     * system would: it lands at the first point, a move past the slop asks the capture
+     * question, then each point moves it, and it lifts at the last.
+     */
+    async function drag(handlers: Record<string, unknown>, path: [number, number][]) {
+      const [start, ...rest] = path as [[number, number], ...[number, number][]];
+      let previous = start;
+      let time = 1;
+      const event = ([x, y]: [number, number]) => {
+        time += 16;
+        const e = {
+          nativeEvent: { pageX: x, pageY: y, locationX: 0, locationY: 0, touches: [] },
+          touchHistory: {
+            numberActiveTouches: 1,
+            indexOfSingleActiveTouch: 0,
+            mostRecentTimeStamp: time,
+            touchBank: [
+              {
+                touchActive: true,
+                startPageX: start[0],
+                startPageY: start[1],
+                startTimeStamp: 0,
+                currentPageX: x,
+                currentPageY: y,
+                currentTimeStamp: time,
+                previousPageX: previous[0],
+                previousPageY: previous[1],
+                previousTimeStamp: time - 16,
+              },
+            ],
+          },
+        };
+        previous = [x, y];
+        return e;
+      };
+      const call = (name: string, e: unknown) =>
+        (handlers[name] as ((e: unknown) => unknown) | undefined)?.(e);
+      const first = rest[0] ?? start;
+      const captured = call('onMoveShouldSetResponderCapture', event(first));
+      expect(captured).toBe(true);
+      await act(async () => {
+        call('onResponderGrant', event(first));
+      });
+      for (const point of rest) {
+        await act(async () => {
+          call('onResponderMove', event(point));
+        });
+      }
+      await act(async () => {
+        call('onResponderRelease', event(rest[rest.length - 1] ?? start));
+      });
+    }
+
+    type Host = ReturnType<typeof screen.getByText>;
+
+    /** Every host element under `node`. */
+    function hosts(node: Host | null): Host[] {
+      if (!node) return [];
+      const kids = (node.children ?? []).filter((c): c is Host => typeof c !== 'string');
+      return [node, ...kids.flatMap(hosts)];
+    }
+
+    /** Gives every view that measures itself a layout, so the dock draws its shapes. */
+    async function layOut(root: Host | null) {
+      await act(async () => {
+        for (const node of hosts(root)) {
+          if (typeof node.props.onLayout !== 'function') continue;
+          fireEvent(node, 'layout', {
+            nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 58 } },
+          });
+        }
+      });
+    }
+
+    /** The nearest element at or above `node` that can take a drag over. */
+    function dragTarget(node: Host | null) {
+      let at = node;
+      while (at && !at.props.onMoveShouldSetResponderCapture) at = at.parent as Host | null;
+      expect(at).toBeTruthy();
+      return at?.props as Record<string, unknown>;
+    }
+
+    async function openAccounts() {
+      await act(async () => {
+        await fireEvent.press(screen.getByText('Accounts'));
+      });
+    }
+
+    it('presses the account pill and slides up onto Idle', async () => {
+      const onStatusChange = jest.fn();
+      const view = await render(<Dock onStatusChange={onStatusChange} />);
+      await layOut(view.root);
+      await openDock();
+      await layOutRows();
+      const pill = screen.getByLabelText('Accounts, Sam Rivera, Online', {
+        includeHiddenElements: true,
+      });
+      // The pill's press sits in a view that takes the touch over once it drags.
+      await drag(dragTarget(pill), [
+        [280, 760],
+        [280, 740],
+        [200, rowCentre(3)],
+        [200, rowCentre(1)],
+      ]);
+      expect(onStatusChange).toHaveBeenCalledTimes(1);
+      expect(onStatusChange).toHaveBeenCalledWith('idle');
+      expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    });
+
+    it('opens the menu from the pill and keeps it open when the finger lifts off the rows', async () => {
+      const onStatusChange = jest.fn();
+      const view = await render(<Dock onStatusChange={onStatusChange} />);
+      await layOut(view.root);
+      await openDock();
+      await layOutRows();
+      const pill = screen.getByLabelText('Accounts, Sam Rivera, Online', {
+        includeHiddenElements: true,
+      });
+      await drag(dragTarget(pill), [
+        [280, 760],
+        [280, 740],
+        [280, 720],
+      ]);
+      expect(onStatusChange).not.toHaveBeenCalled();
+      expect(shows('Accounts')).toBe(true);
+      expect(screen.getAllByRole('radio')).toHaveLength(4);
+    });
+
+    it('slides from one row to another inside the menu and picks where it lifts', async () => {
+      const onStatusChange = jest.fn();
+      await render(<Dock onStatusChange={onStatusChange} />);
+      await openDock();
+      await openAccounts();
+      await act(async () => {
+        await fireEvent.press(screen.getByLabelText('Status, Online'));
+      });
+      await layOutRows();
+      await drag(dragTarget(screen.getAllByRole('radio')[0] ?? null), [
+        [200, rowCentre(0)],
+        [200, rowCentre(0) + 20],
+        [200, rowCentre(2)],
+      ]);
+      expect(onStatusChange).toHaveBeenCalledWith('dnd');
+    });
+
+    it('picks nothing when the finger slides out of the menu and lifts', async () => {
+      const onStatusChange = jest.fn();
+      await render(<Dock onStatusChange={onStatusChange} />);
+      await openDock();
+      await openAccounts();
+      await act(async () => {
+        await fireEvent.press(screen.getByLabelText('Status, Online'));
+      });
+      await layOutRows();
+      await drag(dragTarget(screen.getAllByRole('radio')[0] ?? null), [
+        [200, rowCentre(1)],
+        [200, rowCentre(1) - 20],
+        [40, rowCentre(1)],
+      ]);
+      expect(onStatusChange).not.toHaveBeenCalled();
+      expect(screen.getAllByRole('radio')).toHaveLength(4);
+    });
+
+    it('morphs the dot when the status changes, without breaking the dock', async () => {
+      const view = await render(<Dock status="online" />);
+      await view.rerender(<Dock status="dnd" />);
+      expect(chip().props.accessibilityLabel).toMatch(/Do not disturb$/);
+    });
+  });
 });
 
 // Filter Chips -----------------------------------------------------------------------------
