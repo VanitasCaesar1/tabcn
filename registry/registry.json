@@ -890,6 +890,30 @@
       ]
     },
     {
+      "name": "reply-stack",
+      "type": "registry:item",
+      "title": "Reply Stack",
+      "description": "X's frosted-glass bar: five icon-only tabs on a wide glass capsule with a round lens behind the active one, and a reply field on a second capsule that slides up above it.",
+      "dependencies": ["react-native-tabcn", "expo-blur", "expo-haptics", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/reply-stack/reply-stack.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/reply-stack.tsx"
+        },
+        {
+          "path": "registry/designs/reply-stack/reply-stack-glass.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/reply-stack-glass.tsx"
+        },
+        {
+          "path": "registry/designs/reply-stack/reply-stack-icons.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/reply-stack-icons.tsx"
+        }
+      ]
+    },
+    {
       "name": "mini-player",
       "type": "registry:item",
       "title": "Mini Player",

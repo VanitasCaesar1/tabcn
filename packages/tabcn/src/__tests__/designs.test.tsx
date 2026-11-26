@@ -1073,3 +1073,48 @@ describe('sticker-pills', () => {
     expect(screen.getByText('3', { includeHiddenElements: true })).toBeTruthy();
   });
 });
+
+// Reply Stack ----------------------------------------------------------------------------
+
+describe('reply-stack', () => {
+  const { ReplyStack } = require('../../../../registry/designs/reply-stack/reply-stack') as {
+    ReplyStack: ComponentType<{
+      reply?: { onPress?: () => void };
+      showReply?: boolean;
+      haptics?: boolean;
+    }>;
+  };
+
+  it('shows the reply row over the tabs, and presses through to its handler', async () => {
+    const onPress = jest.fn();
+    const { state } = makeState(3, 0, []);
+    await render(
+      <TabBarStateProvider value={state}>
+        <ReplyStack haptics={false} reply={{ onPress }} />
+      </TabBarStateProvider>,
+    );
+    expect(screen.getAllByRole('tab')).toHaveLength(3);
+    await fireEvent.press(screen.getByRole('button', { name: 'Post your reply' }));
+    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'Add photo' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Add GIF' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Expand' })).toBeTruthy();
+  });
+
+  it('draws only the tabs when the row is hidden or there is no reply', async () => {
+    const { state } = makeState(3, 0, []);
+    const { rerender } = await render(
+      <TabBarStateProvider value={state}>
+        <ReplyStack haptics={false} reply={{}} showReply={false} />
+      </TabBarStateProvider>,
+    );
+    expect(screen.queryByRole('button', { name: 'Post your reply' })).toBeNull();
+    await rerender(
+      <TabBarStateProvider value={state}>
+        <ReplyStack haptics={false} />
+      </TabBarStateProvider>,
+    );
+    expect(screen.queryByRole('button', { name: 'Post your reply' })).toBeNull();
+    expect(screen.getAllByRole('tab')).toHaveLength(3);
+  });
+});

@@ -53,6 +53,7 @@ import * as PillPlusIcons from '@registry/pill-plus/icons';
 import { PillPlus as PillPlusDesign } from '@registry/pill-plus/pill-plus';
 import * as PlayfulTilesIcons from '@registry/playful-tiles/icons';
 import { PlayfulTiles as PlayfulTilesDesign } from '@registry/playful-tiles/playful-tiles';
+import * as ReplyStackIcons from '@registry/reply-stack/reply-stack-icons';
 import { ScrubPill as ScrubPillDesign } from '@registry/scrub-pill/scrub-pill';
 import * as SearchDockIcons from '@registry/search-dock/icons';
 import { SearchDock as SearchDockDesign } from '@registry/search-dock/search-dock';
@@ -128,6 +129,7 @@ import {
 } from '@/panel-demos';
 import { themed, useDemoColors } from '@/panel-theme';
 import type { PreviewSettings } from '@/preview-settings';
+import { ReplyStackDemo } from '@/reply-stack-demo';
 
 // Each scene's screen colour (scenes/palette.ts), written out: the site's build reads each
 // demo's `background:` line as text, and it resolves a name only to a hex literal declared here.
@@ -923,6 +925,20 @@ export const demos: Record<string, Demo> = {
       { label: 'Chat', icon: StickerPillsIcons.ChatIcon },
       { label: 'Wall', icon: StickerPillsIcons.PhotosIcon, badge: 3 },
       { label: 'Me', icon: StickerPillsIcons.SmileyIcon, badge: '' },
+    ],
+  },
+  'reply-stack': {
+    // A post's page on a dark feed: the reply row sits over the bar on Home and slides away on
+    // the other tabs. Home is the filled tab; Alerts carries a count.
+    render: () => <ReplyStackDemo />,
+    background: SOCIAL_DARK,
+    barHeight: 66,
+    tabs: [
+      { label: 'Home', icon: ReplyStackIcons.HomeIcon },
+      { label: 'Search', icon: ReplyStackIcons.SearchIcon },
+      { label: 'Explore', icon: ReplyStackIcons.ExploreIcon },
+      { label: 'Alerts', icon: ReplyStackIcons.BellIcon, badge: 3 },
+      { label: 'Chat', icon: ReplyStackIcons.ChatIcon },
     ],
   },
   'live-tabs': {
