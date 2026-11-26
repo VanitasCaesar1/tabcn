@@ -68,6 +68,7 @@ export const DESIGN_TAGS: Record<string, DesignTags> = {
   'badge-dock': { style: 'dark', scene: 'chat', scheme: 'dark' },
   'sticker-pills': { style: 'playful', scene: 'chat', scheme: 'dark' },
   'reply-stack': { style: 'glass', scene: 'social', scheme: 'dark' },
+  'ask-dock': { style: 'glass', scene: 'social', scheme: 'dark' },
   'cart-pill': { style: 'minimal', scene: 'shop', scheme: 'light' },
   'glass-badges': { style: 'glass', scene: 'chat', scheme: 'light' },
   'section-sheet': { style: 'minimal', scene: 'maps', scheme: 'light' },

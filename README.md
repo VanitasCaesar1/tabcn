@@ -6,9 +6,9 @@
 
 Animated tab bars for React Native and Expo, in the style of shadcn/ui: install a small foundation package, then copy the design you want into your app and make it yours.
 
-**[Browse all 52 designs →](https://vanitascaesar1.github.io/tabcn/)** Each one opens in Expo Go from a QR code and plays on a phone in the page.
+**[Browse all 53 designs →](https://vanitascaesar1.github.io/tabcn/)** Each one opens in Expo Go from a QR code and plays on a phone in the page.
 
-> **Status: 0.x.** All 52 designs (43 tab bars and 9 panels) and the foundation are built. The foundation is on npm as [`react-native-tabcn`](https://www.npmjs.com/package/react-native-tabcn) (npm turned down the bare name `tabcn` as too close to `table`). Before 1.0, a minor release may change its API; the changelog says so when it does.
+> **Status: 0.x.** All 53 designs (44 tab bars and 9 panels) and the foundation are built. The foundation is on npm as [`react-native-tabcn`](https://www.npmjs.com/package/react-native-tabcn) (npm turned down the bare name `tabcn` as too close to `table`). Before 1.0, a minor release may change its API; the changelog says so when it does.
 
 ## How it works
 
@@ -61,7 +61,7 @@ The docs are on the site:
 - [Using with PanelUI](https://vanitascaesar1.github.io/tabcn/docs/panelui/): designs that follow a PanelUI theme
 - Guides: [Panels](https://vanitascaesar1.github.io/tabcn/docs/panels/) · [Sheets](https://vanitascaesar1.github.io/tabcn/docs/sheets/) · [Minimize on scroll](https://vanitascaesar1.github.io/tabcn/docs/minimize-on-scroll/) · [Companions](https://vanitascaesar1.github.io/tabcn/docs/companions/) · [Toasts](https://vanitascaesar1.github.io/tabcn/docs/toasts/) · [Sub-tabs](https://vanitascaesar1.github.io/tabcn/docs/sub-tabs/) · [Sheet navigation](https://vanitascaesar1.github.io/tabcn/docs/sheet-navigation/) · [Scrubbing](https://vanitascaesar1.github.io/tabcn/docs/scrubbing/) · [Live tabs](https://vanitascaesar1.github.io/tabcn/docs/live-tabs/)
 
-## The 52 designs
+## The 53 designs
 
 Every design animates: tap to see the active tab move. Click one to open its page, with the install command and a QR code for Expo Go.
 
@@ -89,7 +89,7 @@ Every design animates: tap to see the active tab move. Click one to open its pag
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/composer-dock/"><img src="assets/readme/composer-dock.gif" width="400" alt="Composer Dock tab bar"></a><br><b>Composer Dock</b><br><sub>Docked bar</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/account-dock/"><img src="assets/readme/account-dock.gif" width="300" alt="Account Dock tab bar"></a><br><b>Account Dock</b><br><sub>Pill + action button</sub></td></tr>
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/ambient-bar/"><img src="assets/readme/ambient-bar.gif" width="400" alt="Ambient Bar tab bar"></a><br><b>Ambient Bar</b><br><sub>Docked bar</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/ink-underline/"><img src="assets/readme/ink-underline.gif" width="400" alt="Ink Underline tab bar"></a><br><b>Ink Underline</b><br><sub>Docked bar</sub></td></tr>
 <tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/thumb-arc/"><img src="assets/readme/thumb-arc.gif" width="400" alt="Thumb Arc tab bar"></a><br><b>Thumb Arc</b><br><sub>Floating buttons</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/sticker-pills/"><img src="assets/readme/sticker-pills.gif" width="400" alt="Sticker Pills tab bar"></a><br><b>Sticker Pills</b><br><sub>Floating pill</sub></td></tr>
-<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/reply-stack/"><img src="assets/readme/reply-stack.gif" width="400" alt="Reply Stack tab bar"></a><br><b>Reply Stack</b><br><sub>Floating pill + reply row</sub></td><td></td></tr>
+<tr><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/reply-stack/"><img src="assets/readme/reply-stack.gif" width="400" alt="Reply Stack tab bar"></a><br><b>Reply Stack</b><br><sub>Floating pill + reply row</sub></td><td align="center" width="50%"><a href="https://vanitascaesar1.github.io/tabcn/designs/ask-dock/"><img src="assets/readme/ask-dock.gif" width="400" alt="Ask Dock tab bar"></a><br><b>Ask Dock</b><br><sub>Floating pill + prompt</sub></td></tr>
 </table>
 
 ### Panels

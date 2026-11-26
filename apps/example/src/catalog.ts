@@ -468,6 +468,16 @@ export const catalog: DesignEntry[] = [
     status: 'ready',
   },
   {
+    id: 'ask-dock',
+    ref: 0,
+    title: 'Ask Dock',
+    kind: 'bar',
+    layout: 'floating-pill',
+    summary:
+      'A search prompt over a glass tab bar; while a search runs, the bar folds into a status pill with a glossy orb that scans and blinks.',
+    status: 'ready',
+  },
+  {
     id: 'mini-player',
     ref: 0,
     title: 'Mini Player',

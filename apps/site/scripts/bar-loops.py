@@ -40,7 +40,8 @@ OUT = os.path.join(SITE, 'public', 'bars')
 BAR_BOX = (0, 2152, 1206, 2572)
 # A different top edge for a design whose bar sits higher or lower than the rest.
 # Reply Stack's reply row sits above its tabs, so its strip starts higher to keep the row whole.
-CROP_Y = {'reply-stack': 2066}
+# Ask Dock's strip starts higher to keep the prompt's button row above its tabs.
+CROP_Y = {'reply-stack': 2066, 'ask-dock': 2120}
 SIZE = (804, 280)
 POSTER_AT = '0.6'
 # Panels: the bottom of the screen with the panel open above the bar, 804 x 460 out.

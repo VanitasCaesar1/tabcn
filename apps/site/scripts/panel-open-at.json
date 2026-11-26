@@ -1,4 +1,8 @@
 {
+  "ask-dock": {
+    "at": 1.0,
+    "top": 1930
+  },
   "bar-sheet": 3.0,
   "companion-chip": 3.0,
   "context-tray": 4.0,
