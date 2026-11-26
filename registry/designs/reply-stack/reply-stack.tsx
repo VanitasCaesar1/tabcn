@@ -23,7 +23,9 @@
  *
  * The glass is a blur under a light or dark tint with a bright edge, lit from the top right, and
  * a soft shadow. It follows the system's light or dark appearance unless `tint` is set. Android
- * can't blur what is behind the bar, so there it is a denser fill with the same edge.
+ * can't blur what is behind the bar, so there it is a denser fill with the same edge. On iOS 26
+ * both capsules are Liquid Glass by default instead, shrinking the same way; `material="solid"`
+ * keeps X's frosted blur everywhere.
  *
  * Motion (lively): the lens answers the finger, as X's does. It sets off for a tab as the finger
  * lands and follows the finger as it slides along the bar (TabScrub, so this design needs
@@ -38,6 +40,7 @@
  *
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import {
@@ -104,6 +107,12 @@ const darkColors = {
   /** The compose button and its glyph. */
   compose: '#ffffff',
   composeIcon: '#0f1419',
+  /**
+   * Tint over the Liquid Glass (iOS 26). Unset, with the dark tint, `fill` at 60%, so the light
+   * icons and the reply row keep their contrast over light screens; with the light tint, clear.
+   * `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 const lightColors: ReplyStackColors = {
@@ -124,6 +133,7 @@ const lightColors: ReplyStackColors = {
   shadow: 'rgba(0, 0, 0, 0.14)',
   compose: '#0f1419',
   composeIcon: '#ffffff',
+  glassTint: undefined,
 };
 
 export type ReplyStackColors = typeof darkColors;
@@ -165,11 +175,17 @@ export interface ReplyStackProps {
    * none.
    */
   compose?: ComposeConfig;
-  /** `light` or `dark` glass. Default: the system's appearance. */
+  /** `light` or `dark` glass (the blur, or Liquid Glass's appearance). Default: the system's appearance. */
   tint?: 'light' | 'dark';
   colors?: Partial<ReplyStackColors>;
-  /** Blur strength (iOS and the web). Default 30. */
+  /** Blur strength (iOS and the web). Not used over Liquid Glass. Default 30. */
   intensity?: number;
+  /**
+   * The capsules' surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (X's frosted blur with a
+   * lit edge, a denser fill on Android), or `'auto'` (glass where the system has it, the blur
+   * elsewhere). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /**
    * A selection tick on pressing a tab that isn't active, on each tab the finger slides onto,
    * on the reply field and on the minimized circle. Default true.
@@ -189,9 +205,11 @@ export function ReplyStack({
   tint: tintProp,
   colors: custom,
   intensity = 30,
+  material = 'auto',
   haptics = true,
   minimizeOnScroll = true,
 }: ReplyStackProps) {
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const system = useColorScheme();
   const tint: Tint = tintProp ?? (system === 'dark' ? 'dark' : 'light');
   const colors = { ...(tint === 'dark' ? darkColors : lightColors), ...custom };
@@ -346,10 +364,19 @@ export function ReplyStack({
             height={ROW_HEIGHT}
             dockHeight={MIN}
             haptics={haptics}
+            glass={glass}
+            visible={visible}
           />
         ) : null}
         <View pointerEvents="box-none" style={{ width, height: PILL_HEIGHT }}>
-          <Glass colors={colors} tint={tint} intensity={intensity} progress={shown} {...shape} />
+          <Glass
+            colors={colors}
+            tint={tint}
+            intensity={intensity}
+            progress={shown}
+            glass={glass}
+            {...shape}
+          />
           {/* The tabs, clipped to the shrinking pill. Minimized, they take no touches and are
               hidden from screen readers and the keyboard: the circle stands for them. */}
           <View

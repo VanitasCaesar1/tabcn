@@ -10,12 +10,16 @@
  * just past level once); its colour fills in 160 ms. Losing focus,
  * its colour drains in 110 ms (70%) and it eases back to size, with no bounce. Pressing dips the
  * tab to 94% as the finger lands. With reduce motion on, the tab changes size and colour at once.
+ * On iOS 26 the row sits on a dark Liquid Glass capsule (expo-glass-effect), tinted with `scrim`
+ * at 60%, instead of the dark fade; the pills and stickers on it are unchanged. Elsewhere, or with `material="solid"`, it is
+ * the fade. Choose with `material`.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { type ReactNode, useEffect, useMemo } from 'react';
-import { I18nManager, Platform, StyleSheet, Text, View } from 'react-native';
+import { I18nManager, Platform, processColor, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -69,6 +73,11 @@ const defaultColors = {
   badge: '#ff3b47',
   /** Badge text. */
   badgeText: '#ffffff',
+  /**
+   * Tint over the Liquid Glass (iOS 26). Unset, `scrim` at 60%, so the light labels keep their
+   * contrast over light screens; `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type StickerPillsColors = typeof defaultColors;
@@ -76,6 +85,12 @@ export type StickerPillsColors = typeof defaultColors;
 export interface StickerPillsProps {
   /** Colours of the row; each tab's active colours come from `tones`. */
   colors?: Partial<StickerPillsColors>;
+  /**
+   * What the row sits on: `'glass'` (a Liquid Glass capsule, iOS 26), `'solid'` (the dark fade
+   * rising from the screen's bottom edge), or `'auto'` (glass where the system has it, solid
+   * elsewhere). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /**
    * Active colours per tab, keyed by route name. A tab without one takes the next tone from
    * `stickerPillsTones` by its position.
@@ -94,6 +109,7 @@ export interface StickerPillsProps {
 const ICON = 34;
 const OVERLAP = 12;
 const PILL_HEIGHT = 26;
+const TAB_HEIGHT = 48;
 /** How high the fade reaches above the row. */
 const SCRIM_RISE = 40;
 
@@ -130,25 +146,42 @@ const condensed = Platform.select({
 
 export function StickerPills({
   colors: custom,
+  material = 'auto',
   tones,
   fontFamily,
   haptics = true,
 }: StickerPillsProps) {
   const colors = useColors(custom);
   const { tabs, insets } = useTabBar();
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   return (
     <TabBarRoot placement="floating" offset={6} style={styles.root}>
-      {/* Solid behind the row and down to the screen's edge, fading out above it. */}
-      <View
-        pointerEvents="none"
-        style={[styles.scrim, { backgroundColor: colors.scrim, bottom: -(insets.bottom + 6) }]}
-      />
-      <LinearGradient
-        pointerEvents="none"
-        colors={[transparent(colors.scrim), colors.scrim]}
-        style={styles.fade}
-      />
+      {glass ? null : (
+        <>
+          {/* Solid behind the row and down to the screen's edge, fading out above it. */}
+          <View
+            pointerEvents="none"
+            style={[styles.scrim, { backgroundColor: colors.scrim, bottom: -(insets.bottom + 6) }]}
+          />
+          <LinearGradient
+            pointerEvents="none"
+            colors={[transparent(colors.scrim), colors.scrim]}
+            style={styles.fade}
+          />
+        </>
+      )}
       <TabList style={styles.row}>
+        {/* Dark glass under the light labels, the row's own size. Only the capsule is glass:
+            the pills pop and tilt, which would stretch glass. */}
+        {glass ? (
+          <GlassView
+            pointerEvents="none"
+            glassEffectStyle="regular"
+            colorScheme="dark"
+            tintColor={colors.glassTint ?? withAlpha(colors.scrim, 0.6)}
+            style={[StyleSheet.absoluteFill, styles.glass]}
+          />
+        ) : null}
         {tabs.map((tab) => (
           <Tab
             key={tab.key}
@@ -169,7 +202,7 @@ export function StickerPills({
 
 /** The colours merged with the defaults, changing only when a colour does. */
 function useColors(custom: Partial<StickerPillsColors> | undefined): StickerPillsColors {
-  const { scrim, idle, idleLabel, badge, badgeText } = custom ?? {};
+  const { scrim, idle, idleLabel, badge, badgeText, glassTint } = custom ?? {};
   return useMemo(
     () => ({
       scrim: scrim ?? defaultColors.scrim,
@@ -177,8 +210,9 @@ function useColors(custom: Partial<StickerPillsColors> | undefined): StickerPill
       idleLabel: idleLabel ?? defaultColors.idleLabel,
       badge: badge ?? defaultColors.badge,
       badgeText: badgeText ?? defaultColors.badgeText,
+      glassTint: glassTint ?? defaultColors.glassTint,
     }),
-    [scrim, idle, idleLabel, badge, badgeText],
+    [scrim, idle, idleLabel, badge, badgeText, glassTint],
   );
 }
 
@@ -323,6 +357,13 @@ function Badge({
 }
 
 /** `color` with no opacity, for the top of the fade: the same colour, so it doesn't grey out. */
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const value = processColor(color);
+  if (typeof value !== 'number') return color;
+  return `rgba(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255}, ${alpha})`;
+}
+
 function transparent(color: string) {
   if (/^#[0-9a-f]{6}$/i.test(color)) return `${color}00`;
   if (/^#[0-9a-f]{3}$/i.test(color)) {
@@ -338,7 +379,9 @@ const styles = StyleSheet.create({
   scrim: { position: 'absolute', left: 0, right: 0, top: 0 },
   fade: { position: 'absolute', left: 0, right: 0, top: -SCRIM_RISE, height: SCRIM_RISE },
   row: { gap: 8, paddingHorizontal: 12 },
-  tab: { height: 48, justifyContent: 'center' },
+  tab: { height: TAB_HEIGHT, justifyContent: 'center' },
+  // The glass capsule's radius: half the row's height, set exactly.
+  glass: { borderRadius: TAB_HEIGHT / 2 },
   body: { flexDirection: 'row', alignItems: 'center' },
   // The label starts after the part of the icon that overlaps the pill.
   pill: {

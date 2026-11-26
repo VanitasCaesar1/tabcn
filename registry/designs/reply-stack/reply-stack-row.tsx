@@ -2,10 +2,13 @@
  * Reply Stack's reply row: the viewer's photo and "Post your reply" (one press area that opens
  * your composer), then the action buttons, each its own button. It sits over the tabs; while the
  * bar is minimized it drops into the tabs' row, beside the minimized circle, and narrows from its
- * start edge: the actions stay put and the placeholder ends in an ellipsis.
+ * start edge: the actions stay put and the placeholder ends in an ellipsis. Over Liquid Glass
+ * (the bar's `material`) the glass comes and goes on its own and only the content dips and grows,
+ * so the glass is never scaled.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import * as Haptics from 'expo-haptics';
+import { useEffect, useState } from 'react';
 import { I18nManager, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
@@ -40,6 +43,8 @@ export function ReplyRow({
   height,
   dockHeight,
   haptics,
+  glass,
+  visible,
 }: {
   reply: ReplyConfig;
   /** 0 (gone) to 1 (shown): the row rising in or sinking away. */
@@ -58,29 +63,48 @@ export function ReplyRow({
   /** Its height while docked: the minimized circle's, as in X, so the two line up. */
   dockHeight: number;
   haptics: boolean;
+  /** Liquid Glass instead of the blur. */
+  glass: boolean;
+  /** Whether the row is wanted: it is still drawn while it sinks away. */
+  visible: boolean;
 }) {
   const placeholder = reply.placeholder ?? 'Post your reply';
   const actions = reply.actions ?? defaultActions;
   const scale = useSharedValue(1);
   // The start edge is the left, or the right in a right-to-left layout.
   const inward = I18nManager.isRTL ? -travel : travel;
+  // The glass starts out absent and comes in once mounted, so it materializes as the row rises.
+  const [glassShown, setGlassShown] = useState(false);
+  useEffect(() => setGlassShown(visible), [visible]);
   // Rises 12 pt from behind the tabs as it fades in, and drops into the tabs' row while the bar
-  // is minimized; dips while the field is pressed.
-  const motion = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: interpolate(presence.value, [0, 1], [12, 0]) + minimized.value * drop },
-      { scale: interpolate(presence.value, [0, 1], [0.96, 1]) * scale.value },
-    ],
-  }));
+  // is minimized; dips while the field is pressed. Over Liquid Glass only the content grows and
+  // dips (below): a scaled glass draws its edge stretched.
+  const motion = useAnimatedStyle(() => {
+    const y = interpolate(presence.value, [0, 1], [12, 0]) + minimized.value * drop;
+    if (glass) return { transform: [{ translateY: y }] };
+    return {
+      transform: [
+        { translateY: y },
+        { scale: interpolate(presence.value, [0, 1], [0.96, 1]) * scale.value },
+      ],
+    };
+  });
   // The content fades with the glass. It sits beside the blur, not around it: iOS draws a blur
   // inside a fading view sharp.
   // Docked, the glass shrinks to the circle's height about its bottom edge, so the content moves
   // down to stay centred in it.
   const sink = (height - dockHeight) / 2;
-  const contentFade = useAnimatedStyle(() => ({
-    opacity: presence.value,
-    transform: [{ translateY: minimized.value * sink }],
-  }));
+  const contentFade = useAnimatedStyle(() => {
+    const y = minimized.value * sink;
+    if (!glass) return { opacity: presence.value, transform: [{ translateY: y }] };
+    return {
+      opacity: presence.value,
+      transform: [
+        { translateY: y },
+        { scale: interpolate(presence.value, [0, 1], [0.96, 1]) * scale.value },
+      ],
+    };
+  });
   // The photo shrinks with the row, to half the docked height (X's proportion).
   const avatarSize = useAnimatedStyle(() => {
     const size = interpolate(minimized.value, [0, 1], [AVATAR, Math.round(dockHeight * 0.5)]);
@@ -111,6 +135,8 @@ export function ReplyRow({
         progress={minimized}
         to={{ width: width - travel, height: dockHeight }}
         moves="start"
+        glass={glass}
+        shown={glassShown}
       />
       <Animated.View
         pointerEvents="box-none"

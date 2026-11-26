@@ -22,8 +22,10 @@
  * them is active. The white look is from memory of the app, not measured; by default the
  * bar stays black, as in every screenshot.
  *
- * The bar is opaque, as in the app: no glass or blur. The greys of the inactive tabs are kept
+ * By default the bar is opaque, as in the app: no glass or blur. The greys of the inactive tabs are kept
  * as the app has them (the light scheme's are low contrast).
+ * Glass is opt-in: `material="glass"` (or `"auto"`) turns the band into Liquid Glass on iOS 26
+ * (expo-glass-effect), dark, or light on `lightRoutes`; the plus button stays solid.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  *
  * Measured on the app's App Store screenshot (v47.8, a 402 pt screen at 2.4 px per pt):
@@ -34,9 +36,10 @@
  * 3.8 pt left of the white one and the red one 3.8 pt right. The plus is 14 pt across with
  * 2.7 pt square-ended bars.
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { processColor, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -80,6 +83,12 @@ const defaultColors = {
   badge: '#fe2c55',
   /** The count on a badge. */
   badgeText: '#ffffff',
+  /**
+   * Tint over the Liquid Glass (iOS 26), when `material` asks for glass. Unset, `background`
+   * at 60% on the black bar, so the white icons keep their contrast over light screens, and
+   * clear on `lightRoutes` (`offsetPlusLightColors`); `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type OffsetPlusColors = typeof defaultColors;
@@ -100,6 +109,7 @@ export const offsetPlusLightColors: OffsetPlusColors = {
   actionGlyph: '#ffffff',
   badge: '#fe2c55',
   badgeText: '#ffffff',
+  glassTint: undefined,
 };
 
 export interface OffsetPlusProps {
@@ -108,6 +118,11 @@ export interface OffsetPlusProps {
   /** Screen-reader label for the plus button. Default "Create". */
   actionLabel?: string;
   colors?: Partial<OffsetPlusColors>;
+  /**
+   * The bar's surface: `'solid'` (the black bar it copies), `'glass'` (Liquid Glass, iOS 26),
+   * or `'auto'` (glass where the system has it, solid elsewhere). Default `'solid'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /**
    * Route names (the `name` of each `Tabs.Screen`) on which the bar turns light, as TikTok's
    * does on Inbox and Profile. Default none: the bar stays black.
@@ -161,6 +176,7 @@ export function OffsetPlus({
   onActionPress,
   actionLabel = 'Create',
   colors: custom,
+  material = 'solid',
   lightRoutes = NO_ROUTES,
   lightColors,
   fontFamily,
@@ -168,6 +184,7 @@ export function OffsetPlus({
 }: OffsetPlusProps) {
   const dark = { ...defaultColors, ...custom };
   const light = { ...offsetPlusLightColors, ...lightColors };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const { tabs, insets, activeIndex } = useTabBar();
   const hasLight = lightRoutes.length > 0;
   const routeName = tabs[activeIndex]?.routeName;
@@ -193,12 +210,26 @@ export function OffsetPlus({
     <TabBarRoot
       placement="docked"
       style={{
-        backgroundColor: isLight ? light.background : dark.background,
+        backgroundColor: glass ? undefined : isLight ? light.background : dark.background,
         paddingLeft: insets.left,
         paddingRight: insets.right,
       }}
     >
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, fill]} />
+      {glass ? (
+        // The glass fills the bar and the home-indicator area under it, as the colour did, and
+        // takes the active scheme: dark glass on the black bar, light glass on `lightRoutes`.
+        <GlassView
+          pointerEvents="none"
+          glassEffectStyle="regular"
+          colorScheme={isLight ? 'light' : 'dark'}
+          tintColor={
+            isLight ? light.glassTint : (dark.glassTint ?? withAlpha(dark.background, 0.6))
+          }
+          style={StyleSheet.absoluteFill}
+        />
+      ) : (
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, fill]} />
+      )}
       <TabList style={styles.bar}>
         {tabs.slice(0, half).map((tab) => (
           <Tab
@@ -401,6 +432,13 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: OffsetPlusC
       )}
     </Animated.View>
   );
+}
+
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const v = processColor(color);
+  if (typeof v !== 'number') return color;
+  return `rgba(${(v >>> 16) & 255}, ${(v >>> 8) & 255}, ${v & 255}, ${alpha})`;
 }
 
 const styles = StyleSheet.create({

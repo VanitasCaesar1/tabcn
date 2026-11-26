@@ -19,7 +19,9 @@
  * outline icon and the solid one crossfade, and the grey medium label crossfades to the white
  * semibold one, on tabcnTiming shortened to 180 ms. Badges fade in and out over 150 ms; a
  * count that changes rolls its digits in place. No scale, bounce or lift, and presses show no
- * dim. Reduce motion makes all of it instant. The bar is opaque: no glass, blur or shadow.
+ * dim. Reduce motion makes all of it instant. By default the bar is opaque: no glass, blur or shadow.
+ * Glass is opt-in: `material="glass"` (or `"auto"`) turns the bar into Liquid Glass on iOS 26
+ * (expo-glass-effect), dark or light to match `colors`, under the same hairline.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  *
  * Measured on the app's App Store screenshot (an iPhone screen 1019 px wide taken as 393 pt,
@@ -31,9 +33,10 @@
  * #b7bbbe, badge #fe4d3e. The dot (8 pt, Reddit orange-red) is from the iPad screenshot: its
  * top 1 pt below a count badge's and its left edge 3.4 pt further right.
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, type TextStyle, View } from 'react-native';
+import { processColor, StyleSheet, Text, type TextStyle, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -70,6 +73,12 @@ const defaultColors = {
   badgeText: '#ffffff',
   /** The dot shown for an empty badge: Reddit orange-red. */
   dot: '#ff4500',
+  /**
+   * Tint over the Liquid Glass (iOS 26), when `material` asks for glass. Unset, `background`
+   * at 60% on a dark bar (clear on a light one, such as `badgeDockLightColors`), so light icons
+   * keep their contrast over light screens; `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type BadgeDockColors = typeof defaultColors;
@@ -86,10 +95,16 @@ export const badgeDockLightColors: BadgeDockColors = {
   badge: '#fe4d3e',
   badgeText: '#ffffff',
   dot: '#ff4500',
+  glassTint: undefined,
 };
 
 export interface BadgeDockProps {
   colors?: Partial<BadgeDockColors>;
+  /**
+   * The bar's surface: `'solid'` (the near-black bar it copies), `'glass'` (Liquid Glass, iOS 26),
+   * or `'auto'` (glass where the system has it, solid elsewhere). Default `'solid'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /**
    * Runs when the middle slot (Create) is pressed. With it, the middle slot is an action
    * drawn like a tab, between the first and second halves of your tabs: give the navigator
@@ -147,6 +162,7 @@ const badgeOut = FadeOut.duration(150).easing(BADGE_EASING).reduceMotion(ReduceM
 
 export function BadgeDock({
   colors: custom,
+  material = 'solid',
   onActionPress,
   actionLabel = 'Create',
   actionIcon,
@@ -155,6 +171,7 @@ export function BadgeDock({
   activeFontFamily,
 }: BadgeDockProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const fonts: Fonts = {
     // A named family is used at its own weight; without one, the system font's weights apply.
     regular: fontFamily ? { fontFamily, fontWeight: 'normal' } : undefined,
@@ -173,7 +190,25 @@ export function BadgeDock({
 
   return (
     // Docked: the root pads the bottom safe area, so the bar colour runs under the home indicator.
-    <TabBarRoot placement="docked" style={{ backgroundColor: colors.background }}>
+    <TabBarRoot
+      placement="docked"
+      style={glass ? undefined : { backgroundColor: colors.background }}
+    >
+      {glass ? (
+        // The glass fills the bar and the home-indicator area under it, as the colour did.
+        <GlassView
+          pointerEvents="none"
+          glassEffectStyle="regular"
+          colorScheme={glassScheme(colors.background)}
+          tintColor={
+            colors.glassTint ??
+            (glassScheme(colors.background) === 'dark'
+              ? withAlpha(colors.background, 0.6)
+              : undefined)
+          }
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
       <View style={[styles.hairline, { backgroundColor: colors.hairline }]} />
       <TabList style={styles.bar}>
         {tabs.slice(0, half).map(tab)}
@@ -191,6 +226,25 @@ export function BadgeDock({
       </TabList>
     </TabBarRoot>
   );
+}
+
+/**
+ * The glass's scheme from the bar colour it replaces: light glass under a light bar (dark ink),
+ * dark glass under a dark one, so icons and labels keep their contrast.
+ */
+function glassScheme(background: string): 'light' | 'dark' {
+  const value = processColor(background);
+  if (typeof value !== 'number') return 'dark';
+  const luma =
+    0.299 * ((value >>> 16) & 255) + 0.587 * ((value >>> 8) & 255) + 0.114 * (value & 255);
+  return luma > 140 ? 'light' : 'dark';
+}
+
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const v = processColor(color);
+  if (typeof v !== 'number') return color;
+  return `rgba(${(v >>> 16) & 255}, ${(v >>> 8) & 255}, ${v & 255}, ${alpha})`;
 }
 
 /** Label fonts: the regular (inactive) and bold (active) weights, unset for the system font. */

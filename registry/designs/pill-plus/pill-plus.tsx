@@ -7,6 +7,8 @@
  * The plus is marked with `usePanelAnchor('action')`, so a `TabPanel` can open from it.
  * The capsule is slightly domed (a soft inner shade at its edge) and casts a wide, soft
  * shadow.
+ * On iOS 26 the capsule is light Liquid Glass (expo-glass-effect) with no drawn dome or shadow;
+ * elsewhere, or with `material="solid"`, it is the domed white. Choose with `material`.
  * The light grey of the inactive icons and the plus is kept as the app has it (low contrast).
  *
  * Measured on the app (App Store shot, 2.59 px/pt on a 402 pt screen), with three tabs:
@@ -14,6 +16,7 @@
  * edge, and the icons ride 1.5 pt below its middle.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { processColor, StyleSheet, View } from 'react-native';
 import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
@@ -44,6 +47,8 @@ const defaultColors = {
   shadow: 'rgba(30, 40, 60, 0.14)',
   /** The soft inner shade along the capsule's edge that makes it look domed. */
   bevel: 'rgba(30, 36, 48, 0.1)',
+  /** Tint over the Liquid Glass (iOS 26). Unset, the glass is clear. */
+  glassTint: undefined as string | undefined,
 };
 
 export type PillPlusColors = typeof defaultColors;
@@ -54,6 +59,11 @@ export interface PillPlusProps {
   /** Screen-reader label for the plus. Default "Create". */
   actionLabel?: string;
   colors?: Partial<PillPlusColors>;
+  /**
+   * The capsule's surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (the domed white with its
+   * soft shadow), or `'auto'` (glass where the system has it, solid elsewhere). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /** Selection haptic on tabs, a light impact on the plus. Default true. */
   haptics?: boolean;
 }
@@ -62,20 +72,37 @@ export function PillPlus({
   onActionPress,
   actionLabel = 'Create',
   colors: custom,
+  material = 'auto',
   haptics = true,
 }: PillPlusProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
   const anchor = usePanelAnchor('action');
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   return (
     <TabBarRoot placement="floating">
-      <View style={[styles.raised, { boxShadow: raisedShadow(colors.shadow) }]}>
+      <View
+        style={glass ? styles.raised : [styles.raised, { boxShadow: raisedShadow(colors.shadow) }]}
+      >
         <View
-          style={[
-            styles.pill,
-            { backgroundColor: colors.background, boxShadow: bevelShadow(colors.bevel) },
-          ]}
+          style={
+            glass
+              ? styles.pill
+              : [
+                  styles.pill,
+                  { backgroundColor: colors.background, boxShadow: bevelShadow(colors.bevel) },
+                ]
+          }
         >
+          {glass ? (
+            <GlassView
+              pointerEvents="none"
+              glassEffectStyle="regular"
+              colorScheme="light"
+              tintColor={colors.glassTint}
+              style={[StyleSheet.absoluteFill, styles.raised]}
+            />
+          ) : null}
           <TabList style={styles.list}>
             {tabs.map((tab) => (
               <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />

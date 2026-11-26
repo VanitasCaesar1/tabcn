@@ -30,10 +30,14 @@
  * has no controls pinned to its bottom edge, and no text input (the bar hides with the
  * keyboard). Not drawn while the bar is a rail.
  *
+ * On iOS 26 the sheet is light Liquid Glass (expo-glass-effect); elsewhere, or with
+ * `material="solid"`, it is a white fill with a hairline top edge and a soft shadow.
+ *
  * Every move glides on tabcnSpring (critically damped, no overshoot); nothing scales,
  * bounces or turns. With "reduce motion" on, every change is instant.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 // 'react-native-tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
@@ -68,8 +72,10 @@ const defaultColors = {
   foreground: '#141416',
   /** The subtitle. */
   muted: 'rgba(20, 20, 22, 0.62)',
-  /** The soft shadow the sheet casts upward. */
+  /** The soft shadow the sheet casts upward. Not drawn over Liquid Glass. */
   shadow: 'rgba(0, 0, 0, 0.08)',
+  /** Tint over the Liquid Glass (iOS 26). Unset, the glass is clear. */
+  glassTint: undefined as string | undefined,
 };
 
 export type BarSheetColors = typeof defaultColors;
@@ -90,6 +96,12 @@ export interface BarSheetProps {
   colors?: Partial<BarSheetColors>;
   /** A selection haptic each time the sheet settles at another height. Default true. */
   haptics?: boolean;
+  /**
+   * The sheet's surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (a white fill with a
+   * hairline top edge and a soft shadow), or `'auto'` (glass where the system has it, solid
+   * elsewhere). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /** The body. It scrolls at the highest snap point. */
   children?: ReactNode;
 }
@@ -106,9 +118,11 @@ export function BarSheet({
   radius = 28,
   colors: custom,
   haptics = true,
+  material = 'auto',
   children,
 }: BarSheetProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   return (
     <TabPanel id={id} snapPoints={snapPoints}>
       <SheetBody
@@ -120,6 +134,7 @@ export function BarSheet({
         radius={radius}
         colors={colors}
         haptics={haptics}
+        glass={glass}
       >
         {children}
       </SheetBody>
@@ -178,13 +193,15 @@ function SheetBody({
   radius,
   colors,
   haptics,
+  glass,
   children,
-}: Omit<BarSheetProps, 'colors' | 'id'> & {
+}: Omit<BarSheetProps, 'colors' | 'id' | 'material'> & {
   id: string;
   snapPoints: readonly SnapPoint[];
   radius: number;
   colors: BarSheetColors;
   haptics: boolean;
+  glass: boolean;
 }) {
   const { snap, snapTo, hide } = useTabPanel(id);
   const last = snapPoints.length - 1;
@@ -238,15 +255,28 @@ function SheetBody({
     <View
       style={[
         styles.sheet,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          boxShadow: `0 -6px 24px ${colors.shadow}`,
-          borderTopLeftRadius: radius,
-          borderTopRightRadius: radius,
-        },
+        { borderTopLeftRadius: radius, borderTopRightRadius: radius },
+        glass
+          ? null
+          : {
+              borderTopWidth: StyleSheet.hairlineWidth,
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              boxShadow: `0 -6px 24px ${colors.shadow}`,
+            },
       ]}
     >
+      {glass ? (
+        <GlassView
+          glassEffectStyle="regular"
+          tintColor={colors.glassTint}
+          colorScheme="light"
+          style={[
+            StyleSheet.absoluteFill,
+            { borderTopLeftRadius: radius, borderTopRightRadius: radius },
+          ]}
+        />
+      ) : null}
       <PanelDragArea>
         <View style={styles.header}>
           {/* Holds the grabber's place; the control itself is drawn over it, below. */}
@@ -293,7 +323,6 @@ function SheetBody({
 const styles = StyleSheet.create({
   sheet: {
     flex: 1,
-    borderTopWidth: StyleSheet.hairlineWidth,
     borderCurve: 'continuous',
     overflow: 'hidden',
   },

@@ -34,9 +34,11 @@
  * users reach the drawer too. Choosing an item is a tap after lifting the finger. The drawer
  * slides on tabcnSpring (critically damped, no overshoot) and fades on tabcnTiming; nothing
  * scales, bounces or turns. With "reduce motion" on, both are instant. Not drawn while the
- * bar is a rail.
+ * bar is a rail. On iOS 26 the drawer is light Liquid Glass that comes and goes with it (the
+ * items fade over it); elsewhere, or with `material="solid"`, it is a near-white card.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -50,13 +52,18 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { TabPanel, tabcnTiming, usePanelAnchor, useTabBar, useTabPanel } from 'react-native-tabcn';
 
 const defaultColors = {
   /** The drawer's surface. */
   surface: 'rgba(250, 250, 252, 0.97)',
-  /** Hairline edge. */
+  /** Hairline edge. Not drawn over Liquid Glass. */
   border: 'rgba(0, 0, 0, 0.08)',
   /** Item labels. */
   foreground: '#151517',
@@ -64,8 +71,10 @@ const defaultColors = {
   pressed: 'rgba(0, 0, 0, 0.06)',
   /** The fill behind a `selected` item. Default: the `pressed` colour. */
   selected: 'rgba(0, 0, 0, 0.06)',
-  /** The soft shadow under the drawer. */
+  /** The soft shadow under the drawer. Not drawn over Liquid Glass. */
   shadow: 'rgba(0, 0, 0, 0.12)',
+  /** Tint over the Liquid Glass (iOS 26). Unset, the glass is clear. */
+  glassTint: undefined as string | undefined,
 };
 
 export type SubTabsColors = typeof defaultColors;
@@ -98,6 +107,12 @@ export interface SubTabsProps {
   spacing?: number;
   /** A selection haptic when an item is pressed. Default true. */
   haptics?: boolean;
+  /**
+   * The drawer's surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (a near-white card with
+   * a hairline edge and a soft shadow), or `'auto'` (glass where the system has it, solid
+   * elsewhere). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
 }
 
 /** The panel id of the drawer for tab `name`. */
@@ -110,7 +125,9 @@ export function SubTabs({
   colors: custom,
   spacing = 24,
   haptics = true,
+  material = 'auto',
 }: SubTabsProps) {
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   // A passed `pressed` colour is also the selected fill unless `selected` is given too.
   const colors = {
     ...defaultColors,
@@ -119,7 +136,14 @@ export function SubTabs({
   };
   return (
     <TabPanel id={panelId(name)} anchor={{ name }}>
-      <Drawer name={name} items={items} colors={colors} spacing={spacing} haptics={haptics} />
+      <Drawer
+        name={name}
+        items={items}
+        colors={colors}
+        spacing={spacing}
+        haptics={haptics}
+        glass={glass}
+      />
     </TabPanel>
   );
 }
@@ -231,12 +255,14 @@ function Drawer({
   colors,
   spacing,
   haptics,
+  glass,
 }: {
   name: string;
   items: readonly SubTabItem[];
   colors: SubTabsColors;
   spacing: number;
   haptics: boolean;
+  glass: boolean;
 }) {
   const { state, hide } = useTabPanel(panelId(name));
   const open = state === 'open';
@@ -256,6 +282,64 @@ function Drawer({
     shown.value = withTiming(open ? 1 : 0, tabcnTiming);
   }, [open, shown]);
   const fade = useAnimatedStyle(() => ({ opacity: shown.value }));
+  const reduceMotion = useReducedMotion();
+
+  const list = items.map((item, index) => (
+    <Pressable
+      // A fixed list from props: labels may repeat, positions can't.
+      key={index}
+      accessibilityRole="button"
+      accessibilityLabel={item.accessibilityLabel ?? item.label}
+      accessibilityState={item.selected === undefined ? undefined : { selected: item.selected }}
+      onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
+      onPress={() => {
+        hide();
+        item.onPress();
+      }}
+      style={({ pressed }) => [
+        styles.item,
+        {
+          backgroundColor: pressed
+            ? colors.pressed
+            : item.selected
+              ? colors.selected
+              : 'transparent',
+        },
+      ]}
+    >
+      <Text
+        numberOfLines={1}
+        maxFontSizeMultiplier={1.3}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+        style={[styles.label, { color: colors.foreground }]}
+      >
+        {item.label}
+      </Text>
+    </Pressable>
+  ));
+
+  // Liquid Glass stops drawing under opacity 0, so with glass the drawer itself stays opaque:
+  // the glass comes and goes on its own, and the items fade over it.
+  if (glass) {
+    return (
+      <View style={{ paddingBottom: spacing }}>
+        <View style={[styles.surface, styles.surfaceGlass]}>
+          <GlassView
+            glassEffectStyle={{
+              style: open ? 'regular' : 'none',
+              animate: !reduceMotion,
+              animationDuration: (tabcnTiming.duration ?? 200) / 1000,
+            }}
+            tintColor={colors.glassTint}
+            colorScheme="light"
+            style={[StyleSheet.absoluteFill, styles.glass]}
+          />
+          <Animated.View style={fade}>{list}</Animated.View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <Animated.View style={[{ paddingBottom: spacing }, fade]}>
@@ -269,42 +353,7 @@ function Drawer({
           },
         ]}
       >
-        {items.map((item, index) => (
-          <Pressable
-            // A fixed list from props: labels may repeat, positions can't.
-            key={index}
-            accessibilityRole="button"
-            accessibilityLabel={item.accessibilityLabel ?? item.label}
-            accessibilityState={
-              item.selected === undefined ? undefined : { selected: item.selected }
-            }
-            onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
-            onPress={() => {
-              hide();
-              item.onPress();
-            }}
-            style={({ pressed }) => [
-              styles.item,
-              {
-                backgroundColor: pressed
-                  ? colors.pressed
-                  : item.selected
-                    ? colors.selected
-                    : 'transparent',
-              },
-            ]}
-          >
-            <Text
-              numberOfLines={1}
-              maxFontSizeMultiplier={1.3}
-              adjustsFontSizeToFit
-              minimumFontScale={0.8}
-              style={[styles.label, { color: colors.foreground }]}
-            >
-              {item.label}
-            </Text>
-          </Pressable>
-        ))}
+        {list}
       </View>
     </Animated.View>
   );
@@ -317,6 +366,13 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     overflow: 'hidden',
     paddingVertical: 4,
+  },
+  // Liquid Glass brings its own edge and depth: no hairline, no drawn shadow.
+  surfaceGlass: {
+    borderWidth: 0,
+  },
+  glass: {
+    borderRadius: 18,
   },
   // 44 pt: the least comfortable touch target.
   item: {

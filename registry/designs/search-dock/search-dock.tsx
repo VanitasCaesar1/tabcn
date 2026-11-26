@@ -6,6 +6,8 @@
  * no shadow either, but over a white page their edges vanish and the page's own icons read as
  * part of the dock, so each tile carries a faint neutral shadow: a tight 1 pt edge and a soft
  * lift. Turn it off with `colors={{ shadow: null }}`.
+ * On iOS 26 each tile is light Liquid Glass (expo-glass-effect) with no drawn shadow; elsewhere,
+ * or with `material="solid"`, they are the white tiles. Choose with `material`.
  *
  * The search field is the Search tab: it shows a magnifier and the current query (or a grey
  * placeholder), and tapping it switches to the Search route. Pass `onAccessoryPress` to add
@@ -25,6 +27,7 @@
  *
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { Platform, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
@@ -70,12 +73,20 @@ const defaultColors = {
   badge: '#e60023',
   /** Badge count text. */
   badgeText: '#ffffff',
+  /** Tint over the Liquid Glass (iOS 26). Unset, the glass is clear. */
+  glassTint: undefined as string | undefined,
 };
 
 export type SearchDockColors = typeof defaultColors;
 
 export interface SearchDockProps {
   colors?: Partial<SearchDockColors>;
+  /**
+   * The tiles' surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (opaque `colors.tile` with
+   * the faint shadow), or `'auto'` (glass where the system has it, solid elsewhere). Default
+   * `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /** Index of the route drawn as the search field. Default 1 (the middle of three). */
   searchIndex?: number;
   /** Text shown in the field: the current search. Empty or left out shows `placeholder`. */
@@ -134,6 +145,7 @@ const HIDE_EXTRA = 24;
 
 export function SearchDock({
   colors: custom,
+  material = 'auto',
   searchIndex = 1,
   query,
   placeholder = 'Search',
@@ -156,6 +168,9 @@ export function SearchDock({
       ? { boxShadow: SHADOW(colors.shadow) }
       : undefined;
   const tile = { backgroundColor: colors.tile };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
+  // Over glass each tile draws the glass instead of its fill and shadow.
+  const surface = glass ? undefined : [tile, shadow];
 
   // While hidden, the row is off screen: screen readers skip it and it takes no touches.
   const [hidden, setHidden] = useState(false);
@@ -203,7 +218,8 @@ export function SearchDock({
                 key={tab.key}
                 tab={tab}
                 colors={colors}
-                style={[tile, shadow]}
+                style={surface}
+                glass={glass}
                 query={query}
                 placeholder={placeholder}
                 onAccessoryPress={onAccessoryPress}
@@ -217,7 +233,8 @@ export function SearchDock({
                 key={tab.key}
                 tab={tab}
                 colors={colors}
-                style={[tile, shadow]}
+                style={surface}
+                glass={glass}
                 haptics={haptics}
               />
             ),
@@ -252,16 +269,31 @@ function Glyph({ tab, colors }: { tab: TabItem; colors: SearchDockColors }) {
   );
 }
 
+/** A tile's Liquid Glass surface, light under the black glyphs, with the tile's corners. */
+function TileGlass({ colors }: { colors: SearchDockColors }) {
+  return (
+    <GlassView
+      pointerEvents="none"
+      glassEffectStyle="regular"
+      colorScheme="light"
+      tintColor={colors.glassTint}
+      style={[StyleSheet.absoluteFill, styles.glass]}
+    />
+  );
+}
+
 /** A square tile (Home, Profile): the icon centred, nothing else. */
 function Tile({
   tab,
   colors,
   style,
+  glass,
   haptics,
 }: {
   tab: TabItem;
   colors: SearchDockColors;
   style: StyleProp<ViewStyle>;
+  glass: boolean;
   haptics: boolean;
 }) {
   return (
@@ -270,6 +302,7 @@ function Tile({
       style={[styles.tile, style]}
       onPressIn={haptics ? () => Haptics.selectionAsync() : undefined}
     >
+      {glass ? <TileGlass colors={colors} /> : null}
       <Glyph tab={tab} colors={colors} />
     </TabButton>
   );
@@ -283,6 +316,7 @@ function SearchField({
   tab,
   colors,
   style,
+  glass,
   query,
   placeholder,
   onAccessoryPress,
@@ -294,6 +328,7 @@ function SearchField({
   tab: TabItem;
   colors: SearchDockColors;
   style: StyleProp<ViewStyle>;
+  glass: boolean;
   query: string | undefined;
   placeholder: string;
   onAccessoryPress: (() => void) | undefined;
@@ -306,6 +341,7 @@ function SearchField({
   const accessory = onAccessoryPress != null;
   return (
     <View style={[styles.field, style]}>
+      {glass ? <TileGlass colors={colors} /> : null}
       <TabButton
         tab={tab}
         style={styles.fieldButton}
@@ -530,6 +566,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  glass: { borderRadius: RADIUS },
   field: {
     flex: 1,
     minWidth: 100,

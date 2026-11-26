@@ -12,10 +12,13 @@
  *
  * The bar is 371 pt wide where that fits, and narrows to keep 8 pt from the screen's edges
  * on a smaller screen. The button's text stays on one line, shrinking a little if it must.
+ * Glass is opt-in: `material="glass"` (or `"auto"`) turns the dark bar into dark Liquid Glass on
+ * iOS 26 (expo-glass-effect), with the same corners; the button stays its solid cream.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { processColor, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   interpolateColor,
@@ -52,6 +55,12 @@ const defaultColors = {
   badgeText: '#ffffff',
   /** The dot under the active tab's illustration, drawn with `selectionIndicator`. */
   indicator: '#f1eecb',
+  /**
+   * Tint over the Liquid Glass (iOS 26), when `material` asks for glass. Unset, `background`
+   * at 60%, so the bar keeps its olive and its icons their contrast over light screens (the
+   * glass follows what is behind it); `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type CenterCtaColors = typeof defaultColors;
@@ -64,6 +73,11 @@ export interface CenterCtaProps {
   /** Font for the centre button, e.g. a handwritten face. Default: system font. */
   fontFamily?: string;
   colors?: Partial<CenterCtaColors>;
+  /**
+   * The bar's surface: `'solid'` (the dark bar it copies), `'glass'` (Liquid Glass, iOS 26),
+   * or `'auto'` (glass where the system has it, solid elsewhere). Default `'solid'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /** Selection haptic on tabs, a medium impact on the centre button. Default true. */
   haptics?: boolean;
   /**
@@ -78,10 +92,12 @@ export function CenterCta({
   actionLabel = 'Step Into',
   fontFamily,
   colors: custom,
+  material = 'solid',
   haptics = true,
   selectionIndicator = false,
 }: CenterCtaProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const { tabs, insets } = useTabBar();
   const window = useWindowDimensions();
   // The measured width where it fits; narrower, keeping EDGE from each side, where it doesn't.
@@ -99,7 +115,16 @@ export function CenterCta({
   }));
   return (
     <TabBarRoot placement="floating" style={{ width }}>
-      <TabList style={[styles.bar, { backgroundColor: colors.background }]}>
+      <TabList style={glass ? styles.bar : [styles.bar, { backgroundColor: colors.background }]}>
+        {glass ? (
+          <GlassView
+            pointerEvents="none"
+            glassEffectStyle="regular"
+            colorScheme="dark"
+            tintColor={colors.glassTint ?? withAlpha(colors.background, 0.6)}
+            style={[StyleSheet.absoluteFill, styles.glass]}
+          />
+        ) : null}
         {tabs.slice(0, half).map((tab) => (
           <Tab
             key={tab.key}
@@ -164,6 +189,7 @@ const EDGE = 8;
 const ICON = 42;
 const BUTTON_WIDTH = 113;
 const BAR_PADDING = 6;
+const BAR_RADIUS = 24;
 /** The selection dot's diameter. */
 const INDICATOR = 5;
 /** Share of the bar colour mixed into the button while it is held. */
@@ -250,10 +276,24 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: CenterCtaCo
   );
 }
 
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const v = processColor(color);
+  if (typeof v !== 'number') return color;
+  return `rgba(${(v >>> 16) & 255}, ${(v >>> 8) & 255}, ${v & 255}, ${alpha})`;
+}
+
 const styles = StyleSheet.create({
   // A text badge stays on one line and stops growing at this width, ending in an ellipsis.
   badgeTextCap: { maxWidth: 56 },
-  bar: { height: 69, borderRadius: 24, alignItems: 'stretch', paddingHorizontal: BAR_PADDING },
+  bar: {
+    height: 69,
+    borderRadius: BAR_RADIUS,
+    alignItems: 'stretch',
+    paddingHorizontal: BAR_PADDING,
+  },
+  // The bar's own radius, set on the glass too: it draws its corners from it.
+  glass: { borderRadius: BAR_RADIUS },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   middle: { justifyContent: 'center' },
   button: { width: BUTTON_WIDTH, height: 49 },

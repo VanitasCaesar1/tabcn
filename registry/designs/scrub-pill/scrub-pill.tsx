@@ -18,8 +18,11 @@
  * passes it); colours change instantly; nothing scales, bounces or turns. With "reduce
  * motion" on, the lens moves tab by tab instead of following the finger, and lands without
  * animating. Screen readers select tabs as usual.
+ * On iOS 26 the pill is light Liquid Glass (expo-glass-effect) with no hairline or shadow;
+ * elsewhere, or with `material="solid"`, it is the near-white fill. Choose with `material`.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 // 'react-native-tabcn/gestures' needs react-native-gesture-handler (an optional peer of tabcn). Importing it
 // here names it as this design's own dependency, so `shadcn add` installs it.
@@ -50,28 +53,59 @@ const defaultColors = {
   badge: '#ff3b30',
   /** Badge count text. */
   badgeText: '#ffffff',
+  /** Tint over the Liquid Glass (iOS 26). Unset, the glass is clear. */
+  glassTint: undefined as string | undefined,
 };
 
 export type ScrubPillColors = typeof defaultColors;
 
 export interface ScrubPillProps {
   colors?: Partial<ScrubPillColors>;
+  /**
+   * The pill's surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (the near-white fill with a
+   * hairline edge and soft shadow), or `'auto'` (glass where the system has it, solid
+   * elsewhere). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /** A selection haptic for each tab the finger crosses, and on tap. Default true. */
   haptics?: boolean;
   /** Press and slide along the pill to move through the tabs. Default true. */
   scrub?: boolean;
 }
 
-export function ScrubPill({ colors: custom, haptics = true, scrub = true }: ScrubPillProps) {
+export function ScrubPill({
+  colors: custom,
+  material = 'auto',
+  haptics = true,
+  scrub = true,
+}: ScrubPillProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   return (
     <TabBarRoot placement="floating">
       <TabScrub
         enabled={scrub}
         onTabCross={haptics ? () => Haptics.selectionAsync() : undefined}
-        style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
+        style={
+          glass
+            ? [styles.pill, styles.clear]
+            : [
+                styles.pill,
+                styles.shadow,
+                { backgroundColor: colors.background, borderColor: colors.border },
+              ]
+        }
       >
+        {glass ? (
+          <GlassView
+            pointerEvents="none"
+            glassEffectStyle="regular"
+            colorScheme="light"
+            tintColor={colors.glassTint}
+            style={[StyleSheet.absoluteFill, styles.glass]}
+          />
+        ) : null}
         <TabIndicator inset={LENS_INSET} style={[styles.lens, { backgroundColor: colors.lens }]} />
         {tabs.map((tab) => (
           <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
@@ -146,6 +180,8 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: ScrubPillCo
 }
 
 const ICON = 22;
+const TAB_HEIGHT = 54;
+const PILL_PADDING = 4;
 /** The lens sits a little inside each tab's frame. */
 const LENS_INSET = { x: 2, y: 2 };
 
@@ -159,9 +195,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderCurve: 'continuous',
-    padding: 4,
-    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.12)',
+    padding: PILL_PADDING,
   },
+  shadow: { boxShadow: '0 10px 30px rgba(0, 0, 0, 0.12)' },
+  // Over glass the pill keeps its hairline's room (so it is the same size) but draws nothing.
+  clear: { borderColor: 'transparent' },
+  // Half the pill's height, set exactly: the glass draws its corners from it.
+  glass: { borderRadius: TAB_HEIGHT / 2 + PILL_PADDING },
   lens: {
     borderRadius: 999,
     borderCurve: 'continuous',
@@ -171,7 +211,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     // Low enough that seven tabs fit a 320 pt screen.
     minWidth: 32,
-    height: 54,
+    height: TAB_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,

@@ -27,8 +27,15 @@
  * and nothing springs. Screen readers: the closed button reads "Tabs, Home selected" and opens
  * the fan; each tab in it is then a tab with its selected state, and the escape gesture,
  * Android's back button and Escape on the web close it.
+ *
+ * On iOS 26 the button and the fan's circles are Liquid Glass (expo-glass-effect; dark or light
+ * to match the fill each replaces, so the icons keep their contrast) with no drawn edge or
+ * shadow. Over glass nothing presses smaller, the circles grow by their size instead of a
+ * scale, and their glass materialises instead of fading. Elsewhere, or with
+ * `material="solid"`, they are solid fills. Choose with `material`.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { type ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -37,6 +44,7 @@ import {
   I18nManager,
   Platform,
   Pressable,
+  processColor,
   type StyleProp,
   StyleSheet,
   Text,
@@ -97,6 +105,12 @@ const defaultColors = {
   badge: '#ff3b30',
   /** Badge count text. */
   badgeText: '#ffffff',
+  /**
+   * Tint over the Liquid Glass (iOS 26). Unset, each dark fill (`button`, or `item` with the dark
+   * palette) at 60%, so its light icon keeps its contrast over light screens, and light fills stay
+   * clear; `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type ThumbArcColors = typeof defaultColors;
@@ -116,6 +130,7 @@ export const thumbArcDarkColors: ThumbArcColors = {
   shadow: 'rgba(0, 0, 0, 0.5)',
   badge: '#ff453a',
   badgeText: '#ffffff',
+  glassTint: undefined,
 };
 
 /** The button's badge: a count, a dot, or none. */
@@ -140,6 +155,12 @@ export type ThumbArcLabels = typeof defaultLabels;
 export interface ThumbArcProps {
   /** Colours, merged over the light defaults. Pass `thumbArcDarkColors` in a dark app. */
   colors?: Partial<ThumbArcColors>;
+  /**
+   * The button's and the fan's circles' surface: `'glass'` (Liquid Glass, iOS 26), `'solid'`
+   * (`colors.button` and `colors.item` with a hairline edge and a drop shadow), or `'auto'`
+   * (glass where the system has it, solid elsewhere). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /**
    * The bottom corner the button sits in. It stays there in right-to-left apps: reach follows
    * the hand, not the language. Default 'right'.
@@ -276,10 +297,12 @@ type Mode = 'closed' | 'hold' | 'tap';
 
 export function ThumbArc({
   colors: custom,
+  material = 'auto',
   side = 'right',
   haptics = true,
   labels: customLabels,
 }: ThumbArcProps) {
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   // Merged once per change of value, not per render (an inline `colors` object is new on every
   // render), so nothing downstream restarts.
   const colorsKey = custom ? JSON.stringify(custom) : '';
@@ -539,6 +562,8 @@ export function ThumbArc({
                 allNames={allNames}
                 reduceMotion={reduceMotion}
                 colors={colors}
+                glass={glass}
+                open={open}
                 register={(node) => {
                   if (node) tabRefs.set(tab.key, node);
                   else tabRefs.delete(tab.key);
@@ -551,18 +576,31 @@ export function ThumbArc({
         <GestureDetector gesture={gesture}>
           <PressableScale
             ref={buttonRef}
-            scale={0.94}
+            scale={glass ? 1 : 0.94}
             accessibilityLabel={labels.button(active?.label ?? '', badge)}
             accessibilityState={{ expanded: open }}
             onPressIn={() => {
               gestured.current = false;
             }}
             onPress={press}
-            style={[
-              styles.button,
-              { backgroundColor: colors.button, boxShadow: `0 8px 20px ${colors.shadow}` },
-            ]}
+            style={
+              glass
+                ? styles.button
+                : [
+                    styles.button,
+                    { backgroundColor: colors.button, boxShadow: `0 8px 20px ${colors.shadow}` },
+                  ]
+            }
           >
+            {glass ? (
+              <GlassView
+                pointerEvents="none"
+                glassEffectStyle="regular"
+                colorScheme={glassScheme(colors.button)}
+                tintColor={colors.glassTint ?? defaultGlassTint(colors.button)}
+                style={[StyleSheet.absoluteFill, styles.buttonGlass]}
+              />
+            ) : null}
             <LayoutAnimationConfig skipEntering>
               <ButtonIcon tab={active} color={colors.buttonIcon} />
             </LayoutAnimationConfig>
@@ -652,6 +690,8 @@ function FanTab({
   allNames,
   reduceMotion,
   colors,
+  glass,
+  open,
   register,
   onPress,
 }: {
@@ -665,6 +705,10 @@ function FanTab({
   allNames: SharedValue<number>;
   reduceMotion: boolean;
   colors: ThumbArcColors;
+  /** Liquid Glass circles: grown by their size, never scaled or faded (see the glass path). */
+  glass: boolean;
+  /** The fan is open: the circles' glass materialises, and dissolves when it closes. */
+  open: boolean;
   register: (node: ComponentRef<typeof Pressable> | null) => void;
   onPress: () => void;
 }) {
@@ -708,6 +752,14 @@ function FanTab({
 
   const slotStyle = useAnimatedStyle(() => {
     const p = progress.value;
+    // Over glass the slot only travels: glass stops rendering under opacity 0 and stretches
+    // under a scale, so the circle's content fades and scales on its own (`contentStyle`) and
+    // the glass grows by its size (`glassSize`).
+    if (glass) {
+      if (reduceMotion) return {};
+      const away = 1 - p;
+      return { transform: [{ translateX: -dx * away }, { translateY: -dy * away }] };
+    }
     if (reduceMotion) return { opacity: p };
     const away = 1 - p;
     return {
@@ -723,6 +775,22 @@ function FanTab({
     transform: [{ scale: 1 + (TARGET_SCALE - 1) * hot.value }],
   }));
   const fillStyle = useAnimatedStyle(() => ({ opacity: hot.value }));
+  // The glass path: what the slot's fade and scale did, on what is drawn over the glass.
+  const contentStyle = useAnimatedStyle(() => {
+    const p = progress.value;
+    if (reduceMotion) return { opacity: p };
+    return {
+      opacity: Math.min(1, Math.max(0, p * 2.5)),
+      transform: [{ scale: 0.35 + 0.65 * p }],
+    };
+  });
+  // The glass circle's laid-out size: the slot's entry scale times the grow under the finger.
+  const glassSize = useAnimatedStyle(() => {
+    const entry = reduceMotion ? 1 : 0.35 + 0.65 * progress.value;
+    const size = Math.max(0, ITEM * entry * (1 + (TARGET_SCALE - 1) * hot.value));
+    const at = (ITEM - size) / 2;
+    return { width: size, height: size, left: at, top: at };
+  });
   const nameStyle = useAnimatedStyle(() => ({
     opacity: named.value,
     transform: [{ scale: 0.92 + 0.08 * named.value }],
@@ -780,7 +848,7 @@ function FanTab({
       <PressableScale
         ref={register}
         role="tab"
-        scale={0.95}
+        scale={glass ? 1 : 0.95}
         accessibilityLabel={accessibilityLabel}
         accessibilityState={{ selected: tab.focused }}
         aria-selected={tab.focused}
@@ -788,31 +856,69 @@ function FanTab({
         onPress={onPress}
         style={styles.hit}
       >
-        <Animated.View
-          style={[
-            styles.circle,
-            {
-              backgroundColor: colors.item,
-              borderColor: tab.focused ? colors.accent : colors.border,
-              borderWidth: tab.focused ? 2 : StyleSheet.hairlineWidth,
-              boxShadow: `0 4px 12px ${colors.shadow}`,
-            },
-            circleStyle,
-          ]}
-        >
-          {icon(tab.focused ? colors.accent : colors.itemIcon)}
-          <Animated.View style={[styles.fill, { backgroundColor: colors.accent }, fillStyle]}>
-            {icon(colors.accentIcon)}
-          </Animated.View>
-        </Animated.View>
-        {tab.badge != null ? (
-          <Badge
-            badge={typeof tab.badge === 'number' ? tab.badge : 'dot'}
-            text={typeof tab.badge === 'string' ? tab.badge.trim() : undefined}
-            colors={colors}
-            style={styles.tabBadge}
-          />
-        ) : null}
+        {glass ? (
+          <>
+            <Animated.View pointerEvents="none" style={[styles.glassClip, glassSize]}>
+              <GlassView
+                glassEffectStyle={{ style: open ? 'regular' : 'none', animate: true }}
+                colorScheme={glassScheme(colors.item)}
+                tintColor={colors.glassTint ?? defaultGlassTint(colors.item)}
+                style={[StyleSheet.absoluteFill, styles.itemGlass]}
+              />
+            </Animated.View>
+            <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, contentStyle]}>
+              <Animated.View
+                style={[
+                  styles.circle,
+                  // The current tab keeps its accent ring; the hairline edge goes with the glass.
+                  tab.focused ? { borderColor: colors.accent, borderWidth: 2 } : null,
+                  circleStyle,
+                ]}
+              >
+                {icon(tab.focused ? colors.accent : colors.itemIcon)}
+                <Animated.View style={[styles.fill, { backgroundColor: colors.accent }, fillStyle]}>
+                  {icon(colors.accentIcon)}
+                </Animated.View>
+              </Animated.View>
+              {tab.badge != null ? (
+                <Badge
+                  badge={typeof tab.badge === 'number' ? tab.badge : 'dot'}
+                  text={typeof tab.badge === 'string' ? tab.badge.trim() : undefined}
+                  colors={colors}
+                  style={styles.tabBadge}
+                />
+              ) : null}
+            </Animated.View>
+          </>
+        ) : (
+          <>
+            <Animated.View
+              style={[
+                styles.circle,
+                {
+                  backgroundColor: colors.item,
+                  borderColor: tab.focused ? colors.accent : colors.border,
+                  borderWidth: tab.focused ? 2 : StyleSheet.hairlineWidth,
+                  boxShadow: `0 4px 12px ${colors.shadow}`,
+                },
+                circleStyle,
+              ]}
+            >
+              {icon(tab.focused ? colors.accent : colors.itemIcon)}
+              <Animated.View style={[styles.fill, { backgroundColor: colors.accent }, fillStyle]}>
+                {icon(colors.accentIcon)}
+              </Animated.View>
+            </Animated.View>
+            {tab.badge != null ? (
+              <Badge
+                badge={typeof tab.badge === 'number' ? tab.badge : 'dot'}
+                text={typeof tab.badge === 'string' ? tab.badge.trim() : undefined}
+                colors={colors}
+                style={styles.tabBadge}
+              />
+            ) : null}
+          </>
+        )}
       </PressableScale>
     </Animated.View>
   );
@@ -863,6 +969,33 @@ function Badge({
 const FILL = { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 } as const;
 
 /**
+ * Light glass under dark icons, dark glass under light ones: the scheme of the fill the glass
+ * replaces, so the light and dark palettes both keep their contrast.
+ */
+function glassScheme(fill: string): 'light' | 'dark' {
+  const value = processColor(fill);
+  if (typeof value !== 'number') return 'light';
+  const luma =
+    0.299 * ((value >>> 16) & 255) + 0.587 * ((value >>> 8) & 255) + 0.114 * (value & 255);
+  return luma < 128 ? 'dark' : 'light';
+}
+
+/**
+ * The glass tint when `glassTint` is unset: a dark fill at 60%, since glass follows the screen
+ * behind it and turns near-white over a light one; a light fill stays clear.
+ */
+function defaultGlassTint(fill: string): string | undefined {
+  return glassScheme(fill) === 'dark' ? withAlpha(fill, 0.6) : undefined;
+}
+
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const value = processColor(color);
+  if (typeof value !== 'number') return color;
+  return `rgba(${(value >>> 16) & 255}, ${(value >>> 8) & 255}, ${value & 255}, ${alpha})`;
+}
+
+/**
  * A fixed layout direction. React Native Web spells it `writingDirection` (CSS `direction`): in
  * development it drops `direction` with an error, so the web would follow the app's direction.
  */
@@ -882,10 +1015,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  buttonGlass: { borderRadius: BUTTON / 2 },
   buttonIcon: { ...FILL, alignItems: 'center', justifyContent: 'center' },
   buttonBadge: { position: 'absolute', top: -2, right: -2 },
   slot: { position: 'absolute', width: ITEM, height: ITEM },
   hit: { width: ITEM, height: ITEM },
+  // The glass circle's clip: always round whatever size it is laid out to.
+  glassClip: { position: 'absolute', borderRadius: 999, overflow: 'hidden' },
+  // The grown circle's radius, for its edge and highlights; the clip above keeps it round at
+  // every size whether or not the glass holds a larger radius to half its size.
+  itemGlass: { borderRadius: (ITEM * TARGET_SCALE) / 2 },
   circle: {
     width: ITEM,
     height: ITEM,

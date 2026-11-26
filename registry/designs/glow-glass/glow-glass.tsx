@@ -10,9 +10,13 @@
  * Tabs keep their measured 62 pt where the row fits; on a narrow screen (or with many tabs)
  * they narrow to fit, down to 40 pt. The glow is a radial gradient: `experimental_backgroundImage`
  * on iOS and Android, CSS `backgroundImage` on the web.
+ *
+ * On iOS 26 the pill and the round button are Liquid Glass (expo-glass-effect) by default;
+ * elsewhere, or with `material="solid"`, they are a frosted blur under a dark tint with a 1 pt edge.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
 import { BlurView } from 'expo-blur';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import type { ReactNode } from 'react';
 import { Platform, processColor, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
@@ -49,6 +53,12 @@ const defaultColors = {
   badge: '#ff453a',
   /** The count on a badge. */
   badgeText: '#ffffff',
+  /**
+   * Tint over the Liquid Glass (iOS 26). Unset, `background`'s colour at 60% (when it is dark), so
+   * the light icons and labels keep their contrast over light screens; `'transparent'` for clear
+   * glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type GlowGlassColors = typeof defaultColors;
@@ -68,9 +78,16 @@ export interface GlowGlassProps {
   colors?: Partial<GlowGlassColors>;
   /**
    * The blur's material under `background`: `dark` as in the app; `light` when `background` is
-   * a light colour (a light theme). Default `dark`.
+   * a light colour (a light theme). Over Liquid Glass it picks the glass's appearance the same
+   * way. Default `dark`.
    */
   tint?: 'light' | 'dark';
+  /**
+   * The pill's and the round button's surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (a
+   * frosted blur under `background`, with a 1 pt edge), or `'auto'` (glass where the system has
+   * it, the blur elsewhere). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /** Selection haptic on tabs, a light impact on the round button. Default true. */
   haptics?: boolean;
 }
@@ -81,9 +98,13 @@ export function GlowGlass({
   actionIcon,
   colors: custom,
   tint = 'dark',
+  material = 'auto',
   haptics = true,
 }: GlowGlassProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
+  const surface = { backgroundColor: colors.background, borderColor: colors.border };
+  const glassTint = colors.glassTint ?? defaultGlassTint(colors.background);
   const { tabs, insets } = useTabBar();
   const window = useWindowDimensions();
   const anchor = usePanelAnchor('action');
@@ -97,10 +118,18 @@ export function GlowGlass({
   const tabWidth = Math.min(TAB, Math.max(Math.min(MIN_TAB, each), each));
   return (
     <TabBarRoot placement="floating" style={styles.row}>
-      <View
-        style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
-      >
-        <BlurView intensity={30} tint={tint} style={StyleSheet.absoluteFill} />
+      <View style={[styles.pill, glass ? styles.glassBox : surface]}>
+        {glass ? (
+          <GlassView
+            pointerEvents="none"
+            glassEffectStyle="regular"
+            colorScheme={tint}
+            tintColor={glassTint}
+            style={[StyleSheet.absoluteFill, styles.glassRound]}
+          />
+        ) : (
+          <BlurView intensity={30} tint={tint} style={StyleSheet.absoluteFill} />
+        )}
         <TabList style={styles.list}>
           <Capsule colors={colors} />
           {tabs.map((tab) => (
@@ -117,9 +146,23 @@ export function GlowGlass({
         onPressIn={
           haptics ? () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) : undefined
         }
-        style={[styles.round, { backgroundColor: colors.background, borderColor: colors.border }]}
+        style={[styles.round, glass ? styles.glassBox : surface]}
       >
-        <BlurView intensity={30} tint={tint} style={[StyleSheet.absoluteFill, styles.roundBlur]} />
+        {glass ? (
+          <GlassView
+            pointerEvents="none"
+            glassEffectStyle="regular"
+            colorScheme={tint}
+            tintColor={glassTint}
+            style={[StyleSheet.absoluteFill, styles.glassRound]}
+          />
+        ) : (
+          <BlurView
+            intensity={30}
+            tint={tint}
+            style={[StyleSheet.absoluteFill, styles.roundBlur]}
+          />
+        )}
         {typeof actionIcon === 'function'
           ? actionIcon({ color: colors.inactiveIcon, size: ACTION_ICON })
           : actionIcon}
@@ -167,6 +210,16 @@ function channels(color: string): [number, number, number, number] | null {
   const value = processColor(color);
   if (typeof value !== 'number') return null;
   return [(value >>> 16) & 255, (value >>> 8) & 255, value & 255, ((value >>> 24) & 255) / 255];
+}
+
+/**
+ * The glass tint when `glassTint` is unset: a dark `background` at 60%, since glass follows the
+ * screen behind it and turns near-white over a light one; a light background stays clear.
+ */
+function defaultGlassTint(background: string): string | undefined {
+  const c = channels(background);
+  if (!c || 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2] >= 128) return undefined;
+  return `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.6)`;
 }
 
 /** `color` with its opacity multiplied by `alpha`; colours it can't read are returned as they are. */
@@ -308,4 +361,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   roundBlur: { borderRadius: HEIGHT / 2 },
+  // Over Liquid Glass there is no drawn edge: padding takes the border's place, so the tabs
+  // keep their size and place.
+  glassBox: { borderWidth: 0, padding: BORDER },
+  glassRound: { borderRadius: HEIGHT / 2 },
 });

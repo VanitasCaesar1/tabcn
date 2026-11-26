@@ -4,8 +4,11 @@
  * No press lift or scale: the tab moves only when the press commits.
  * Changed from the reference for clarity: labels are 10.5 pt instead of 9.5 pt, so they read
  * more easily; the tab keeps its 50.7 pt height.
+ * On iOS 26 the pill is light Liquid Glass (expo-glass-effect) with no drawn shadow; elsewhere,
+ * or with `material="solid"`, it is the white fill. Choose with `material`.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { StyleSheet, Text, View } from 'react-native';
 import {
@@ -29,22 +32,43 @@ const defaultColors = {
   badge: '#ff3b30',
   /** Badge count text. */
   badgeText: '#ffffff',
+  /** Tint over the Liquid Glass (iOS 26). Unset, the glass is clear. */
+  glassTint: undefined as string | undefined,
 };
 
 export type SoftPillColors = typeof defaultColors;
 
 export interface SoftPillProps {
   colors?: Partial<SoftPillColors>;
+  /**
+   * The pill's surface: `'glass'` (Liquid Glass, iOS 26), `'solid'` (the white fill with its
+   * soft shadow), or `'auto'` (glass where the system has it, solid elsewhere). Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
 
-export function SoftPill({ colors: custom, haptics = true }: SoftPillProps) {
+export function SoftPill({ colors: custom, material = 'auto', haptics = true }: SoftPillProps) {
   const colors = { ...defaultColors, ...custom };
   const { tabs } = useTabBar();
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   return (
     <TabBarRoot placement="floating">
-      <TabList style={[styles.pill, { backgroundColor: colors.background }]}>
+      <TabList
+        style={
+          glass ? styles.pill : [styles.pill, styles.shadow, { backgroundColor: colors.background }]
+        }
+      >
+        {glass ? (
+          <GlassView
+            pointerEvents="none"
+            glassEffectStyle="regular"
+            colorScheme="light"
+            tintColor={colors.glassTint}
+            style={[StyleSheet.absoluteFill, styles.glass]}
+          />
+        ) : null}
         <TabIndicator
           inset={CAPSULE_INSET}
           style={[styles.capsule, { backgroundColor: colors.capsule }]}
@@ -128,6 +152,8 @@ function Badge({ badge, colors }: { badge: TabItem['badge']; colors: SoftPillCol
 /** The traced icons' 40-unit box, in points, at the reference's scale. */
 const ICON = 18;
 const TAB_WIDTH = 63;
+const TAB_HEIGHT = 50.7;
+const PILL_PADDING = 3.8;
 /** On a narrow screen the tabs shrink to fit, down to this width. */
 /** Tabs shrink to fit down to this; low enough that seven fit a 320 pt screen. */
 const MIN_TAB_WIDTH = 32;
@@ -146,10 +172,13 @@ const styles = StyleSheet.create({
     // Fits the screen when the tabs' full width doesn't: they shrink instead.
     maxWidth: '100%',
     borderRadius: 999,
-    paddingVertical: 3.8,
+    paddingVertical: PILL_PADDING,
     paddingHorizontal: 8,
-    boxShadow: '0 10px 28px rgba(60, 40, 20, 0.14)',
   },
+  shadow: { boxShadow: '0 10px 28px rgba(60, 40, 20, 0.14)' },
+  // The pill's own radius (half its 58.3 pt height), set exactly: the glass draws its corners
+  // from it.
+  glass: { borderRadius: (TAB_HEIGHT + PILL_PADDING * 2) / 2 },
   capsule: { borderRadius: 999 },
   tab: {
     alignItems: 'center',
@@ -160,7 +189,7 @@ const styles = StyleSheet.create({
     width: TAB_WIDTH,
     flexShrink: 1,
     minWidth: MIN_TAB_WIDTH,
-    height: 50.7,
+    height: TAB_HEIGHT,
   },
   iconBox: { width: ICON, height: ICON },
   // 10.5 pt (the reference's is 9.5) with a fixed line height, so the tab's content is the

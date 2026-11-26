@@ -13,9 +13,11 @@
  * shrinks. Reduce motion makes all of it instant. The tile is marked with
  * `usePanelAnchor('action')`, so a `TabPanel` can open from it.
  *
- * The bar is opaque, as in the app: no glass or blur. `tilePlusDarkColors` is a dark scheme
+ * By default the bar is opaque, as in the app: no glass or blur. `tilePlusDarkColors` is a dark scheme
  * guessed from the Threads dark theme; it is not measured. The grey of the inactive icons
  * is kept as the app has it (low contrast).
+ * Glass is opt-in: `material="glass"` (or `"auto"`) turns the bar into Liquid Glass on iOS 26
+ * (expo-glass-effect), light or dark to match `colors`; the tile stays its solid grey.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  *
  * Measured on the app's App Store screenshots (393 pt wide screen, 2.4 px per pt). Five
@@ -26,8 +28,9 @@
  * image edge, so its height is inferred: 51 pt above the home-indicator area, which ends
  * the bar at the tile's bottom edge and fits the curve of the screen's corner in the shots.
  */
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-import { StyleSheet, Text, View } from 'react-native';
+import { processColor, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -68,6 +71,13 @@ const defaultColors = {
   badge: '#ff3040',
   /** The count on a badge. */
   badgeText: '#ffffff',
+  /**
+   * Tint over the Liquid Glass (iOS 26), when `material` asks for glass. Unset, clear on a
+   * light bar like this one, and `background` at 60% on a dark one (such as
+   * `tilePlusDarkColors`), so light icons keep their contrast over light screens;
+   * `'transparent'` for clear glass.
+   */
+  glassTint: undefined as string | undefined,
 };
 
 export type TilePlusColors = typeof defaultColors;
@@ -85,6 +95,7 @@ export const tilePlusDarkColors: TilePlusColors = {
   action: '#4d4d4d',
   badge: '#ff3040',
   badgeText: '#ffffff',
+  glassTint: undefined,
 };
 
 export interface TilePlusProps {
@@ -93,6 +104,11 @@ export interface TilePlusProps {
   /** Screen-reader label for the plus tile. Default "Create". */
   actionLabel?: string;
   colors?: Partial<TilePlusColors>;
+  /**
+   * The bar's surface: `'solid'` (the white bar it copies), `'glass'` (Liquid Glass, iOS 26),
+   * or `'auto'` (glass where the system has it, solid elsewhere). Default `'solid'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
   /** Light haptic tick on press. Default true. */
   haptics?: boolean;
 }
@@ -117,9 +133,11 @@ export function TilePlus({
   onActionPress,
   actionLabel = 'Create',
   colors: custom,
+  material = 'solid',
   haptics = true,
 }: TilePlusProps) {
   const colors = { ...defaultColors, ...custom };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const { tabs, insets } = useTabBar();
   // The tile sits in the middle slot: with four tabs, two on each side.
   const half = Math.ceil(tabs.length / 2);
@@ -128,7 +146,25 @@ export function TilePlus({
   const extra = Math.max(0, TILE_TOP - insets.bottom);
 
   return (
-    <TabBarRoot placement="docked" style={{ backgroundColor: colors.background }}>
+    <TabBarRoot
+      placement="docked"
+      style={glass ? undefined : { backgroundColor: colors.background }}
+    >
+      {glass ? (
+        // The glass fills the bar and the home-indicator area under it, as the colour did.
+        <GlassView
+          pointerEvents="none"
+          glassEffectStyle="regular"
+          colorScheme={glassScheme(colors.background)}
+          tintColor={
+            colors.glassTint ??
+            (glassScheme(colors.background) === 'dark'
+              ? withAlpha(colors.background, 0.6)
+              : undefined)
+          }
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
       <TabList style={[styles.bar, { height: BAR + extra }]}>
         {tabs.slice(0, half).map((tab) => (
           <Tab key={tab.key} tab={tab} colors={colors} haptics={haptics} />
@@ -140,6 +176,25 @@ export function TilePlus({
       </TabList>
     </TabBarRoot>
   );
+}
+
+/**
+ * The glass's scheme from the bar colour it replaces: light glass under a light bar (dark ink),
+ * dark glass under a dark one, so icons and labels keep their contrast.
+ */
+function glassScheme(background: string): 'light' | 'dark' {
+  const value = processColor(background);
+  if (typeof value !== 'number') return 'light';
+  const luma =
+    0.299 * ((value >>> 16) & 255) + 0.587 * ((value >>> 8) & 255) + 0.114 * (value & 255);
+  return luma > 140 ? 'light' : 'dark';
+}
+
+/** `color` at `alpha` opacity (React Native's parser, so any colour format works). */
+function withAlpha(color: string, alpha: number): string {
+  const v = processColor(color);
+  if (typeof v !== 'number') return color;
+  return `rgba(${(v >>> 16) & 255}, ${(v >>> 8) & 255}, ${v & 255}, ${alpha})`;
 }
 
 /** The plus on its tile. An action, not a tab: it never looks selected. */
