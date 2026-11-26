@@ -13,7 +13,14 @@
     -   Pills shrink by 4% while pressed (90 ms in, `tabcnTiming` out), and the avatar's status dot cross-fades its colour on a change. The fold starts on the press itself, not after the panel's state change re-renders.
     -   The demo is in `apps/example/src/account-dock-demo.tsx`, so the choices are kept in state and the dock answers taps.
     -   Checked in Expo Go on an iPhone 17 Pro simulator (iOS 26.5): open, switch list, the status menu, choose Idle, and fold back; the same right to left (`TABCN_RTL=1`), where the chip's avatar sits at its left end and the menu grows from its bottom-left corner; and at the largest accessibility text size, where the dock's text caps at 1.3x to 1.4x and nothing overlaps. The recorded fold moves over about 12 frames (400 ms) at 30 fps, with no frame skipped. Not done: the release-build performance monitor run and a physical device.
--   **Date:** 2026-11-22
+-   **Implementation notes (2026-11-27), motion pass:** ideas taken from rit3zh's public [expandable-bottom-tabs](https://github.com/rit3zh/expandable-bottom-tabs) (built from the same concept clip) and rebuilt in this design's own terms. The motion adds no dependency; the glass pills add `expo-glass-effect`. Their Skia goo, Gaussian blur and SwiftUI text all need a development build, so none of it was copied.
+    -   **Slide to pick a status.** A finger can press a menu row and slide to another, or press the account pill and slide straight up into the menu (it opens under the finger). One highlight, concentric with the menu's corners, follows the finger on `tabcnSpring`, with a selection haptic each time it reaches a new row, and letting go on a row picks it. Letting go outside the rows picks nothing and leaves the menu open, as a tap on the pill would. Built on React Native's `PanResponder`, not gesture handler, so the registry entry gains no dependency. A drag takes the touch from the row's press only after 8 pt of movement, so taps, screen readers and keyboards still reach the rows as radio buttons. The menu's box is never transformed (only the card inside it grows), so measuring it gives where the rows rest; it is measured when the menu opens and on every move of a drag, because the sheet's height animates when its list switches.
+    -   **The menu grows out of the account pill's corner**, rising 12 pt and scaling from 0.5 on `tabcnSpring`, and its rows fade in over the second half. It closes in 140 ms (70% of `tabcnTiming`), rows first.
+    -   **The status dot changes shape as well as colour**: a full dot (online), a moon (idle), a bar (do not disturb), a ring (invisible), the shapes people know from team chat apps, so status reads without colour. One rounded rectangle in the ring's colour is cut over the dot and springs between the shapes on `tabcnSpring`, with a small pulse (1.2x, 110 ms up, `tabcnSpring` back). Its SVG props animate for about a quarter of a second only when the status changes, never during the fold.
+    -   **The tabs fold into the round button**: as they fade out over the first third of the fold, they also shrink to 0.92 about the round button's centre, so they read as going into it rather than vanishing in place. A transform on the rest layer, so the tabs' measured layout and the indicator under the active tab don't change.
+    -   Checked in Expo Go on an iPhone 17 Pro simulator (iOS 26.5): a slide inside the menu from Online to Do not disturb picks it, and the dot becomes the bar; one gesture from the account pill up to Idle opens the menu, picks Idle and turns the dot into the moon; the round button folds back. The first run caught a worklet capturing the menu tracker (which holds a view) and Reanimated warning that it couldn't copy it; the highlight's style now takes only its two shared values. The demo recording plays the pill-to-Idle slide. Not checked this time: right to left, the largest text size and a physical device.
+    -   **Liquid Glass** (`material`, default `'auto'`: glass where the system has it, iOS 26; `'solid'` elsewhere and on request). The pills are glass views inside one `GlassContainer` (spacing 6 pt, under the 8 pt gap between resting pills), so the account pill's glass pinches off the chip as the dock opens and joins it again as it folds; at rest it lies inside the chip's glass, so it needs no fade. Glass is built differently from the solid pills: a glass view stretched with `scaleX` drew its edge and highlights stretched (spikes where the caps met the strip, a seam at the tab pill's end, checked on the simulator), so each glass pill is one view whose `left` and `width` follow the fold. That brings back layout and a commit on each frame of the fold, in glass mode only; the solid pills keep the transform-only fold. Nothing above a glass view fades to opacity 0 (Expo's docs: glass doesn't render under it), and the drawn shadows go, since glass has its own depth. The glass's light or dark scheme follows `colors.foreground` (dark text, light glass), and `colors.glassTint` tints it. The sheet and the status menu stay solid: the menu fades its card to 0, and a glass sheet is a separate change. Checked on the simulator: the bar at rest, the fold, the slide to Idle and the fold back.
+-   **Date:** 2026-11-22; motion pass 2026-11-27
 
 ---
 
@@ -97,7 +104,8 @@ None open. The four questions from the first draft (what the round button is, wh
 
 -   **Given**: The bar is folded open.
 -   **When**: The user taps the account pill, then taps "Idle".
--   **Then**: The sheet switches to the account list, and the status menu appears beside the account pill, inside the same sheet. Choosing "Idle" calls `onStatusChange('idle')` and closes the menu. The account pill shows "Idle" with its badge. After the fold back, the chip's dot is the idle colour.
+-   **Then**: The sheet switches to the account list, and the status menu appears beside the account pill, inside the same sheet. Choosing "Idle" calls `onStatusChange('idle')` and closes the menu. The account pill shows "Idle" with its badge. After the fold back, the chip's dot is the idle colour and moon shape.
+-   **Or**: The user presses the account pill and slides up into the menu, letting go on "Idle": the same result in one gesture.
 
 ### CUJ 3: Switch account
 
@@ -199,7 +207,8 @@ Touch targets swap at `progress` 0.5: layout A's pressables have `pointerEvents=
 -   **The panel.** It is `TabPanel id="account-dock" anchor="bar"` with no snap points, so it keeps its content's height and the foundation animates height changes on `tabcnTiming` when the list switches. Lists cross-fade on `tabcnTiming`.
 -   **Long lists.** The sheet caps at 60% of the screen height and scrolls inside past that, because a person may have many workspaces.
 -   **The status menu.**
-    -   It is an absolute view inside the sheet's content, aligned to its bottom-right above the account pill, so it sits over the list as in the clip. It appears with opacity and a 0.96 → 1 scale from its bottom-right corner on `tabcnTiming`.
+    -   It is an absolute view inside the sheet's content, aligned to its bottom-right above the account pill, so it sits over the list as in the clip. It grows from its bottom-right corner (bottom-left in RTL) on `tabcnSpring` and closes on a 140 ms timing; see the 2026-11-27 notes.
+    -   A finger can slide across its rows, or up into it from the account pill, and pick the row it lets go on (2026-11-27 notes).
     -   Its rows are `accessibilityRole="radio"` inside an `accessibilityRole="radiogroup"`, with the current one `checked`.
     -   While it is open it adds its own Android `BackHandler` listener and web Escape listener, which close only the menu. They are added after the panel's, so React Native calls them first. `onAccessibilityEscape` on the menu view does the same for screen readers.
 -   **Choosing anything** calls the matching callback with a selection haptic (`expo-haptics`). Choosing a workspace or account doesn't fold the dock, so a person can set status in the same visit. Choosing a status closes the menu.
@@ -229,10 +238,11 @@ interface AccountDockProps {
   onAddWorkspace?(): void; // shows an "Add workspace" row only when passed
   labels?: Partial<AccountDockLabels>; // every visible and spoken string, for translation
   colors?: Partial<AccountDockColors>; // light defaults; PanelUI mapping in panelui-colors.ts
+  material?: 'auto' | 'glass' | 'solid'; // the pills' surface (2026-11-27); default 'auto'
 }
 ```
 
-The tabs themselves come from the navigator through `useTabBar()`, like every other design. Images use React Native's `Image`, so the design adds no image dependency. The design's dependencies are `react-native-tabcn`, `react-native-reanimated` (already required), `expo-haptics` and `react-native-svg` (for icons), the same set Quick Create uses.
+The tabs themselves come from the navigator through `useTabBar()`, like every other design. Images use React Native's `Image`, so the design adds no image dependency. The design's dependencies are `react-native-tabcn`, `react-native-reanimated` (already required), `expo-haptics` and `react-native-svg` (for icons), the same set Quick Create uses, and since 2026-11-27 `expo-glass-effect` for the glass pills.
 
 ### What doesn't change
 

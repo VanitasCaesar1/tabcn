@@ -172,13 +172,17 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
     { tap: 'Reduce position' },
     { wait: 1300 },
   ],
-  // The chip folds the tabs into an account bar; pick another workspace, then fold back with the
-  // round button (by position: the open sheet hides it from accessibility).
+  // The chip folds the tabs into an account bar; pick another workspace, then press the avatar
+  // and slide up into the status menu, letting go on Idle (the dot turns into a moon). Fold back
+  // with the round button (by position: the open sheet hides it from accessibility).
   'account-dock': [
     { tap: 'Account and workspace, Northwind Studio, Sam Rivera, Online' },
-    { wait: 1800 },
-    { tap: 'Field Notes, 1,212 members' },
     { wait: 1600 },
+    { tap: 'Field Notes, 1,212 members' },
+    { wait: 1200 },
+    // From the avatar at the dock's end up to the menu's Idle row, on iPhone 17 Pro.
+    { pan: [357, 800, -107, -190, 1100] },
+    { wait: 1500 },
     // The round button at the start of the dock: back to the tabs, now on Field Notes.
     { tapAt: [45, 800] },
     { wait: 1800 },
