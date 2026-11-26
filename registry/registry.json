@@ -786,8 +786,13 @@
       "name": "account-dock",
       "type": "registry:item",
       "title": "Account Dock",
-      "description": "A floating pill of tabs with an account chip; tapping it folds the tabs into an account bar and raises a sheet to switch workspace or account and set a status. Needs a TabBarProvider.",
-      "dependencies": ["react-native-tabcn@>=0.4.2", "expo-haptics", "react-native-svg"],
+      "description": "A floating pill of tabs with an account chip; tapping it folds the tabs into an account bar and raises a sheet to switch workspace or account and set a status (Liquid Glass pills on iOS 26). Needs a TabBarProvider.",
+      "dependencies": [
+        "react-native-tabcn@>=0.4.2",
+        "expo-glass-effect",
+        "expo-haptics",
+        "react-native-svg"
+      ],
       "files": [
         {
           "path": "registry/designs/account-dock/account-dock.tsx",

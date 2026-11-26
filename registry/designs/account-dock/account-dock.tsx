@@ -36,7 +36,10 @@
  * that changes width is two round caps and a stretched middle strip, shadows cross-fade between
  * where the pills rest, and the active tab's icon travels into the round button. Apps that turn
  * on Reanimated's `IOS_SYNCHRONOUSLY_UPDATE_UI_PROPS` and `ANDROID_SYNCHRONOUSLY_UPDATE_UI_PROPS`
- * static flags let these updates skip React Native's commit as well. As the tabs leave they shrink
+ * static flags let these updates skip React Native's commit as well. With `material` glass (the
+ * default on iOS 26), the pills are Liquid Glass in one glass container, so the account pill's
+ * glass pinches off the chip as the dock opens; glass can't be stretched with a transform, so
+ * those pills are laid out on each frame of the fold instead. As the tabs leave they shrink
  * a little towards the round button, so they read as folding into it. The sheet's lists fade on
  * `tabcnTiming`. The status menu grows out of the corner over the account pill and its rows come
  * in once it is mostly open; it leaves faster than it came. A finger can press a row and slide to
@@ -51,6 +54,7 @@
  * Not drawn as a rail: on a tablet rail, panels aren't drawn, so the chip does nothing there.
  * Built on tabcn: https://github.com/VanitasCaesar1/tabcn
  */
+import { GlassContainer, GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { type ComponentRef, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -65,6 +69,7 @@ import {
   type PanResponderGestureState,
   Platform,
   Pressable,
+  processColor,
   ScrollView,
   StyleSheet,
   Text,
@@ -136,6 +141,8 @@ const defaultColors = {
   idle: '#ffb800',
   dnd: '#ff3b30',
   invisible: '#8e8e93',
+  /** Tint over the pills' Liquid Glass (iOS 26). Unset, the glass is clear. */
+  glassTint: undefined as string | undefined,
 };
 
 export type AccountDockColors = typeof defaultColors;
@@ -209,6 +216,12 @@ export interface AccountDockProps {
   labels?: Partial<AccountDockLabels>;
   /** Selection haptic on presses. Default true. */
   haptics?: boolean;
+  /**
+   * The pills' surface: `'glass'` (Liquid Glass, iOS 26; the pills join and split as they fold),
+   * `'solid'` (the `surface` colour, with shadows), or `'auto'` (glass where the system has it,
+   * solid elsewhere). The sheet and the status menu stay solid. Default `'auto'`.
+   */
+  material?: 'auto' | 'glass' | 'solid';
 }
 
 type List = 'workspaces' | 'accounts';
@@ -404,8 +417,10 @@ export function AccountDock({
   colors: customColors,
   labels: customLabels,
   haptics = true,
+  material = 'auto',
 }: AccountDockProps) {
   const colors = { ...defaultColors, ...customColors };
+  const glass = material === 'glass' || (material === 'auto' && isLiquidGlassAvailable());
   const labels = { ...defaultLabels, ...customLabels };
   const { tabs, activeIndex } = useTabBar();
   const panel = useTabPanel(id);
@@ -587,6 +602,7 @@ export function AccountDock({
               onWorkspace={showWorkspaces}
               onAccount={showAccounts}
               acctDrag={acctDrag.panHandlers}
+              glass={glass}
             />
           ) : null}
 
@@ -780,6 +796,7 @@ function Shapes({
   onWorkspace,
   onAccount,
   acctDrag,
+  glass,
 }: {
   frames: Frames;
   rowWidth: number;
@@ -801,6 +818,8 @@ function Shapes({
   onAccount: () => void;
   /** Press the account pill and slide up into the status menu. */
   acctDrag: GestureResponderHandlers;
+  /** Liquid Glass pills inside one glass container, instead of solid fills and shadows. */
+  glass: boolean;
 }) {
   const { pill, chip, round, ws, acct, ws2, acct2 } = frames;
   const rtl = I18nManager.isRTL;
@@ -889,7 +908,15 @@ function Shapes({
   const wsShadow = useAnimatedStyle(() => ({ opacity: progress.value * (1 - grow.value) }));
   const acctShadow = useAnimatedStyle(() => ({ opacity: progress.value * grow.value }));
 
-  const fill = colors.surface;
+  const fill: Fill = glass
+    ? { glass: true, tint: colors.glassTint, scheme: glassScheme(colors.foreground) }
+    : { glass: false, color: colors.surface };
+  // With glass, every pill is drawn inside one container, which joins pills that come within
+  // GLASS_SPACING of each other (the account pill pinching off the chip as it folds open) and
+  // fuses each pill's caps and strip into one capsule. Glass brings its own depth, so the drawn
+  // shadows go. Nothing above a glass view fades to 0: glass doesn't render under opacity 0.
+  const Root = glass ? GlassContainer : View;
+  const rootProps = glass ? { spacing: GLASS_SPACING } : {};
   const align = { textAlign: rtl ? ('right' as const) : ('left' as const) };
   const wsFrame = list === 'accounts' ? ws2 : ws;
   const acctFrame = list === 'accounts' ? acct2 : acct;
@@ -908,31 +935,40 @@ function Shapes({
   };
 
   return (
-    <View style={[StyleSheet.absoluteFill, styles.ltr]} pointerEvents="box-none" {...hidden}>
+    <Root
+      {...rootProps}
+      style={[StyleSheet.absoluteFill, styles.ltr]}
+      pointerEvents="box-none"
+      {...hidden}
+    >
       {/* Shadows: static, cross-faded. */}
-      <Animated.View style={[StyleSheet.absoluteFill, restShadow]} pointerEvents="none">
-        <View style={[styles.shadow, { left: pill.x, width: pill.width }]} />
-        <View style={[styles.shadow, { left: chip.x, width: chip.width }]} />
-      </Animated.View>
-      <Animated.View style={[StyleSheet.absoluteFill, wsShadow]} pointerEvents="none">
-        <View style={[styles.shadow, { left: round.x, width: round.width }]} />
-        <View style={[styles.shadow, { left: ws.x, width: ws.width }]} />
-        <View style={[styles.shadow, { left: acct.x, width: acct.width }]} />
-      </Animated.View>
-      <Animated.View style={[StyleSheet.absoluteFill, acctShadow]} pointerEvents="none">
-        <View style={[styles.shadow, { left: round.x, width: round.width }]} />
-        <View style={[styles.shadow, { left: ws2.x, width: ws2.width }]} />
-        <View style={[styles.shadow, { left: acct2.x, width: acct2.width }]} />
-      </Animated.View>
+      {glass ? null : (
+        <>
+          <Animated.View style={[StyleSheet.absoluteFill, restShadow]} pointerEvents="none">
+            <View style={[styles.shadow, { left: pill.x, width: pill.width }]} />
+            <View style={[styles.shadow, { left: chip.x, width: chip.width }]} />
+          </Animated.View>
+          <Animated.View style={[StyleSheet.absoluteFill, wsShadow]} pointerEvents="none">
+            <View style={[styles.shadow, { left: round.x, width: round.width }]} />
+            <View style={[styles.shadow, { left: ws.x, width: ws.width }]} />
+            <View style={[styles.shadow, { left: acct.x, width: acct.width }]} />
+          </Animated.View>
+          <Animated.View style={[StyleSheet.absoluteFill, acctShadow]} pointerEvents="none">
+            <View style={[styles.shadow, { left: round.x, width: round.width }]} />
+            <View style={[styles.shadow, { left: ws2.x, width: ws2.width }]} />
+            <View style={[styles.shadow, { left: acct2.x, width: acct2.width }]} />
+          </Animated.View>
+        </>
+      )}
 
       {/* The tab pill folding into the round button (its icon is drawn by TravellingIcon). */}
       <Animated.View style={[styles.group, roundGroup]} pointerEvents="none">
-        <Capsule span={roundSpan} color={fill} />
+        <Capsule span={roundSpan} fill={fill} />
       </Animated.View>
 
       {/* The chip stretching into the workspace pill. */}
       <Animated.View style={[styles.group, wsGroup]} pointerEvents="none">
-        <Capsule span={wsSpan} color={fill} />
+        <Capsule span={wsSpan} fill={fill} />
         <Animated.View style={[styles.mark, logoStyle]}>
           {workspace ? <Mark item={workspace} size={MARK} square /> : null}
         </Animated.View>
@@ -958,9 +994,14 @@ function Shapes({
 
       {/* The avatar leaving the chip and growing into the account pill. */}
       <Animated.View style={[styles.group, acctGroup]} pointerEvents="none">
-        <Animated.View style={[StyleSheet.absoluteFill, acctFill]}>
-          <Capsule span={acctSpan} color={fill} />
-        </Animated.View>
+        {glass ? (
+          // At rest it lies inside the chip's glass and is joined to it, so it needs no fade.
+          <Capsule span={acctSpan} fill={fill} />
+        ) : (
+          <Animated.View style={[StyleSheet.absoluteFill, acctFill]}>
+            <Capsule span={acctSpan} fill={fill} />
+          </Animated.View>
+        )}
         <Animated.View style={[styles.mark, avatarStyle]}>
           {account ? <Avatar account={account} status={status} colors={colors} /> : null}
         </Animated.View>
@@ -1005,7 +1046,7 @@ function Shapes({
           </View>
         </>
       ) : null}
-    </View>
+    </Root>
   );
 }
 
@@ -1066,11 +1107,41 @@ function TravellingIcon({
   );
 }
 
+/** How a pill is filled: a solid colour, or Liquid Glass (tinted, in a light or dark scheme). */
+type Fill =
+  | { glass: false; color: string }
+  | { glass: true; tint: string | undefined; scheme: 'light' | 'dark' };
+
+/** Pills closer than this join into one piece of glass (the gap between resting pills is 8). */
+const GLASS_SPACING = 6;
+
+/**
+ * The glass's scheme follows the text drawn on it: dark text sits on light glass, light text on
+ * dark glass, so a theme that changes `foreground` gets readable glass without another prop.
+ */
+function glassScheme(foreground: string): 'light' | 'dark' {
+  const value = processColor(foreground);
+  if (typeof value !== 'number') return 'light';
+  const r = (value >>> 16) & 255;
+  const g = (value >>> 8) & 255;
+  const b = value & 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 140 ? 'dark' : 'light';
+}
+
 /**
  * A capsule over the span: two round caps moved by `translateX` and a middle strip stretched by
- * `scaleX` between their centres, overlapping them by half a point so no seam shows.
+ * `scaleX` between their centres, overlapping them by half a point so no seam shows. With glass,
+ * a `GlassCapsule` instead.
  */
-function Capsule({ span, color }: { span: SharedValue<Span>; color: string }) {
+function Capsule({ span, fill }: { span: SharedValue<Span>; fill: Fill }) {
+  return fill.glass ? (
+    <GlassCapsule span={span} fill={fill} />
+  ) : (
+    <SolidCapsule span={span} color={fill.color} />
+  );
+}
+
+function SolidCapsule({ span, color }: { span: SharedValue<Span>; color: string }) {
   const start = useAnimatedStyle(() => ({ transform: [{ translateX: span.value.x }] }));
   const end = useAnimatedStyle(() => ({
     transform: [{ translateX: span.value.x + Math.max(span.value.w, H) - H }],
@@ -1084,13 +1155,43 @@ function Capsule({ span, color }: { span: SharedValue<Span>; color: string }) {
       ],
     };
   });
-  const fill = { backgroundColor: color };
+  const solid = { backgroundColor: color };
   return (
     <>
-      <Animated.View style={[styles.strip, fill, middle]} />
-      <Animated.View style={[styles.cap, fill, start]} />
-      <Animated.View style={[styles.cap, fill, end]} />
+      <Animated.View style={[styles.strip, solid, middle]} />
+      <Animated.View style={[styles.cap, solid, start]} />
+      <Animated.View style={[styles.cap, solid, end]} />
     </>
+  );
+}
+
+/**
+ * A glass capsule over the span: one glass view whose `left` and `width` follow the span. Glass
+ * can't be built like the solid capsule (caps and a strip stretched with `scaleX`): a stretched
+ * glass view renders its edge and highlights stretched, and the seams show. So with glass the
+ * pills are laid out on each frame of the fold, which costs layout and a commit per frame that
+ * the solid pills avoid; the system then joins and splits the pills as they pass.
+ */
+function GlassCapsule({
+  span,
+  fill,
+}: {
+  span: SharedValue<Span>;
+  fill: Extract<Fill, { glass: true }>;
+}) {
+  const frame = useAnimatedStyle(() => ({
+    left: span.value.x,
+    width: Math.max(span.value.w, H),
+  }));
+  return (
+    <Animated.View style={[styles.glassPill, frame]}>
+      <GlassView
+        glassEffectStyle="regular"
+        tintColor={fill.tint}
+        colorScheme={fill.scheme}
+        style={styles.glassFill}
+      />
+    </Animated.View>
   );
 }
 
@@ -1902,6 +2003,8 @@ const styles = StyleSheet.create({
   group: { position: 'absolute', left: 0, top: 0, right: 0, height: H },
   cap: { position: 'absolute', left: 0, top: 0, width: H, height: H, borderRadius: H / 2 },
   strip: { position: 'absolute', left: 0, top: 0, width: STRIP, height: H },
+  glassPill: { position: 'absolute', top: 0, height: H },
+  glassFill: { flex: 1, borderRadius: H / 2 },
   shadow: { position: 'absolute', top: 0, height: H, borderRadius: H / 2, boxShadow: shadow },
   // A full-row layer whose centre is the row's: the icon sits there, and transforms move it.
   iconLayer: { alignItems: 'center', justifyContent: 'center' },

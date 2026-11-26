@@ -801,6 +801,23 @@ describe('account-dock', () => {
       expect(screen.getAllByRole('radio')).toHaveLength(4);
     });
 
+    it('draws glass pills when asked, and still opens and slides to a status', async () => {
+      const onStatusChange = jest.fn();
+      const view = await render(<Dock material="glass" onStatusChange={onStatusChange} />);
+      await layOut(view.root);
+      await openDock();
+      await layOutRows();
+      const pill = screen.getByLabelText('Accounts, Sam Rivera, Online', {
+        includeHiddenElements: true,
+      });
+      await drag(dragTarget(pill), [
+        [280, 760],
+        [280, 740],
+        [200, rowCentre(2)],
+      ]);
+      expect(onStatusChange).toHaveBeenCalledWith('dnd');
+    });
+
     it('morphs the dot when the status changes, without breaking the dock', async () => {
       const view = await render(<Dock status="online" />);
       await view.rerender(<Dock status="dnd" />);
