@@ -6,7 +6,8 @@
     "customConditions": ["tabcn-source"],
     "paths": {
       "@/*": ["./src/*"],
-      "@registry/*": ["../../registry/designs/*"]
+      "@registry/*": ["../../registry/designs/*"],
+      "expo-hot-toast": ["../../node_modules/expo-hot-toast/src/index.ts"]
     }
   },
   "include": [

@@ -344,6 +344,7 @@ export function AskDock({
               onAddPhoto={shownPrompt.onAddPhoto}
               onAddVideo={shownPrompt.onAddVideo}
               inputRef={inputRef}
+              initial={visible && !busy ? 1 : 0}
             />
           </Animated.View>
         ) : null}

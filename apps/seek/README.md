@@ -17,7 +17,9 @@ Show it a still or a clip (or describe the film), and the bar folds into Ask Doc
 ## What it uses
 
 - **Tab bar:** `AskDock` from `registry/designs/ask-dock`, imported in place here (`@registry/ask-dock/*`); in your own app, `npx shadcn@latest add https://vanitascaesar1.github.io/tabcn/r/ask-dock.json` copies it in.
-- **PanelUI:** `PanelUIProvider`, `Typography`, `Button`, `Chip`, `Card`, `Avatar` and `Avatar.Group`, `Item`, `Skeleton` and `toast`, all styled with Uniwind classes.
+- **PanelUI:** `PanelUIProvider`, `Typography`, `Button`, `Chip`, `Card`, `Avatar` and `Avatar.Group`, `Item`, `Swipe`, `EmptyState` and `Skeleton`, all styled with Uniwind classes.
+- **Notifications:** [expo-hot-toast](https://github.com/VanitasCaesar1/expo-hot-toast): glass toasts with Undo on a countdown (saving a film, removing a search), the Dynamic Island capsule (Share), and a toast that follows a promise (Watch on). It isn't on npm yet, so it installs from GitHub; Metro runs its `src` through the package's `react-native` export, and `tsconfig.json` points TypeScript at the same source.
+- **Transitions:** Expo Router's `Link.AppleZoom` and `Link.AppleZoomTarget` zoom the film page open from the poster or card you tapped (iOS 18 and later).
 - **Theme:** `seek`, PanelUI's dark theme with Seek's colours (`src/global.css`): a night-blue page, translucent white cards and fills, a vivid blue for the main action.
 
 ## Run it

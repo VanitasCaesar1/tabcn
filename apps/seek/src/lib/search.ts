@@ -3,6 +3,8 @@
  * A small store outside React, so the tab bar and the screens read the same values. The search
  * is simulated: three status lines over about four and a half seconds, then the matches.
  */
+import { toast } from 'expo-hot-toast';
+import * as Haptics from 'expo-haptics';
 import { useSyncExternalStore } from 'react';
 
 export type Phase = 'idle' | 'searching' | 'results' | 'found';
@@ -88,15 +90,22 @@ export function search(text: string) {
   after(3100, { status: 'Matching 1,204 scenes…' });
   after(4500, { status: null, attachment: null });
   after(4950, { phase: 'results' });
+  // A tick as the matches arrive.
+  timers.push(
+    setTimeout(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success), 4950),
+  );
 }
+
 
 export function cancel() {
   clearTimers();
   set({ phase: 'idle', status: null });
+  toast('Search cancelled', { duration: 1600 });
 }
 
 /** "That's the one": the match the viewer picked. It goes into the history too. */
 export function pick(filmId: string) {
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   set({
     phase: 'found',
     picked: filmId,
@@ -122,5 +131,23 @@ export function toggleSaved(filmId: string) {
     saved: isSaved(filmId)
       ? state.saved.filter((id) => id !== filmId)
       : [filmId, ...state.saved],
+  });
+}
+
+/** Takes a past search out of the history, with Undo on a countdown. */
+export function forget(past: Past) {
+  const at = state.history.indexOf(past);
+  if (at < 0) return;
+  set({ history: state.history.filter((p) => p !== past) });
+  toast('Search removed', {
+    action: {
+      label: 'Undo',
+      countdown: true,
+      onPress: () => {
+        const history = [...state.history];
+        history.splice(at, 0, past);
+        set({ history });
+      },
+    },
   });
 }

@@ -9,14 +9,15 @@
  * - Found: the picked match as a large card that opens its film page.
  */
 import { Orb } from '@registry/ask-dock/ask-dock-orb';
+import { toast } from 'expo-hot-toast';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { Link } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useIsFocused } from 'expo-router/react-navigation';
 import { Button, Card, Chip, Skeleton, Typography } from 'panelui-native';
 import { type ComponentRef, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   Extrapolation,
@@ -29,9 +30,11 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { Analyzing } from '@/components/analyzing';
 import { AppHeader, BackHeader, HeaderBar, Sky } from '@/components/chrome';
 import { BookmarkIcon, ChevronIcon, CloseIcon, RefreshIcon, ThumbIcon } from '@/components/icons';
+import { Press } from '@/components/press';
 import { film, MATCHES, STILL } from '@/lib/films';
 import { cancel, isSaved, newSearch, pick, toggleSaved, useSeek } from '@/lib/search';
 
@@ -109,6 +112,17 @@ function Hero({ attached, bottom }: { attached: boolean; bottom: number }) {
       style={{ paddingBottom: bottom }}
     >
       <Animated.View style={orb}>
+        {/* A soft bloom of the orb's own blue behind it. */}
+        <Svg width={GLOW} height={GLOW} style={styles.glow} pointerEvents="none">
+          <Defs>
+            <RadialGradient id="orbGlow" cx="0.5" cy="0.5" r="0.5">
+              <Stop offset="0.28" stopColor="#2a5bff" stopOpacity={0.42} />
+              <Stop offset="0.6" stopColor="#3a2bd8" stopOpacity={0.12} />
+              <Stop offset="1" stopColor="#3a2bd8" stopOpacity={0} />
+            </RadialGradient>
+          </Defs>
+          <Circle cx={GLOW / 2} cy={GLOW / 2} r={GLOW / 2} fill="url(#orbGlow)" />
+        </Svg>
         {/* It drifts and blinks only while Discover is on screen. */}
         <Orb size={150} alive={focused} />
       </Animated.View>
@@ -245,32 +259,39 @@ function Reply({ title, children }: { title: string; children?: string }) {
 function MatchRow({ id, match }: { id: string; match: number }) {
   const f = film(id);
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${f.title}, ${match}% match`}
-      onPress={() => router.push(`/film/${id}`)}
-      className="ml-11 flex-1 active:opacity-80"
-    >
-      <Card className="flex-row items-center gap-3.5 rounded-[22px] border-white/10 bg-white/[0.07] p-2 pr-3">
-        <Image source={f.poster} style={styles.poster} contentFit="cover" />
-        <View className="flex-1 gap-1">
-          <View className="flex-row items-center justify-between gap-2">
-            <Typography type="large" numberOfLines={1} className="flex-1">
-              {f.title}
-            </Typography>
-            <Chip size="sm" className="border-white/10 bg-white/10">
-              <Chip.Label className="tabular-nums">{`${match}%`}</Chip.Label>
-            </Chip>
+    <Link href={`/film/${id}`} asChild>
+      <Press accessibilityLabel={`${f.title}, ${match}% match`} style={styles.row}>
+        <Card className="flex-row items-center gap-3.5 rounded-[22px] border-white/10 bg-white/[0.07] p-2 pr-3">
+          <Link.AppleZoom>
+            <Image source={f.poster} style={styles.poster} contentFit="cover" />
+          </Link.AppleZoom>
+          <View className="flex-1 gap-1">
+            <View className="flex-row items-center justify-between gap-2">
+              <Typography type="large" numberOfLines={1} className="flex-1">
+                {f.title}
+              </Typography>
+              {/* A strong match reads in the accent; a weak one stays quiet. */}
+              <Chip
+                size="sm"
+                className={
+                  match >= 60
+                    ? 'border-[#5b7cff]/50 bg-[#1f5bff]/35'
+                    : 'border-white/10 bg-white/10'
+                }
+              >
+                <Chip.Label className="text-white tabular-nums">{`${match}%`}</Chip.Label>
+              </Chip>
+            </View>
+            <View className="flex-row items-center justify-between">
+              <Typography type="body-sm" muted>
+                {`${f.year} · Film · ${f.genre}`}
+              </Typography>
+              <ChevronIcon color="rgba(255,255,255,0.7)" />
+            </View>
           </View>
-          <View className="flex-row items-center justify-between">
-            <Typography type="body-sm" muted>
-              {`${f.year} · Film · ${f.genre}`}
-            </Typography>
-            <ChevronIcon color="rgba(255,255,255,0.7)" />
-          </View>
-        </View>
-      </Card>
-    </Pressable>
+        </Card>
+      </Press>
+    </Link>
   );
 }
 
@@ -284,54 +305,54 @@ function Found({ id, match }: { id: string; match: number }) {
       className="gap-3"
     >
       <Reply title="Found it. That's the one." />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Open ${f.title}`}
-        onPress={() => router.push(`/film/${id}`)}
-        className="ml-11 active:opacity-90"
-      >
-        <View style={styles.found}>
-          <Image source={f.hero} style={StyleSheet.absoluteFill} contentFit="cover" />
-          <LinearGradient
-            colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.15)', 'rgba(2,4,15,0.92)']}
-            locations={[0, 0.45, 1]}
-            style={StyleSheet.absoluteFill}
-          />
-          <View className="flex-row items-start justify-between p-3">
-            <Chip size="md" className="border-white/15 bg-black/35">
-              <Chip.Label className="text-white">{`${match}% visual match`}</Chip.Label>
-            </Chip>
-            <Button
-              variant="secondary"
-              size="icon"
-              accessibilityLabel={saved ? 'Remove from collection' : 'Save to collection'}
-              onPress={() => {
-                toggleSaved(id);
-                setSaved(!saved);
-              }}
-              className="rounded-full border-white/20 bg-black/30"
-            >
-              <BookmarkIcon filled={saved} />
-            </Button>
-          </View>
-          <View className="flex-1" />
-          <View className="gap-1.5 p-4">
-            <Typography type="body-sm" className="text-white/80">
-              {`– ${f.director.name}`}
-            </Typography>
-            <Typography type="h2" weight="bold" className="tracking-tight text-white">
-              {f.title}
-            </Typography>
-            <View className="flex-row gap-1.5">
-              {[String(f.year), 'Film', f.genre].map((tag) => (
-                <Chip key={tag} size="sm" className="border-white/15 bg-white/10">
-                  <Chip.Label className="text-white">{tag}</Chip.Label>
+      <Link href={`/film/${id}`} asChild>
+        <Press accessibilityLabel={`Open ${f.title}`} style={styles.foundPress} scale={0.98}>
+          <Link.AppleZoom>
+            <View style={styles.found}>
+              <Image source={f.hero} style={StyleSheet.absoluteFill} contentFit="cover" />
+              <LinearGradient
+                colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.15)', 'rgba(2,4,15,0.92)']}
+                locations={[0, 0.45, 1]}
+                style={StyleSheet.absoluteFill}
+              />
+              <View className="flex-row items-start justify-between p-3">
+                <Chip size="md" className="border-white/15 bg-black/35">
+                  <Chip.Label className="text-white">{`${match}% visual match`}</Chip.Label>
                 </Chip>
-              ))}
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  accessibilityLabel={saved ? 'Remove from collection' : 'Save to collection'}
+                  onPress={() => {
+                    toggleSaved(id);
+                    setSaved(!saved);
+                    if (!saved) toast.success('Saved to Collection', { description: f.title });
+                  }}
+                  className="rounded-full border-white/20 bg-black/30"
+                >
+                  <BookmarkIcon filled={saved} />
+                </Button>
+              </View>
+              <View className="flex-1" />
+              <View className="gap-1.5 p-4">
+                <Typography type="body-sm" className="text-white/80">
+                  {`– ${f.director.name}`}
+                </Typography>
+                <Typography type="h2" weight="bold" className="tracking-tight text-white">
+                  {f.title}
+                </Typography>
+                <View className="flex-row gap-1.5">
+                  {[String(f.year), 'Film', f.genre].map((tag) => (
+                    <Chip key={tag} size="sm" className="border-white/15 bg-white/10">
+                      <Chip.Label className="text-white">{tag}</Chip.Label>
+                    </Chip>
+                  ))}
+                </View>
+              </View>
             </View>
-          </View>
-        </View>
-      </Pressable>
+          </Link.AppleZoom>
+        </Press>
+      </Link>
       <Typography type="body" muted className="ml-11 mt-1 leading-[21px]">
         Want to find another? Add a still or a clip and I'll name it.
       </Typography>
@@ -339,9 +360,13 @@ function Found({ id, match }: { id: string; match: number }) {
   );
 }
 
+const GLOW = 360;
 const STEP = { duration: 360, easing: Easing.out(Easing.cubic), reduceMotion: ReduceMotion.System };
 
 const styles = StyleSheet.create({
+  glow: { position: 'absolute', left: (150 - GLOW) / 2, top: (150 - GLOW) / 2 },
+  row: { flex: 1, marginLeft: 44 },
+  foundPress: { marginLeft: 44 },
   askedThumb: {
     width: 104,
     height: 98,

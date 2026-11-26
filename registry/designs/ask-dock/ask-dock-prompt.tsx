@@ -54,6 +54,7 @@ export function Frost({
   fill,
   tintStyle,
   presence,
+  initial = 1,
   style,
 }: {
   intensity: number;
@@ -62,6 +63,8 @@ export function Frost({
   /** The tint over the blur: an animated style that sets its `backgroundColor`. */
   tintStyle: ReturnType<typeof useAnimatedStyle>;
   presence?: SharedValue<number>;
+  /** `presence` when it mounts: the blur's plain starting strength, which the web build needs. */
+  initial?: number;
   style?: StyleProp<ViewStyle>;
 }) {
   // expo-blur's web blur is half as strong as iOS at the same intensity.
@@ -74,7 +77,7 @@ export function Frost({
         <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: fill }, fade]} />
       ) : (
         <AnimatedBlurView
-          intensity={(presence?.value ?? 1) * strength}
+          intensity={initial * strength}
           animatedProps={blur}
           tint="dark"
           style={StyleSheet.absoluteFill}
@@ -107,6 +110,7 @@ export function Prompt({
   onAddPhoto,
   onAddVideo,
   inputRef,
+  initial,
 }: {
   colors: AskDockColors;
   labels: AskDockLabels;
@@ -124,6 +128,8 @@ export function Prompt({
   onAddPhoto?: () => void;
   onAddVideo?: () => void;
   inputRef?: Ref<ComponentRef<typeof TextInput>>;
+  /** Shown (1) or not (0) as it mounts. */
+  initial: number;
 }) {
   const [text, setText] = useState('');
   const ready = text.trim().length > 0 || attachment !== undefined;
@@ -142,12 +148,15 @@ export function Prompt({
   // staying mounted (with the attachment it last had) until it has gone.
   const [chip, setChip] = useState(attachment);
   if (attachment && attachment !== chip) setChip(attachment);
-  const chipIn = useSharedValue(attachment ? 1 : 0);
+  // A boolean for the worklet: the attachment itself holds a React element, which can't cross
+  // to the UI thread.
+  const attached = attachment !== undefined;
+  const chipIn = useSharedValue(attached ? 1 : 0);
   useEffect(() => {
-    chipIn.value = withTiming(attachment ? 1 : 0, attachment ? CHIP_IN : CHIP_OUT, (done) => {
-      if (done && !attachment) runOnJS(setChip)(undefined);
+    chipIn.value = withTiming(attached ? 1 : 0, attached ? CHIP_IN : CHIP_OUT, (done) => {
+      if (done && !attached) runOnJS(setChip)(undefined);
     });
-  }, [attachment, chipIn]);
+  }, [attached, chipIn]);
   const chipMotion = useAnimatedStyle(() => ({
     opacity: chipIn.value * presence.value,
     transform: [
@@ -181,6 +190,7 @@ export function Prompt({
           fill={colors.promptFill}
           tintStyle={tint}
           presence={presence}
+          initial={initial}
           style={styles.cardRadius}
         />
         <Animated.View
