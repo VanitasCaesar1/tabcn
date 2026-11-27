@@ -752,6 +752,26 @@ describe('override slot', () => {
     );
   });
 
+  it('keeps the tabs under an override from touches and the screen reader', async () => {
+    const state = makeTabState();
+    const { rerender } = await render(
+      <App state={state}>
+        <OverrideScreen on />
+      </App>,
+    );
+    // They fade to HIDDEN_OPACITY, not 0, so nothing else keeps them out.
+    const tab = screen.getAllByRole('tab', { includeHiddenElements: true })[0] ?? null;
+    const wrapper = closest(tab, (p) => p.role === 'tablist')?.parent ?? null;
+    expect(wrapper?.props.pointerEvents).toBe('none');
+    expect(wrapper?.props.accessibilityElementsHidden).toBe(true);
+    await rerender(
+      <App state={state}>
+        <OverrideScreen on={false} />
+      </App>,
+    );
+    expect(screen.getAllByRole('tab').length).toBeGreaterThan(0);
+  });
+
   it('keeps the fading-out element mounted as the same instance', async () => {
     const state = makeTabState();
     const { rerender } = await render(
