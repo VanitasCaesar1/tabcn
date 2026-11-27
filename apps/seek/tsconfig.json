@@ -1,0 +1,20 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "customConditions": ["tabcn-source"],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@registry/*": ["../../registry/designs/*"],
+      "expo-hot-toast": ["../../node_modules/expo-hot-toast/src/index.ts"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "../../registry/designs/ask-dock/*.tsx"
+  ]
+}

@@ -1227,3 +1227,86 @@ describe('reply-stack', () => {
     expect(screen.queryByRole('button', { name: /show all tabs/ })).toBeNull();
   });
 });
+
+// Ask Dock ------------------------------------------------------------------------------
+
+describe('ask-dock', () => {
+  const { AskDock } = require('../../../../registry/designs/ask-dock/ask-dock') as {
+    AskDock: ComponentType<{
+      prompt?: {
+        onSend?: (text: string) => void;
+        onAddPhoto?: () => void;
+        attachment?: { preview: ReactNode; label?: string; onRemove?: () => void };
+      };
+      showPrompt?: boolean;
+      status?: string | null;
+      onStatusPress?: () => void;
+      haptics?: boolean;
+    }>;
+  };
+
+  it('sends what was typed, and an attachment without text', async () => {
+    const onSend = jest.fn();
+    const onRemove = jest.fn();
+    const { state } = makeState(3, 0, []);
+    const { rerender } = await render(
+      <TabBarStateProvider value={state}>
+        <AskDock haptics={false} prompt={{ onSend, onAddPhoto: () => {} }} />
+      </TabBarStateProvider>,
+    );
+    expect(screen.getAllByRole('tab')).toHaveLength(3);
+    expect(screen.getByRole('button', { name: 'Add photo' })).toBeTruthy();
+    // Nothing to send yet.
+    await fireEvent.press(screen.getByRole('button', { name: 'Search' }));
+    expect(onSend).not.toHaveBeenCalled();
+    await fireEvent.changeText(
+      screen.getByLabelText('Describe it, or paste a clue…'),
+      '  dusty car  ',
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Search' }));
+    expect(onSend).toHaveBeenCalledWith('dusty car');
+    await rerender(
+      <TabBarStateProvider value={state}>
+        <AskDock
+          haptics={false}
+          prompt={{ onSend, attachment: { preview: null, label: 'Still', onRemove } }}
+        />
+      </TabBarStateProvider>,
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Remove: Still' }));
+    expect(onRemove).toHaveBeenCalledTimes(1);
+    await fireEvent.press(screen.getByRole('button', { name: 'Search' }));
+    expect(onSend).toHaveBeenLastCalledWith('');
+  });
+
+  it('folds into the status pill while a search runs, which presses through', async () => {
+    const onStatusPress = jest.fn();
+    const { state } = makeState(3, 0, []);
+    await render(
+      <TabBarStateProvider value={state}>
+        <AskDock
+          haptics={false}
+          prompt={{}}
+          status="Taking a closer look…"
+          onStatusPress={onStatusPress}
+        />
+      </TabBarStateProvider>,
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Taking a closer look…' }));
+    expect(onStatusPress).toHaveBeenCalledTimes(1);
+    // The tabs and the prompt are hidden from screen readers while folded.
+    expect(screen.queryAllByRole('tab')).toHaveLength(0);
+    expect(screen.queryByRole('button', { name: 'Search' })).toBeNull();
+  });
+
+  it('draws only the tabs without a prompt', async () => {
+    const { state } = makeState(3, 0, []);
+    await render(
+      <TabBarStateProvider value={state}>
+        <AskDock haptics={false} />
+      </TabBarStateProvider>,
+    );
+    expect(screen.getAllByRole('tab')).toHaveLength(3);
+    expect(screen.queryByRole('button', { name: 'Search' })).toBeNull();
+  });
+});

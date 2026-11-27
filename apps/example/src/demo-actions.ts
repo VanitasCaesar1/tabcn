@@ -109,6 +109,19 @@ export const DEMO_ACTIONS: Record<string, DemoStep[]> = {
     { tap: 'Home, show all tabs' },
     { wait: 1200 },
   ],
+  // Add a photo, send it: the bar folds into the orb's pill through three status lines and
+  // unfolds as the matches come in. Then to Collection (the prompt sinks away) and back.
+  'ask-dock': [
+    { wait: 900 },
+    { tap: 'Add photo' },
+    { wait: 900 },
+    { tap: 'Search' },
+    { wait: 5800 },
+    { tab: 1 },
+    { wait: 1200 },
+    { tab: 0 },
+    { wait: 1300 },
+  ],
   // Opens on Chat; each new tab's pill pops in its own colour. Left, then right, then back.
   'sticker-pills': [
     { wait: 900 },

@@ -935,6 +935,35 @@
       ]
     },
     {
+      "name": "ask-dock",
+      "type": "registry:item",
+      "title": "Ask Dock",
+      "description": "A search prompt over a glass tab bar; while a search runs, the bar folds into a status pill with a glossy orb that scans and blinks.",
+      "dependencies": ["react-native-tabcn", "expo-blur", "expo-haptics", "react-native-svg"],
+      "files": [
+        {
+          "path": "registry/designs/ask-dock/ask-dock.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/ask-dock.tsx"
+        },
+        {
+          "path": "registry/designs/ask-dock/ask-dock-prompt.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/ask-dock-prompt.tsx"
+        },
+        {
+          "path": "registry/designs/ask-dock/ask-dock-orb.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/ask-dock-orb.tsx"
+        },
+        {
+          "path": "registry/designs/ask-dock/ask-dock-icons.tsx",
+          "type": "registry:file",
+          "target": "components/tabcn/ask-dock-icons.tsx"
+        }
+      ]
+    },
+    {
       "name": "mini-player",
       "type": "registry:item",
       "title": "Mini Player",

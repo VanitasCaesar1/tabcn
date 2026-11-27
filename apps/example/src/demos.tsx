@@ -3,6 +3,7 @@ import * as AccentDarkIcons from '@registry/accent-dark/icons';
 import * as AccountDockIcons from '@registry/account-dock/account-dock-icons';
 import { AmbientBar } from '@registry/ambient-bar/ambient-bar';
 import * as AmbientBarIcons from '@registry/ambient-bar/ambient-bar-icons';
+import * as AskDockIcons from '@registry/ask-dock/ask-dock-icons';
 import { BadgeDock as BadgeDockDesign } from '@registry/badge-dock/badge-dock';
 import * as BadgeDockIcons from '@registry/badge-dock/icons';
 import { ButtonRow as ButtonRowDesign } from '@registry/button-row/button-row';
@@ -95,6 +96,7 @@ import {
 } from 'react';
 import type { TabIconProps } from 'react-native-tabcn';
 import { AccountDockDemoBar } from '@/account-dock-demo';
+import { AskDockDemoBar, AskDockScreen } from '@/ask-dock-demo';
 import {
   ChatDrawer,
   ComposerDockDemoBar,
@@ -151,6 +153,8 @@ const FILES_DARK = '#0b0b0c';
 const HEALTH_LIGHT = '#f5f5f3';
 // Composer Dock draws its own warm off-white chat app (composer-dock-demo.tsx).
 const COMPOSER_LIGHT = '#f8f8f6';
+// Ask Dock's night sky, at the top of its gradient.
+const ASK_DOCK_NIGHT = '#000000';
 
 // Each design in the PanelUI theme picked on the demo screen (src/panel-theme.tsx).
 const AccentDark = themed('accent-dark', AccentDarkDesign);
@@ -941,6 +945,20 @@ export const demos: Record<string, Demo> = {
       { label: 'Explore', icon: ReplyStackIcons.ExploreIcon },
       { label: 'Alerts', icon: ReplyStackIcons.BellIcon, badge: 3 },
       { label: 'Chat', icon: ReplyStackIcons.ChatIcon },
+    ],
+  },
+  'ask-dock': {
+    // A film finder on a night sky: the prompt over Discover, Collection and History. Add a photo
+    // and press Search: the bar folds into the orb's status pill until the matches come in.
+    render: () => <AskDockDemoBar />,
+    screen: AskDockScreen,
+    background: ASK_DOCK_NIGHT,
+    fullScreen: true,
+    barHeight: 67,
+    tabs: [
+      { label: 'Discover', icon: AskDockIcons.DiscoverIcon },
+      { label: 'Collection', icon: AskDockIcons.CollectionIcon },
+      { label: 'History', icon: AskDockIcons.HistoryIcon },
     ],
   },
   'live-tabs': {

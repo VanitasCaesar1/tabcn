@@ -18,6 +18,10 @@ ROOT = Path(__file__).resolve().parents[3]
 SITE = ROOT / 'apps/site/public'
 STILL_TOP = int(sys.argv[sys.argv.index('--still-top') + 1]) if '--still-top' in sys.argv else 1123
 STILL_H = 1499  # 1206 * 522 / 420
+# The README GIF's strip: the bar's bottom 420 px, or from a higher top for a design with a
+# control above its bar (Ask Dock's prompt), down to the same bottom edge.
+GIF_TOP = {'ask-dock': 1930}
+GIF_BOTTOM = 2572
 
 
 def run(*args):
@@ -65,7 +69,8 @@ def encode(rec: Path, id_: str):
     run('ffmpeg', '-v', 'error', '-y', '-ss', '0.6', '-i', str(src), '-frames:v', '1', '-vf',
         'scale=590:-2:flags=lanczos', '-q:v', '3', str(SITE / f'videos/{id_}.jpg'))
     run('ffmpeg', '-v', 'error', '-y', '-i', str(src), '-vf',
-        'crop=1206:420:0:2152,fps=15,scale=480:-1:flags=lanczos,split[a][b];'
+        f'crop=1206:{GIF_BOTTOM - GIF_TOP.get(id_, 2152)}:0:{GIF_TOP.get(id_, 2152)},'
+        'fps=15,scale=480:-1:flags=lanczos,split[a][b];'
         '[a]palettegen=max_colors=96:stats_mode=diff[p];'
         '[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle',
         str(ROOT / f'assets/readme/{id_}.gif'))

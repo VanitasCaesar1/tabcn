@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Seek",
+    "slug": "tabcn-seek",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "seek",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#02040f",
+    "ios": {
+      "bundleIdentifier": "dev.tabcn.seek"
+    },
+    "android": {
+      "package": "dev.tabcn.seek",
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#02040f"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
