@@ -336,6 +336,12 @@ describe('TabBarCompanion', () => {
     await act(async () => controls.sheet?.open());
     expect(controls.sheet?.snap).toBe(0);
     expect(screen.queryByText('Locate')).toBeNull();
+    // Faded to HIDDEN_OPACITY, not 0: kept from touches explicitly.
+    const layer = closest(
+      screen.getByText('Locate', { includeHiddenElements: true }),
+      (p) => p.accessibilityElementsHidden === true,
+    );
+    expect(layer?.props.pointerEvents).toBe('none');
     await act(async () => controls.sheet?.hide());
     expect(screen.getByText('Locate')).toBeTruthy();
   });
@@ -435,8 +441,11 @@ describe('useTabBarInset', () => {
     expect(lastInset()).toBe(BAR + GAP);
     await keyboard.show();
     expect(lastInset()).toBe(0);
-    // The bar itself hides only when the screen asks for it.
-    expect(screen.getByTestId('bar').props.pointerEvents).toBe(hide ? 'none' : 'box-none');
+    // The bar itself hides only when the screen asks for it. It fades to HIDDEN_OPACITY, not
+    // 0, so it is kept from touches and the screen reader explicitly.
+    const bar = screen.getByTestId('bar', { includeHiddenElements: true });
+    expect(bar.props.pointerEvents).toBe(hide ? 'none' : 'box-none');
+    expect(bar.props.accessibilityElementsHidden).toBe(hide);
     await keyboard.hide();
     expect(lastInset()).toBe(BAR + GAP);
     keyboard.restore();

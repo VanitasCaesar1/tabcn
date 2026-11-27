@@ -18,6 +18,7 @@ import {
   useRestoreTabBar,
   useTabBarMinimized,
 } from '../index';
+import { HIDDEN_OPACITY } from '../motion';
 import { flatStyle, layoutFrame, makeTabState, TestBar } from './fixtures';
 
 let minimized: SharedValue<number> | undefined;
@@ -329,5 +330,14 @@ describe('TabBarRoot placement="rail"', () => {
     });
     // The navigator lays screens out beside the rail's own width; nothing covers the bottom.
     expect(state.reportHeight).toHaveBeenLastCalledWith(0);
+  });
+});
+
+describe('HIDDEN_OPACITY', () => {
+  it('stops iOS fades just above UIKit’s hidden cutoff, so Liquid Glass keeps drawing', () => {
+    // Under a view below 0.01, a glass view whose effect changes never draws again (iOS 26.5).
+    // Under Jest, Platform.OS is 'ios'.
+    expect(HIDDEN_OPACITY).toBeGreaterThan(0.01);
+    expect(HIDDEN_OPACITY).toBeLessThan(0.02);
   });
 });

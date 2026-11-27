@@ -30,7 +30,7 @@ import Animated, {
 
 import { CompanionLayer } from './companions';
 import { useRestoreOnFocusChange } from './minimize';
-import { tabcnSpring, tabcnTiming } from './motion';
+import { HIDDEN_OPACITY, tabcnSpring, tabcnTiming } from './motion';
 import { PanelLayer, type SheetGeometry } from './PanelLayer';
 import {
   anyPanelOpen,
@@ -188,9 +188,10 @@ function useOverride(active: boolean) {
 
   // Staggered, not a plain crossfade: at the midpoint of a crossfade both are half visible and
   // the tabs show through the override. The tabs clear in the first half; the override comes
-  // in over the last 70%, so they overlap only lightly.
+  // in over the last 70%, so they overlap only lightly. The tabs stay mounted under the
+  // override, so they stop at HIDDEN_OPACITY, not 0, for any glass in them.
   const childrenStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, 1 - progress.value * 2),
+    opacity: Math.max(HIDDEN_OPACITY, 1 - progress.value * 2),
   }));
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: Math.min(1, Math.max(0, (progress.value - 0.3) / 0.7)),
@@ -376,13 +377,15 @@ export function TabBarRoot({
     if (reported !== null) reportHeight(reported);
   }, [reported, reportHeight]);
 
+  // Hidden for the keyboard or covered by a panel, the bar stays mounted: it fades to
+  // HIDDEN_OPACITY, not 0, so any glass in it keeps drawing when it comes back.
   const animatedStyle = useAnimatedStyle(() => ({
-    opacity: 1 - hidden.value,
+    opacity: Math.max(HIDDEN_OPACITY, 1 - hidden.value),
     transform: [{ translateY: hidden.value * ((height ?? 0) + bottomGap) }],
   }));
   const boxHeight = floatingFrame?.height ?? 0;
   const coverStyle = useAnimatedStyle(() => ({
-    opacity: 1 - Math.min(1, cover.value * 1.6),
+    opacity: Math.max(HIDDEN_OPACITY, 1 - cover.value * 1.6),
     transform: [{ translateY: cover.value * (boxHeight + bottomGap) }],
   }));
 
@@ -571,6 +574,8 @@ export function TabBarRoot({
         ref={rootRef}
         testID={testID}
         pointerEvents={keyboardVisible ? 'none' : 'box-none'}
+        importantForAccessibility={keyboardVisible ? 'no-hide-descendants' : 'auto'}
+        accessibilityElementsHidden={keyboardVisible}
         accessibilityViewIsModal={panelOpen}
         style={[
           {
@@ -593,6 +598,8 @@ export function TabBarRoot({
         {panels}
         <Animated.View
           pointerEvents={covering ? 'none' : passThrough ? 'box-none' : undefined}
+          importantForAccessibility={covering ? 'no-hide-descendants' : 'auto'}
+          accessibilityElementsHidden={covering}
           // Centred, the box would size to its content and never learn the screen's width, so
           // a design's `maxWidth: '100%'` couldn't shrink a bar wider than a narrow phone.
           style={[
@@ -633,6 +640,8 @@ export function TabBarRoot({
       ref={rootRef}
       testID={testID}
       pointerEvents={keyboardVisible ? 'none' : 'auto'}
+      importantForAccessibility={keyboardVisible ? 'no-hide-descendants' : 'auto'}
+      accessibilityElementsHidden={keyboardVisible}
       accessibilityViewIsModal={panelOpen}
       style={[
         basePadding,

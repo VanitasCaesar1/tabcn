@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import {
   Easing,
   ReduceMotion,
@@ -25,3 +26,13 @@ export const tabcnTiming: WithTimingConfig = {
   easing: Easing.bezier(0.25, 0.1, 0.25, 1),
   reduceMotion: ReduceMotion.System,
 };
+
+/**
+ * How far the foundation fades something it keeps mounted while hidden: the bar under the
+ * keyboard or a covering panel, the tabs under an override, companions while a panel is open.
+ * On iOS it stops just above UIKit's cutoff for a hidden view (0.01): a Liquid Glass view whose
+ * effect changes while any view above it is below the cutoff (`glassEffectStyle` from 'none' to
+ * 'regular') never draws its glass again, even after the fade back (iOS 26.5, 2026-11-27).
+ * 1.1% can't be seen; what is hidden also sets `pointerEvents` and the screen-reader flags.
+ */
+export const HIDDEN_OPACITY = Platform.OS === 'ios' ? 0.011 : 0;

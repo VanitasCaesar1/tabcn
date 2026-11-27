@@ -16,7 +16,7 @@ import {
 import { type DimensionValue, View, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { tabcnTiming } from './motion';
+import { HIDDEN_OPACITY, tabcnTiming } from './motion';
 import {
   type CompanionPosition,
   type CompanionRecord,
@@ -213,9 +213,10 @@ export const CompanionLayer = memo(function CompanionLayer({
     onAboveHeight(above);
   }, [above, onAboveHeight]);
 
-  const shown = useSharedValue(hidden ? 0 : 1);
+  // Hidden companions stay mounted, so they stop at HIDDEN_OPACITY (glass in them keeps working).
+  const shown = useSharedValue(hidden ? HIDDEN_OPACITY : 1);
   useEffect(() => {
-    shown.value = withTiming(hidden ? 0 : 1, tabcnTiming);
+    shown.value = withTiming(hidden ? HIDDEN_OPACITY : 1, tabcnTiming);
   }, [hidden, shown]);
   const fade = useAnimatedStyle(() => ({ opacity: shown.value }));
   const fallback = useSharedValue(0);
@@ -259,9 +260,9 @@ function CompanionItem({
   onHeight: (height: number) => void;
 }) {
   const { visible, position, gap, content } = record;
-  const opacity = useSharedValue(visible ? 1 : 0);
+  const opacity = useSharedValue(visible ? 1 : HIDDEN_OPACITY);
   useEffect(() => {
-    opacity.value = withTiming(visible ? 1 : 0, tabcnTiming);
+    opacity.value = withTiming(visible ? 1 : HIDDEN_OPACITY, tabcnTiming);
   }, [visible, opacity]);
   const fade = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (

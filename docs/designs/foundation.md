@@ -3,6 +3,7 @@
 -   **Author:** Chakravarthi Chintapatla
 -   **Status:** Approved, implemented (owner approved Overview, Technical Plan, Alternatives; Goldfish review skipped at owner request)
 -   **Implementation notes (2026-11-20):** the workspace export condition is `tabcn-source`, not `source`, because React Navigation also uses `source`, which pulled its raw TypeScript into our typecheck.
+-   **Implementation notes (2026-11-27), fades and Liquid Glass:** what the root fades out but keeps mounted (the bar under the keyboard or a covering panel, the tabs under an override, companions while a panel is open) stops at opacity 0.011 on iOS, not 0. On an iOS 26.5 simulator, a `GlassView` whose effect changes (`glassEffectStyle` from `'none'` to `'regular'`) while any view above it is below UIKit's 0.01 cutoff never draws its glass again, even after the fade back. It works at 0.0101, and under two nested views at 0.011 each, so the cutoff applies to each view's own opacity. Tint changes and glass mounted while hidden were fine (expo-glass-effect waits to install until it is visible). Reproduced through a companion: glass missing at 0, drawn every time at 0.011, and nothing visible while hidden. Because 0.011 still counts as visible to UIKit, those views also set `pointerEvents="none"` and the screen-reader hidden flags. Other platforms still fade to 0.
 -   **Date:** 2026-11-20
 
 ---
