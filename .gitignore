@@ -14,6 +14,10 @@ web-build/
 # Native folders are generated (Continuous Native Generation)
 apps/*/ios/
 apps/*/android/
+# packages/menu/android is source (the forked glass module); only its Gradle output is ignored
+packages/*/android/build/
+packages/*/android/.gradle/
+packages/*/android/.cxx/
 
 # Reference screenshots of other apps' tab bars: kept locally, never published
 references/*

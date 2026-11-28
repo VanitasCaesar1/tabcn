@@ -1,0 +1,27 @@
+react-native-tabcn-menu
+Copyright (c) 2026 tabcn contributors. MIT License (see LICENSE).
+
+This package builds on the work of others:
+
+1. expo-glass-custom-menu, by rit3zh
+   https://github.com/rit3zh/expo-glass-custom-menu
+   The Android glass renderer in `android/` is a fork of its `modules/glass-menu-android`
+   (Kotlin and AGSL shaders: the Liquid Glass surface, the morph out of the trigger, the stretch
+   toward the finger, drag-to-scrub and haptics), taken at commit 0021efd. Every forked file
+   starts with a line saying so. Changes are listed in docs/designs/menu.md §6.
+   License: MIT. The notice is kept exactly as published, in
+   `licenses/expo-glass-custom-menu-LICENSE`; its copyright line is the one from Expo's module
+   template, which the project ships with.
+
+2. PanelUI (panelui-native), https://panelui.dev, https://github.com/panel-ui/PanelUI
+   This package's API is PanelUI's Menu and ContextMenu, and everywhere a native menu isn't used
+   it renders PanelUI's own components. Its iOS renderer follows PanelUI's `Fab` native-menu path
+   (the trigger in SwiftUI's label slot, the open state read from rows appearing and
+   disappearing). PanelUI is a separate, peer dependency and is not copied here.
+   License: MIT.
+
+3. @expo/ui, by Expo (650 Industries), https://docs.expo.dev/versions/latest/sdk/ui/
+   The iOS renderer draws with @expo/ui's SwiftUI components and follows the mapping in its
+   `MenuView` (community/menu/MenuView.ios.tsx). @expo/ui is an optional peer dependency and is
+   not copied here.
+   License: MIT.

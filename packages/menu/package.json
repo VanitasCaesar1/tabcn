@@ -1,0 +1,120 @@
+{
+  "name": "react-native-tabcn-menu",
+  "version": "0.0.0",
+  "private": true,
+  "description": "One PanelUI-style menu for Expo: Apple's menu on iOS, a Liquid Glass menu on Android 13+, PanelUI's menu everywhere else.",
+  "license": "MIT",
+  "homepage": "https://github.com/VanitasCaesar1/tabcn/tree/main/packages/menu#readme",
+  "bugs": {
+    "url": "https://github.com/VanitasCaesar1/tabcn/issues"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "menu",
+    "context-menu",
+    "liquid-glass",
+    "panelui"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VanitasCaesar1/tabcn.git",
+    "directory": "packages/menu"
+  },
+  "sideEffects": false,
+  "tabcn-source": "./src/index.ts",
+  "main": "./lib/module/index.js",
+  "types": "./lib/typescript/src/index.d.ts",
+  "exports": {
+    ".": {
+      "tabcn-source": "./src/index.ts",
+      "types": "./lib/typescript/src/index.d.ts",
+      "default": "./lib/module/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "lib",
+    "android",
+    "expo-module.config.json",
+    "NOTICE",
+    "licenses",
+    "!android/build",
+    "!android/.gradle",
+    "!**/__tests__",
+    "!**/*.test.*"
+  ],
+  "scripts": {
+    "build": "bob build",
+    "typecheck": "tsc --noEmit",
+    "prepack": "bob build",
+    "test": "jest"
+  },
+  "peerDependencies": {
+    "@expo/ui": ">=58.0.27",
+    "expo": ">=58",
+    "panelui-native": "~1.4.0",
+    "react": ">=19",
+    "react-native": ">=0.81",
+    "uniwind": ">=1.14"
+  },
+  "peerDependenciesMeta": {
+    "@expo/ui": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@expo/ui": "~58.0.30",
+    "@testing-library/react-native": "^14.1.0",
+    "@types/jest": "^30.0.0",
+    "@types/react": "~19.3.0",
+    "expo": "~58.1.0",
+    "jest": "^30.5.2",
+    "jest-expo": "~58.0.15",
+    "panelui-native": "^1.4.0",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-builder-bob": "^0.44.1",
+    "react-native-reanimated": "4.7.1",
+    "react-native-worklets": "0.13.0",
+    "typescript": "~6.0.3",
+    "uniwind": "^1.14.0"
+  },
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "typescript",
+        {
+          "project": "tsconfig.build.json"
+        }
+      ]
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "setupFiles": [
+      "./jest/setup.js"
+    ],
+    "testMatch": [
+      "<rootDir>/src/**/__tests__/**/*.test.ts?(x)"
+    ],
+    "moduleNameMapper": {
+      "^panelui-native/components/menu$": "<rootDir>/jest/panelui-menu.js",
+      "^panelui-native/components/context-menu$": "<rootDir>/jest/panelui-context-menu.js",
+      "^panelui-native/theme$": "<rootDir>/jest/panelui-theme.js",
+      "^uniwind$": "<rootDir>/jest/uniwind.js"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["jest", "node", "@testing-library/react-native/matchers"]
+  },
+  "include": ["src"]
+}

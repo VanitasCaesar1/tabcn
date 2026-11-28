@@ -134,6 +134,17 @@ export function MagnifierIcon({ color = '#ffffff', size = 64 }: IconProps) {
   );
 }
 
+/** Three dots in a row: "more". */
+export function MoreIcon({ color = '#ffffff', size = 20 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={5.5} cy={12} r={1.7} fill={color} />
+      <Circle cx={12} cy={12} r={1.7} fill={color} />
+      <Circle cx={18.5} cy={12} r={1.7} fill={color} />
+    </Svg>
+  );
+}
+
 /** A four-pointed spark with long, thin points. */
 export function sparkPath(cx: number, cy: number, r: number) {
   const k = r * 0.14;
