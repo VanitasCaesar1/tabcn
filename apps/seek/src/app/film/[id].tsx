@@ -7,6 +7,8 @@
  *   the title fades in behind the back and share buttons.
  * - Saving says so in a toast with Undo on a countdown, instead of asking first. Share answers
  *   in the Dynamic Island capsule; Watch on in a toast that follows the lookup.
+ * - The ⋯ button opens react-native-tabcn-menu: Apple's menu on iOS, the glass menu on Android
+ *   13+, PanelUI's menu elsewhere.
  */
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
@@ -25,13 +27,16 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Menu } from 'react-native-tabcn-menu';
 import { Sky } from '@/components/chrome';
 import { Display } from '@/components/display';
 import {
   ArrowRightIcon,
   BackIcon,
   ChevronIcon,
+  CloseIcon,
   FilmFrameIcon,
+  MoreIcon,
   ShareIcon,
 } from '@/components/icons';
 import { Press } from '@/components/press';
@@ -215,11 +220,70 @@ export default function FilmPage() {
             {f.title}
           </Display>
         </Animated.View>
-        <GlassButton label="Share" onPress={() => toast.island('Link copied', { type: 'success' })}>
-          <ShareIcon />
-        </GlassButton>
+        <View style={styles.actions}>
+          <GlassButton
+            label="Share"
+            onPress={() => toast.island('Link copied', { type: 'success' })}
+          >
+            <ShareIcon />
+          </GlassButton>
+          <FilmMenu
+            inCollection={inCollection}
+            onToggleSaved={save}
+            onNotInterested={() => {
+              toast('Seek will show fewer films like this');
+              router.back();
+            }}
+          />
+        </View>
       </View>
     </View>
+  );
+}
+
+/** The ⋯ menu: the film's collection state, its link, and "not interested". */
+function FilmMenu({
+  inCollection,
+  onToggleSaved,
+  onNotInterested,
+}: {
+  inCollection: boolean;
+  onToggleSaved: () => void;
+  onNotInterested: () => void;
+}) {
+  return (
+    <Menu>
+      <Menu.Trigger>
+        <GlassButton label="More" onPress={() => {}}>
+          <MoreIcon />
+        </GlassButton>
+      </Menu.Trigger>
+      <Menu.Content align="end">
+        <Menu.CheckboxItem
+          checked={inCollection}
+          onCheckedChange={onToggleSaved}
+          systemImage="bookmark"
+        >
+          In Collection
+        </Menu.CheckboxItem>
+        <Menu.Item
+          icon={<ShareIcon size={18} />}
+          systemImage="link"
+          onSelect={() => toast.island('Link copied', { type: 'success' })}
+        >
+          Copy Link
+        </Menu.Item>
+        <Menu.Separator />
+        <Menu.Item
+          variant="destructive"
+          icon={<CloseIcon size={16} />}
+          systemImage="hand.thumbsdown"
+          onSelect={onNotInterested}
+        >
+          Not Interested
+        </Menu.Item>
+      </Menu.Content>
+    </Menu>
   );
 }
 
@@ -262,6 +326,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   barTitle: { flex: 1, alignItems: 'center', paddingHorizontal: 12 },
+  actions: { flexDirection: 'row', gap: 10 },
   glass: {
     width: 44,
     height: 44,

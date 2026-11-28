@@ -1,0 +1,27 @@
+# The weekly menu check (.github/workflows/menu-weekly.yml). Pass the renderer this platform
+# must use: `maestro test maestro/menu.yaml -e RENDERER=glass` (Android 13+) or `-e RENDERER=system`
+# (iOS). Asserting it first means a quiet fallback to PanelUI fails the run instead of passing.
+appId: dev.tabcn.seek
+---
+- launchApp
+- openLink: seek://menu-check
+- assertVisible: "renderer: ${RENDERER}"
+- assertVisible: "last: none"
+
+# Open, choose a row, and the menu closes.
+- tapOn: "Open menu"
+- assertVisible: "Alpha"
+- takeScreenshot: menu-open-${RENDERER}
+- tapOn: "Alpha"
+- assertVisible: "last: Alpha"
+- assertNotVisible: "Delete"
+
+# A checkbox row runs onCheckedChange.
+- tapOn: "Open menu"
+- tapOn: "Pinned"
+- assertVisible: "pinned: yes"
+
+# The destructive row.
+- tapOn: "Open menu"
+- tapOn: "Delete"
+- assertVisible: "last: Delete"

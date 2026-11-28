@@ -65,6 +65,17 @@
   },
   "overrides": [
     {
+      "includes": ["packages/menu/src/__tests__/**", "packages/menu/jest/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noReactNativeRawText": "off",
+            "noComponentHookFactories": "off"
+          }
+        }
+      }
+    },
+    {
       "includes": ["apps/seek/**"],
       "linter": {
         "rules": {
